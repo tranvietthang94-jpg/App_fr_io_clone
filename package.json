@@ -1,0 +1,30 @@
+{
+  "name": "app-fr-io-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frame.io clone - Video review & collaboration platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:api": "turbo run dev --filter=api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:migrate": "turbo run db:migrate --filter=api",
+    "db:seed": "turbo run db:seed --filter=api",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "setup": "npm install && npm run docker:up && npm run db:migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}

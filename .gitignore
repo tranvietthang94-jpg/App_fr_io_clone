@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production
+build/
+dist/
+.next/
+out/
+
+# Misc
+.DS_Store
+.env*.local
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Uploads
+uploads/
+
+# Docker
+docker/volumes/
+
+# Turbo
+.turbo/
+
+# Temp files
+tmp/
+temp/
