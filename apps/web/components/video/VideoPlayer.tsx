@@ -177,24 +177,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls Overlay */}
       <div
         className={cn(
-          'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 transition-opacity',
+          'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent transition-opacity',
           showControls ? 'opacity-100' : 'opacity-0'
         )}
       >
-        {/* Progress Bar */}
-        <div className="mb-3">
-          <input
-            type="range"
-            min="0"
-            max={duration || 0}
-            value={currentTime}
-            onChange={(e) => handleSeek(parseFloat(e.target.value))}
-            className="w-full h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent-blue"
-          />
-        </div>
-
         {/* Controls Row */}
-        <div className="flex items-center justify-between text-white">
+        <div className="flex items-center justify-between text-white px-4 py-2">
           <div className="flex items-center gap-2">
             {/* Play/Pause */}
             <Button

@@ -6,6 +6,7 @@ import { videosApi, commentsApi, exportApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { formatTimestamp, formatDuration } from "@/lib/utils";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
+import { Timeline } from "@/components/video/Timeline";
 import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
 import { UserPresence } from "@/components/presence/UserPresence";
@@ -226,44 +227,12 @@ export default function VideoReviewPage() {
           </div>
 
           {/* Timeline with comment markers */}
-          <div className="h-16 bg-card border-t border-border px-4">
-            <div className="relative h-full flex items-center">
-              {/* Timeline bar */}
-              <div className="absolute inset-x-0 h-2 bg-secondary rounded-full">
-                <div
-                  className="absolute h-full bg-primary rounded-full"
-                  style={{
-                    width: `${(currentTime / video.duration) * 100}%`,
-                  }}
-                />
-              </div>
-
-              {/* Comment markers */}
-              {comments.map((comment) => (
-                <button
-                  key={comment.id}
-                  onClick={() => handleSeekToComment(comment.timestamp)}
-                  className="absolute w-4 h-4 bg-primary hover:bg-primary/80 rounded-full transform -translate-x-1/2 -translate-y-1/2 top-1/2 z-10 transition-transform hover:scale-125"
-                  style={{
-                    left: `${(comment.timestamp / video.duration) * 100}%`,
-                  }}
-                  title={comment.content}
-                />
-              ))}
-
-              {/* Current time indicator */}
-              <div
-                className="absolute w-3 h-3 bg-white rounded-full transform -translate-x-1/2 -translate-y-1/2 top-1/2 z-20 shadow-lg"
-                style={{
-                  left: `${(currentTime / video.duration) * 100}%`,
-                }}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>{formatTimestamp(currentTime)}</span>
-              <span>{formatTimestamp(video.duration)}</span>
-            </div>
-          </div>
+          <Timeline
+            duration={video.duration}
+            currentTime={currentTime}
+            comments={comments}
+            onSeek={handleSeekToComment}
+          />
         </div>
 
         {/* Right panel */}
