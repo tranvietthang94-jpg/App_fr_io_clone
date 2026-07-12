@@ -7,6 +7,7 @@ import { CommentsModule } from './comments/comments.module';
 import { UploadModule } from './upload/upload.module';
 import { ExportModule } from './export/export.module';
 import { MediaModule } from './media/media.module';
+import { CollaborationModule } from './gateway/collaboration.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { MediaModule } from './media/media.module';
     UploadModule,
     ExportModule,
     MediaModule,
+    CollaborationModule,
   ],
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 import {
   Play,
   Pause,
@@ -10,74 +10,67 @@ import {
   Minimize,
   SkipBack,
   SkipForward,
-} from "lucide-react";
-import type { Comment } from "@fr-clone/shared";
+} from 'lucide-react';
 
 interface VideoPlayerProps {
-  videoUrl: string;
-  currentTime: number;
-  onTimeUpdate: (time: number) => void;
-  onPlayStateChange: (isPlaying: boolean) => void;
-  comments: Comment[];
-  onSeekToComment: (timestamp: number) => void;
+  src: string;
+  className?: string;
+  onTimeUpdate?: (time: number) => void;
+  onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
-export function VideoPlayer({
-  videoUrl,
-  currentTime,
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  src,
+  className,
   onTimeUpdate,
   onPlayStateChange,
-  comments,
-  onSeekToComment,
-}: VideoPlayerProps) {
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showAnnotation, setShowAnnotation] = useState(false);
-  const [annotationMode, setAnnotationMode] = useState<"draw" | "highlight" | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showControls, setShowControls] = useState(true);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleTimeUpdate = () => {
-      onTimeUpdate(video.currentTime);
+      setCurrentTime(video.currentTime);
+      onTimeUpdate?.(video.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration);
     };
 
     const handlePlay = () => {
       setIsPlaying(true);
-      onPlayStateChange(true);
+      onPlayStateChange?.(true);
     };
 
     const handlePause = () => {
       setIsPlaying(false);
-      onPlayStateChange(false);
+      onPlayStateChange?.(false);
     };
 
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePause);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
 
     return () => {
-      video.removeEventListener("timeupdate", handleTimeUpdate);
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePause);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
     };
   }, [onTimeUpdate, onPlayStateChange]);
-
-  // Sync currentTime with video
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const diff = Math.abs(video.currentTime - currentTime);
-    if (diff > 0.5) {
-      video.currentTime = currentTime;
-    }
-  }, [currentTime]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -90,22 +83,26 @@ export function VideoPlayer({
     }
   };
 
+  const handleSeek = (time: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  const handleVolumeChange = (value: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = value;
+    setVolume(value);
+    setIsMuted(value === 0);
+  };
+
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-
     video.muted = !isMuted;
     setIsMuted(!isMuted);
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const newVolume = parseFloat(e.target.value);
-    video.volume = newVolume;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
   };
 
   const toggleFullscreen = () => {
@@ -121,189 +118,164 @@ export function VideoPlayer({
     }
   };
 
-  const skipBackward = () => {
+  const changeSpeed = (speed: number) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(0, video.currentTime - 5);
+    video.playbackRate = speed;
+    setPlaybackSpeed(speed);
   };
 
-  const skipForward = () => {
+  const frameStep = (direction: 'forward' | 'backward') => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.min(video.duration, video.currentTime + 5);
+    const frameTime = 1 / 30; // 30fps
+    const newTime = direction === 'forward' 
+      ? video.currentTime + frameTime 
+      : video.currentTime - frameTime;
+    handleSeek(Math.max(0, Math.min(newTime, duration)));
   };
 
-  const handleFrameStep = (direction: "prev" | "next") => {
-    const video = videoRef.current;
-    if (!video) return;
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = Math.floor(time % 60);
+    const frames = Math.floor((time % 1) * 30);
 
-    const fps = 30;
-    const frameDuration = 1 / fps;
-
-    if (direction === "prev") {
-      video.currentTime = Math.max(0, video.currentTime - frameDuration);
-    } else {
-      video.currentTime = Math.min(video.duration, video.currentTime + frameDuration);
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
     }
-  };
-
-  const handleVideoClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!showAnnotation) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Will be used for annotation
-    console.log("Click position:", { x, y, timestamp: currentTime });
+    return `${minutes}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black group"
-      onClick={handleVideoClick}
+      className={cn('relative bg-black rounded-lg overflow-hidden group', className)}
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(true)}
     >
+      {/* Video Element */}
       <video
         ref={videoRef}
-        src={videoUrl}
+        src={src}
         className="w-full h-full object-contain"
         onClick={togglePlay}
       />
 
-      {/* Comment markers on video */}
-      {comments
-        .filter((c) => Math.abs(c.timestamp - currentTime) < 0.1)
-        .map((comment) => (
-          <div
-            key={comment.id}
-            className="absolute w-6 h-6 bg-primary/80 rounded-full transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-            style={{
-              left: `${comment.positionX || 50}%`,
-              top: `${comment.positionY || 50}%`,
-            }}
-            title={comment.content}
+      {/* Play/Pause Overlay */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+          <button
+            onClick={togglePlay}
+            className="w-20 h-20 rounded-full bg-accent-blue/90 flex items-center justify-center hover:bg-accent-blue transition-colors"
           >
-            <span className="text-xs text-white font-bold">💬</span>
-          </div>
-        ))}
+            <Play className="w-10 h-10 text-white ml-1" />
+          </button>
+        </div>
+      )}
 
-      {/* Controls overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* Progress bar */}
-        <div className="mb-4">
+      {/* Controls Overlay */}
+      <div
+        className={cn(
+          'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 transition-opacity',
+          showControls ? 'opacity-100' : 'opacity-0'
+        )}
+      >
+        {/* Progress Bar */}
+        <div className="mb-3">
           <input
             type="range"
-            min={0}
-            max={videoRef.current?.duration || 100}
+            min="0"
+            max={duration || 0}
             value={currentTime}
-            onChange={(e) => {
-              const video = videoRef.current;
-              if (video) {
-                video.currentTime = parseFloat(e.target.value);
-                onTimeUpdate(video.currentTime);
-              }
-            }}
-            className="w-full h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
+            onChange={(e) => handleSeek(parseFloat(e.target.value))}
+            className="w-full h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent-blue"
           />
         </div>
 
-        {/* Control buttons */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Controls Row */}
+        <div className="flex items-center justify-between text-white">
+          <div className="flex items-center gap-2">
             {/* Play/Pause */}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={togglePlay}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="text-white hover:bg-white/20"
             >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 text-white" />
-              ) : (
-                <Play className="w-6 h-6 text-white" />
-              )}
-            </button>
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+            </Button>
 
-            {/* Skip backward */}
-            <button
-              onClick={skipBackward}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            {/* Frame Step */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => frameStep('backward')}
+              className="text-white hover:bg-white/20"
             >
-              <SkipBack className="w-5 h-5 text-white" />
-            </button>
-
-            {/* Frame step */}
-            <button
-              onClick={() => handleFrameStep("prev")}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors text-xs text-white"
+              <SkipBack className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => frameStep('forward')}
+              className="text-white hover:bg-white/20"
             >
-              ←F
-            </button>
-            <button
-              onClick={() => handleFrameStep("next")}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors text-xs text-white"
-            >
-              F→
-            </button>
-
-            {/* Skip forward */}
-            <button
-              onClick={skipForward}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            >
-              <SkipForward className="w-5 h-5 text-white" />
-            </button>
+              <SkipForward className="w-4 h-4" />
+            </Button>
 
             {/* Volume */}
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={toggleMute}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="text-white hover:bg-white/20"
               >
-                {isMuted ? (
-                  <VolumeX className="w-5 h-5 text-white" />
-                ) : (
-                  <Volume2 className="w-5 h-5 text-white" />
-                )}
-              </button>
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </Button>
               <input
                 type="range"
-                min={0}
-                max={1}
-                step={0.1}
+                min="0"
+                max="1"
+                step="0.1"
                 value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
+                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                 className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
               />
             </div>
+
+            {/* Time Display */}
+            <span className="text-sm font-mono ml-2">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Annotation toggle */}
-            <button
-              onClick={() => setShowAnnotation(!showAnnotation)}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                showAnnotation
-                  ? "bg-primary text-white"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
+          <div className="flex items-center gap-2">
+            {/* Speed Control */}
+            <select
+              value={playbackSpeed}
+              onChange={(e) => changeSpeed(parseFloat(e.target.value))}
+              className="bg-bg-tertiary text-white text-sm px-2 py-1 rounded border-none cursor-pointer"
             >
-              ✏️ Vẽ
-            </button>
+              <option value="0.5">0.5x</option>
+              <option value="1">1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
 
             {/* Fullscreen */}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleFullscreen}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="text-white hover:bg-white/20"
             >
-              {isFullscreen ? (
-                <Minimize className="w-5 h-5 text-white" />
-              ) : (
-                <Maximize className="w-5 h-5 text-white" />
-              )}
-            </button>
+              {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};

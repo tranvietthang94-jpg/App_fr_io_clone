@@ -8,6 +8,8 @@ import { formatTimestamp, formatDuration } from "@/lib/utils";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
+import { UserPresence } from "@/components/presence/UserPresence";
+import { socketService } from "@/lib/socket";
 import {
   ArrowLeft,
   MessageSquare,
@@ -34,6 +36,33 @@ export default function VideoReviewPage() {
   useEffect(() => {
     loadVideo();
     loadComments();
+    
+    // Connect socket and join video room
+    socketService.connect();
+    
+    // Listen for real-time comments
+    const handleNewComment = (data: any) => {
+      setComments((prev) => [
+        ...prev,
+        {
+          id: `temp-${Date.now()}`,
+          videoId,
+          userId: data.userId,
+          content: data.content,
+          timestamp: data.timestamp,
+          frameNumber: data.frameNumber,
+          createdAt: data.createdAt,
+          user: { name: data.username },
+        } as Comment,
+      ]);
+    };
+    
+    socketService.on('comment:new', handleNewComment);
+    
+    return () => {
+      socketService.off('comment:new', handleNewComment);
+      socketService.leaveVideo();
+    };
   }, [videoId]);
 
   const loadVideo = async () => {
@@ -66,6 +95,9 @@ export default function VideoReviewPage() {
     try {
       const res = await commentsApi.create(videoId, data);
       setComments([...comments, res.data]);
+      
+      // Broadcast to other users via socket
+      socketService.sendComment(videoId, data.content, data.timestamp, data.frameNumber);
     } catch (err) {
       console.error("Failed to add comment:", err);
     }
@@ -147,25 +179,28 @@ export default function VideoReviewPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowComments(!showComments)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-              showComments ? "bg-primary/10 text-primary" : "hover:bg-secondary"
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span>{comments.length}</span>
-          </button>
-          <button
-            onClick={() => setShowExport(!showExport)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-              showExport ? "bg-primary/10 text-primary" : "hover:bg-secondary"
-            }`}
-          >
-            <Download className="w-5 h-5" />
-            <span>Xuất</span>
-          </button>
+        <div className="flex items-center gap-4">
+          <UserPresence videoId={videoId} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                showComments ? "bg-primary/10 text-primary" : "hover:bg-secondary"
+              }`}
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>{comments.length}</span>
+            </button>
+            <button
+              onClick={() => setShowExport(!showExport)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                showExport ? "bg-primary/10 text-primary" : "hover:bg-secondary"
+              }`}
+            >
+              <Download className="w-5 h-5" />
+              <span>Xuất</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -176,12 +211,9 @@ export default function VideoReviewPage() {
           <div className="flex-1 relative bg-black">
             {video.status === "ready" ? (
               <VideoPlayer
-                videoUrl={videosApi.getStreamUrl(videoId, "original")}
-                currentTime={currentTime}
+                src={videosApi.getStreamUrl(videoId, "original")}
                 onTimeUpdate={setCurrentTime}
                 onPlayStateChange={setIsPlaying}
-                comments={comments}
-                onSeekToComment={handleSeekToComment}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">

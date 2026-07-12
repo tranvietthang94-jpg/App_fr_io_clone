@@ -31,8 +31,12 @@ export class AuthService {
     });
     await this.usersRepository.save(user);
 
-    // Generate token
-    const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
+    // Generate token with username
+    const accessToken = this.jwtService.sign({ 
+      sub: user.id, 
+      email: user.email,
+      username: user.name 
+    });
 
     return {
       accessToken,
@@ -59,8 +63,12 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    // Generate token
-    const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
+    // Generate token with username
+    const accessToken = this.jwtService.sign({ 
+      sub: user.id, 
+      email: user.email,
+      username: user.name 
+    });
 
     return {
       accessToken,
