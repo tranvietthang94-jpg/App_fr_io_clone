@@ -36,7 +36,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <aside className="w-64 bg-bg-secondary border-r border-border flex flex-col">
         <div className="p-6">
           <Link href="/projects" className="flex items-center gap-2">
             <FolderOpen className="w-6 h-6 text-primary" />
@@ -47,7 +47,7 @@ export default function DashboardLayout({
         <nav className="flex-1 px-4">
           <Link
             href="/projects"
-            className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-bg-tertiary transition-colors"
           >
             <FolderOpen className="w-5 h-5" />
             <span>Dự án</span>
@@ -61,12 +61,12 @@ export default function DashboardLayout({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-xs text-text-secondary truncate">{user?.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
+            className="flex items-center gap-3 w-full px-4 py-2 rounded-md hover:bg-bg-tertiary transition-colors text-text-secondary"
           >
             <LogOut className="w-5 h-5" />
             <span>Đăng xuất</span>

@@ -17,9 +17,8 @@ export function UserPresence({ videoId }: UserPresenceProps) {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Join video room
-    socketService.joinVideo(videoId);
-
+    // Room join/leave is owned by the parent VideoReviewPage (it owns the
+    // socket connection lifecycle); this component only listens for presence.
     // Listen for room users
     const handleRoomUsers = (usersList: User[]) => {
       setUsers(usersList);
@@ -65,7 +64,6 @@ export function UserPresence({ videoId }: UserPresenceProps) {
 
     // Cleanup
     return () => {
-      socketService.leaveVideo();
       socketService.off('room:users', handleRoomUsers);
       socketService.off('user:joined', handleUserJoined);
       socketService.off('user:left', handleUserLeft);
@@ -84,27 +82,27 @@ export function UserPresence({ videoId }: UserPresenceProps) {
         {users.slice(0, 5).map((user) => (
           <div
             key={user.userId}
-            className="w-8 h-8 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center text-xs font-semibold text-primary"
+            className="w-8 h-8 rounded-full bg-primary/20 border-2 border-bg-primary flex items-center justify-center text-xs font-semibold text-primary"
             title={user.username}
           >
             {user.username.charAt(0).toUpperCase()}
           </div>
         ))}
         {users.length > 5 && (
-          <div className="w-8 h-8 rounded-full bg-muted border-2 border-card flex items-center justify-center text-xs font-semibold text-muted-foreground">
+          <div className="w-8 h-8 rounded-full bg-bg-tertiary border-2 border-bg-primary flex items-center justify-center text-xs font-semibold text-text-secondary">
             +{users.length - 5}
           </div>
         )}
       </div>
 
       {/* Online count */}
-      <span className="text-sm text-muted-foreground">
+      <span className="text-sm text-text-secondary">
         {users.length} online
       </span>
 
       {/* Typing indicator */}
       {typingUsers.size > 0 && (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+        <div className="flex items-center gap-1 text-xs text-text-secondary ml-2">
           <div className="flex gap-0.5">
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />

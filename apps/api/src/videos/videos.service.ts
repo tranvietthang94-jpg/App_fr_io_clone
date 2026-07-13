@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Video } from './video.entity';
+import { ProjectsService } from '../projects/projects.service';
 
 @Injectable()
 export class VideosService {
   constructor(
     @InjectRepository(Video)
     private videosRepository: Repository<Video>,
+    private projectsService: ProjectsService,
   ) {}
 
   async findByProject(projectId: string) {
@@ -22,6 +24,17 @@ export class VideosService {
     if (!video) {
       throw new NotFoundException('Video not found');
     }
+    return video;
+  }
+
+  /**
+   * Same as findOne, but also verifies the requesting user owns the video's
+   * parent project. Reuses ProjectsService.findOne's owner-scoped lookup so
+   * ownership rules live in one place.
+   */
+  async findOwned(id: string, userId: string) {
+    const video = await this.findOne(id);
+    await this.projectsService.findOne(video.projectId, userId);
     return video;
   }
 

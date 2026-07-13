@@ -59,9 +59,10 @@ app-fr-io-clone/
 npm install
 ```
 
-2. **Copy environment file**
+2. **Copy environment files** (root `.env.example` is reference-only; each app reads its own)
 ```bash
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 ```
 
 3. **Start Docker services** (PostgreSQL, Redis, MinIO)

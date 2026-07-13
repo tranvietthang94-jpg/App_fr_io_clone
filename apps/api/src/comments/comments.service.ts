@@ -18,6 +18,14 @@ export class CommentsService {
     });
   }
 
+  async findOne(id: string) {
+    const comment = await this.commentsRepository.findOne({ where: { id } });
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+    return comment;
+  }
+
   async create(data: {
     videoId: string;
     userId: string;

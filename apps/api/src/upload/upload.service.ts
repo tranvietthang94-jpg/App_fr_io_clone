@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { VideosService } from '../videos/videos.service';
 import { MediaService } from '../media/media.service';
+
+// parseInt(x) || fallback treats an explicit "0" the same as unset — an env
+// var set to 0 (e.g. to reject all uploads) would be silently overridden.
+function parseEnvInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === '') return fallback;
+  const n = parseInt(value, 10);
+  return Number.isNaN(n) ? fallback : n;
+}
 
 @Injectable()
 export class UploadService {
@@ -25,8 +33,13 @@ export class UploadService {
   }
 
   async initUpload(projectId: string, filename: string, fileSize: number, mimeType: string) {
+    const maxFileSize = parseEnvInt(process.env.MAX_FILE_SIZE, 5 * 1024 * 1024 * 1024);
+    if (fileSize > maxFileSize) {
+      throw new BadRequestException(`File vượt quá giới hạn ${maxFileSize} bytes`);
+    }
+
     const uploadId = uuidv4();
-    const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+    const chunkSize = parseEnvInt(process.env.UPLOAD_CHUNK_SIZE, 5 * 1024 * 1024);
     const totalChunks = Math.ceil(fileSize / chunkSize);
 
     // Create chunk directory for this upload

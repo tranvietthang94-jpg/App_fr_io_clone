@@ -13,11 +13,10 @@
     "dev:api": "turbo run dev --filter=api",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "db:migrate": "turbo run db:migrate --filter=api",
     "db:seed": "turbo run db:seed --filter=api",
     "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
-    "setup": "npm install && npm run docker:up && npm run db:migrate"
+    "setup": "npm install && npm run docker:up && npm run db:seed"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

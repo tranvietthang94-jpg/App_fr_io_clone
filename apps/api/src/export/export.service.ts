@@ -34,8 +34,8 @@ export class ExportService {
     // Build markers XML
     const markersXml = comments.map(c => {
       const frame = Math.floor(c.timestamp * video.fps);
-      const commentText = c.content.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-      const userName = c.user?.name || 'Unknown';
+      const commentText = this.escapeXml(c.content);
+      const userName = this.escapeXml(c.user?.name || 'Unknown');
       return `  <marker>
     <comment>${commentText}</comment>
     <name>${userName}</name>
@@ -56,7 +56,7 @@ export class ExportService {
       <timebase>${Math.floor(video.fps)}</timebase>
       <ntsc>FALSE</ntsc>
     </rate>
-    <name>${video.title} ${dateStr}</name>
+    <name>${this.escapeXml(video.title)} ${dateStr}</name>
     <media>
       <video>
         <format>
@@ -322,7 +322,7 @@ ${markersXml}
           <div class="comment-header">
             <div class="comment-number">#${i + 1}</div>
             <div class="comment-meta">
-              <span class="comment-user">${c.user?.name || 'Unknown'}</span>
+              <span class="comment-user">${this.escapeHtml(c.user?.name || 'Unknown')}</span>
               <span class="comment-time">${timecode} | Frame ${frame}</span>
             </div>
           </div>
@@ -438,7 +438,7 @@ ${markersXml}
 <body>
   <div class="header">
     <div class="header-left">
-      <h1>${video.title}</h1>
+      <h1>${this.escapeHtml(video.title)}</h1>
       <p>Video Review Report</p>
     </div>
     <div class="header-right">
@@ -509,12 +509,19 @@ ${markersXml}
     }
   }
 
+  private escapeXml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   private escapeHtml(text: string): string {
     const map: Record<string, string> = {
-      '&': '&',
-      '<': '<',
-      '>': '>',
-      '"': '"',
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
       "'": '&#039;',
     };
     return text.replace(/[&<>"']/g, (m) => map[m]);

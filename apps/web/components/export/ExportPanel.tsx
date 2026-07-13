@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, FileCode, Download, Film, MessageSquare } from "lucide-react";
-import { formatDuration, formatDate } from "@/lib/utils";
+import { formatTimecode, formatDate } from "@/lib/utils";
 import type { Video, Comment } from "@fr-clone/shared";
 
 interface ExportPanelProps {
@@ -25,23 +25,23 @@ export function ExportPanel({
       </h3>
 
       {/* Video info */}
-      <div className="bg-secondary/50 rounded-lg p-4 mb-6">
-        <h4 className="text-sm font-medium mb-3 text-muted-foreground">Thông tin video</h4>
+      <div className="bg-bg-tertiary/50 rounded-lg p-4 mb-6">
+        <h4 className="text-sm font-medium mb-3 text-text-secondary">Thông tin video</h4>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tên:</span>
+            <span className="text-text-secondary">Tên:</span>
             <span className="font-medium truncate ml-2 max-w-[180px]">{video.title}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Thời lượng:</span>
-            <span>{formatDuration(video.duration)}</span>
+            <span className="text-text-secondary">Thời lượng:</span>
+            <span>{formatTimecode(video.duration, video.fps)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Kích thước:</span>
+            <span className="text-text-secondary">Kích thước:</span>
             <span>{video.width}x{video.height}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Số bình luận:</span>
+            <span className="text-text-secondary">Số bình luận:</span>
             <span>{comments.length}</span>
           </div>
         </div>
@@ -50,14 +50,14 @@ export function ExportPanel({
       {/* Export options */}
       <div className="space-y-4">
         {/* XML Export */}
-        <div className="bg-secondary/50 rounded-lg p-4">
+        <div className="bg-bg-tertiary/50 rounded-lg p-4">
           <div className="flex items-start gap-3 mb-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
               <FileCode className="w-5 h-5 text-blue-500" />
             </div>
             <div>
               <h4 className="font-medium">Xuất XML</h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-text-secondary">
                 Dữ liệu bình luận dạng XML, có thể import vào các hệ thống khác
               </p>
             </div>
@@ -71,14 +71,14 @@ export function ExportPanel({
         </div>
 
         {/* PDF Export */}
-        <div className="bg-secondary/50 rounded-lg p-4">
+        <div className="bg-bg-tertiary/50 rounded-lg p-4">
           <div className="flex items-start gap-3 mb-3">
             <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
               <FileText className="w-5 h-5 text-red-500" />
             </div>
             <div>
               <h4 className="font-medium">Xuất PDF</h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-text-secondary">
                 Báo cáo PDF kèm theo screenshot và bình luận
               </p>
             </div>
@@ -94,9 +94,9 @@ export function ExportPanel({
 
       {/* Preview */}
       <div className="mt-6">
-        <h4 className="text-sm font-medium mb-3 text-muted-foreground">Xem trước nội dung</h4>
-        <div className="bg-secondary/50 rounded-lg p-4 text-xs font-mono overflow-auto max-h-[300px]">
-          <pre className="text-muted-foreground">
+        <h4 className="text-sm font-medium mb-3 text-text-secondary">Xem trước nội dung</h4>
+        <div className="bg-bg-tertiary/50 rounded-lg p-4 text-xs font-mono overflow-auto max-h-[300px]">
+          <pre className="text-text-secondary">
 {`<?xml version="1.0" encoding="UTF-8"?>
 <review>
   <video>

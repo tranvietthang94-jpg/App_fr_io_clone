@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { VideosService } from '../videos/videos.service';
 
 interface UserSocketData {
   userId: string;
@@ -34,7 +35,10 @@ export class CollaborationGateway
   private logger = new Logger('CollaborationGateway');
   private userSockets: Map<string, UserSocketData> = new Map();
 
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private videosService: VideosService,
+  ) {}
 
   afterInit(server: Server) {
     this.logger.log('Collaboration Gateway initialized');
@@ -83,15 +87,22 @@ export class CollaborationGateway
   }
 
   @SubscribeMessage('join:video')
-  handleJoinVideo(
+  async handleJoinVideo(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { videoId: string },
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
 
+    try {
+      await this.videosService.findOwned(data.videoId, userData.userId);
+    } catch {
+      client.emit('error', { message: 'Not authorized to join this video' });
+      return;
+    }
+
     const room = `video:${data.videoId}`;
-    
+
     // Leave previous room if any
     if (userData.currentRoom) {
       client.leave(userData.currentRoom);
@@ -136,6 +147,19 @@ export class CollaborationGateway
     userData.currentRoom = undefined;
   }
 
+  /**
+   * The `join:video` handler is the only place ownership is actually
+   * checked. Every other per-message handler below must broadcast into the
+   * room the socket already validated and joined — not into whatever room
+   * name the client's payload happens to name — otherwise a connected
+   * client could spoof `videoId` to broadcast into a video room it was
+   * never authorized to join.
+   */
+  private roomFor(userData: UserSocketData, videoId: string): string | null {
+    const room = `video:${videoId}`;
+    return userData.currentRoom === room ? room : null;
+  }
+
   @SubscribeMessage('comment:new')
   handleNewComment(
     @ConnectedSocket() client: Socket,
@@ -148,11 +172,11 @@ export class CollaborationGateway
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
 
-    const room = `video:${data.videoId}`;
-    
-    // Broadcast to all users in room (including sender)
-    this.server.to(room).emit('comment:new', {
+    // Broadcast to others only (not sender)
+    client.to(room).emit('comment:new', {
       userId: userData.userId,
       username: userData.username,
       content: data.content,
@@ -169,9 +193,9 @@ export class CollaborationGateway
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
 
-    const room = `video:${data.videoId}`;
-    
     // Broadcast to others (not sender)
     client.to(room).emit('comment:typing', {
       userId: userData.userId,
@@ -187,9 +211,9 @@ export class CollaborationGateway
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
 
-    const room = `video:${data.videoId}`;
-    
     // Broadcast to others
     client.to(room).emit('video:seek', {
       userId: userData.userId,
@@ -205,9 +229,9 @@ export class CollaborationGateway
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
 
-    const room = `video:${data.videoId}`;
-    
     client.to(room).emit('video:play', {
       userId: userData.userId,
       username: userData.username,
@@ -222,9 +246,9 @@ export class CollaborationGateway
   ) {
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
 
-    const room = `video:${data.videoId}`;
-    
     client.to(room).emit('video:pause', {
       userId: userData.userId,
       username: userData.username,

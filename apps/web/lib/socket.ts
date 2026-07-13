@@ -18,6 +18,14 @@ class SocketService {
       return;
     }
 
+    if (this.socket) {
+      // Existing socket never connected (or reconnection attempts were
+      // exhausted after a drop) — drop it and open a fresh connection with
+      // the current token instead of blocking forever.
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     this.socket = io(`${SOCKET_URL}/collaboration`, {
       auth: { token },
       transports: ['websocket', 'polling'],

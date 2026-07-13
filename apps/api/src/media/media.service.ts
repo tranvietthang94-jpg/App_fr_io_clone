@@ -244,45 +244,4 @@ export class MediaService {
       });
     });
   }
-
-  /**
-   * Generate HLS playlist for adaptive streaming
-   */
-  async generateHlsPlaylist(videoId: string): Promise<string> {
-    const hlsDir = path.join(this.outputDir, videoId, 'hls');
-    if (!fs.existsSync(hlsDir)) {
-      fs.mkdirSync(hlsDir, { recursive: true });
-    }
-
-    const inputPath = path.join(this.outputDir, videoId, '1080p.mp4');
-    const outputPath = path.join(hlsDir, 'playlist.m3u8');
-
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-i', inputPath,
-        '-codec:', 'copy',
-        '-start_number', '0',
-        '-hls_time', '10',
-        '-hls_list_size', '0',
-        '-f', 'hls',
-        '-hls_segment_filename', path.join(hlsDir, 'segment_%03d.ts'),
-        outputPath,
-      ];
-
-      const ffmpeg = spawn(this.ffmpegPath, args);
-      let stderr = '';
-
-      ffmpeg.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      ffmpeg.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`HLS generation failed: ${stderr}`));
-          return;
-        }
-        resolve(outputPath);
-      });
-    });
-  }
 }

@@ -6,11 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
+/**
+ * SMPTE-style timecode: h:mm:ss:ff (hours omitted under 1h). `fps` should be
+ * the source video's actual frame rate, not assumed to be 30.
+ */
+export function formatTimecode(seconds: number, fps: number = 30): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  const frames = Math.round((seconds % 1) * 30);
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
+  const frames = Math.floor((seconds % 1) * fps);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
 }
 
 export function formatTimestamp(seconds: number): string {
@@ -33,6 +42,14 @@ export function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Shared "is this comment near the playhead" window, used to highlight the
+// active comment and to decide which comment's annotations to show.
+const ACTIVE_COMMENT_WINDOW_SEC = 0.5;
+
+export function isCommentActive(commentTimestamp: number, currentTime: number): boolean {
+  return Math.abs(commentTimestamp - currentTime) < ACTIVE_COMMENT_WINDOW_SEC;
 }
 
 export function getFrameNumber(timestamp: number, fps: number = 30): number {

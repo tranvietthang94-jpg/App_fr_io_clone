@@ -6,15 +6,13 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from './user.entity';
+import { jwtModuleOptions } from '../config/jwt.config';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
-    }),
+    JwtModule.register(jwtModuleOptions),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

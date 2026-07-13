@@ -1,14 +1,19 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CommentsService } from './comments.service';
+import { VideosService } from '../videos/videos.service';
 
 @Controller()
 export class CommentsController {
-  constructor(private commentsService: CommentsService) {}
+  constructor(
+    private commentsService: CommentsService,
+    private videosService: VideosService,
+  ) {}
 
   @Get('videos/:videoId/comments')
   @UseGuards(AuthGuard('jwt'))
-  async findByVideo(@Param('videoId') videoId: string) {
+  async findByVideo(@Param('videoId') videoId: string, @Request() req) {
+    await this.videosService.findOwned(videoId, req.user.userId);
     return this.commentsService.findByVideo(videoId);
   }
 
@@ -26,6 +31,7 @@ export class CommentsController {
     },
     @Request() req,
   ) {
+    await this.videosService.findOwned(videoId, req.user.userId);
     return this.commentsService.create({
       ...body,
       videoId,

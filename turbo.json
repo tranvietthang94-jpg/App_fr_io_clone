@@ -13,9 +13,6 @@
       "cache": false,
       "persistent": true
     },
-    "db:migrate": {
-      "cache": false
-    },
     "db:seed": {
       "cache": false
     }

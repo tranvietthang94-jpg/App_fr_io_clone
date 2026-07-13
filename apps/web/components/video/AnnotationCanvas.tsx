@@ -3,36 +3,81 @@
 import { useRef, useEffect, useState } from "react";
 import { Pencil, Highlighter, Type, Square, Eraser } from "lucide-react";
 
+interface SavedAnnotation {
+  type: string;
+  color: string;
+  // Points stored relative to canvas size (0-1) so they redraw correctly
+  // regardless of viewport/canvas size at save vs. load time.
+  points: Array<{ x: number; y: number }>;
+}
+
 interface AnnotationCanvasProps {
   isActive: boolean;
-  onAnnotationComplete: (data: {
-    type: string;
-    points: Array<{ x: number; y: number }>;
-    color: string;
-  }) => void;
+  savedAnnotations?: SavedAnnotation[];
+  onAnnotationComplete: (data: SavedAnnotation) => void;
 }
 
 type Tool = "draw" | "highlight" | "text" | "rectangle" | null;
 
-export function AnnotationCanvas({ isActive, onAnnotationComplete }: AnnotationCanvasProps) {
+export function AnnotationCanvas({ isActive, savedAnnotations = [], onAnnotationComplete }: AnnotationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentTool, setCurrentTool] = useState<Tool>("draw");
   const [color, setColor] = useState("#ff0000");
   const [points, setPoints] = useState<Array<{ x: number; y: number }>>([]);
 
+  const drawStroke = (
+    ctx: CanvasRenderingContext2D,
+    strokePoints: Array<{ x: number; y: number }>,
+    strokeColor: string,
+    tool: string,
+  ) => {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = tool === "highlight" ? 20 : 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalAlpha = tool === "highlight" ? 0.3 : 1;
+
+    ctx.beginPath();
+    strokePoints.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+
+  const redrawSaved = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx || !canvas) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const annotation of savedAnnotations) {
+      const pixelPoints = annotation.points.map((p) => ({
+        x: p.x * canvas.width,
+        y: p.y * canvas.height,
+      }));
+      drawStroke(ctx, pixelPoints, annotation.color, annotation.type);
+    }
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
     // Set canvas size
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
+
+    redrawSaved();
   }, []);
+
+  // Redraw whenever the set of saved annotations for the active comment changes
+  useEffect(() => {
+    redrawSaved();
+  }, [savedAnnotations]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isActive || !currentTool) return;
@@ -80,11 +125,12 @@ export function AnnotationCanvas({ isActive, onAnnotationComplete }: AnnotationC
 
     setIsDrawing(false);
 
-    if (points.length > 1 && currentTool) {
+    const canvas = canvasRef.current;
+    if (points.length > 1 && currentTool && canvas) {
       onAnnotationComplete({
         type: currentTool,
-        points,
         color,
+        points: points.map((p) => ({ x: p.x / canvas.width, y: p.y / canvas.height })),
       });
     }
 
@@ -95,7 +141,6 @@ export function AnnotationCanvas({ isActive, onAnnotationComplete }: AnnotationC
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 

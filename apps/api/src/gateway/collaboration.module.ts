@@ -1,14 +1,11 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { CollaborationGateway } from './collaboration.gateway';
+import { jwtModuleOptions } from '../config/jwt.config';
+import { VideosModule } from '../videos/videos.module';
 
 @Module({
-  imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
-    }),
-  ],
+  imports: [JwtModule.register(jwtModuleOptions), VideosModule],
   providers: [CollaborationGateway],
   exports: [CollaborationGateway],
 })

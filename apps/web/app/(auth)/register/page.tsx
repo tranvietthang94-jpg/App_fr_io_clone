@@ -55,12 +55,12 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-primary">Frame.io Clone</h1>
-          <p className="mt-2 text-muted-foreground">Tạo tài khoản mới</p>
+          <p className="mt-2 text-text-secondary">Tạo tài khoản mới</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-card p-8 rounded-lg border border-border">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
           {error && (
-            <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded">
+            <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
               {error}
             </div>
           )}
@@ -75,7 +75,7 @@ export default function RegisterPage() {
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Nguyễn Văn A"
             />
           </div>
@@ -90,7 +90,7 @@ export default function RegisterPage() {
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="your@email.com"
             />
           </div>
@@ -105,7 +105,7 @@ export default function RegisterPage() {
               required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
             />
           </div>
@@ -120,7 +120,7 @@ export default function RegisterPage() {
               required
               value={formData.confirmPassword}
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              className="w-full px-4 py-3 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
             />
           </div>
@@ -128,12 +128,12 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-md transition-colors disabled:opacity-50"
           >
             {loading ? "Đang đăng ký..." : "Đăng ký"}
           </button>
 
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-text-secondary">
             Đã có tài khoản?{" "}
             <Link href="/login" className="text-primary hover:underline">
               Đăng nhập

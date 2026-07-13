@@ -1,53 +1,62 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatTimecode, getFrameNumber, isCommentActive } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { MessageSquare, Send, MoreVertical, Edit2, Trash2 } from 'lucide-react';
-
-interface Comment {
-  id: string;
-  userId: string;
-  content: string;
-  timestamp: number;
-  frameNumber: number;
-  createdAt: string;
-  user?: {
-    name: string;
-    email: string;
-  };
-  replies?: Comment[];
-}
+import type { Comment } from '@fr-clone/shared';
 
 interface CommentPanelProps {
   comments: Comment[];
   currentTime: number;
+  fps?: number;
   onAddComment: (data: {
     content: string;
     timestamp: number;
     frameNumber: number;
   }) => void;
   onDeleteComment: (commentId: string) => void;
+  onEditComment: (commentId: string, content: string) => void;
   onSeekToComment: (timestamp: number) => void;
+  onTyping?: (isTyping: boolean) => void;
 }
 
 export const CommentPanel: React.FC<CommentPanelProps> = ({
   comments,
   currentTime,
+  fps = 30,
   onAddComment,
   onDeleteComment,
+  onEditComment,
   onSeekToComment,
+  onTyping,
 }) => {
   const [newComment, setNewComment] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [hoveredComment, setHoveredComment] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
-  const formatTimecode = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const frames = Math.floor((seconds % 1) * 30);
-    return `${mins}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
+  useEffect(() => {
+    onTyping?.(isTyping);
+  }, [isTyping]);
+
+  const startEditing = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+  };
+
+  const cancelEditing = () => {
+    setEditingCommentId(null);
+    setEditContent('');
+  };
+
+  const saveEditing = (commentId: string) => {
+    if (editContent.trim()) {
+      onEditComment(commentId, editContent.trim());
+    }
+    cancelEditing();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -57,7 +66,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
     onAddComment({
       content: newComment,
       timestamp: currentTime,
-      frameNumber: Math.floor(currentTime * 30),
+      frameNumber: getFrameNumber(currentTime, fps),
     });
 
     setNewComment('');
@@ -67,10 +76,6 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewComment(e.target.value);
     setIsTyping(e.target.value.length > 0);
-  };
-
-  const isCommentActive = (comment: Comment) => {
-    return Math.abs(comment.timestamp - currentTime) < 0.5;
   };
 
   return (
@@ -100,7 +105,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               key={comment.id}
               className={cn(
                 'group relative bg-bg-primary rounded-lg p-3 transition-all',
-                isCommentActive(comment) && 'ring-2 ring-accent-blue bg-accent-blue/5'
+                isCommentActive(comment.timestamp, currentTime) && 'ring-2 ring-accent-blue bg-accent-blue/5'
               )}
               onMouseEnter={() => setHoveredComment(comment.id)}
               onMouseLeave={() => setHoveredComment(null)}
@@ -120,7 +125,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                       onClick={() => onSeekToComment(comment.timestamp)}
                       className="text-xs text-accent-blue hover:text-blue-400 font-mono"
                     >
-                      {formatTimecode(comment.timestamp)}
+                      {formatTimecode(comment.timestamp, fps)}
                     </button>
                   </div>
                   <p className="text-xs text-text-muted mt-0.5">
@@ -129,12 +134,13 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 </div>
 
                 {/* Actions */}
-                {hoveredComment === comment.id && (
+                {hoveredComment === comment.id && editingCommentId !== comment.id && (
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       className="p-1 h-auto text-text-secondary hover:text-text-primary"
+                      onClick={() => startEditing(comment)}
                     >
                       <Edit2 className="w-3 h-3" />
                     </Button>
@@ -151,9 +157,27 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               </div>
 
               {/* Comment Content */}
-              <p className="text-sm text-text-primary leading-relaxed">
-                {comment.content}
-              </p>
+              {editingCommentId === comment.id ? (
+                <div className="space-y-2">
+                  <Input
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="primary" onClick={() => saveEditing(comment.id)}>
+                      Lưu
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEditing}>
+                      Hủy
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-text-primary leading-relaxed">
+                  {comment.content}
+                </p>
+              )}
 
               {/* Replies */}
               {comment.replies && comment.replies.length > 0 && (
@@ -167,7 +191,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                             {reply.user?.name || 'User'}
                           </span>
                           <span className="text-xs text-text-muted">
-                            {formatTimecode(reply.timestamp)}
+                            {formatTimecode(reply.timestamp, fps)}
                           </span>
                         </div>
                         <p className="text-sm text-text-primary mt-1">
@@ -205,7 +229,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
         </form>
         {isTyping && (
           <p className="text-xs text-text-muted mt-2">
-            Comment will be added at {formatTimecode(currentTime)}
+            Comment will be added at {formatTimecode(currentTime, fps)}
           </p>
         )}
       </div>

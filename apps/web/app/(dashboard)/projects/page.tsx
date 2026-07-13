@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { projectsApi } from "@/lib/api";
-import { formatRelativeTime } from "@/lib/utils";
-import { Plus, Folder, MoreVertical, Trash2, Edit } from "lucide-react";
+import { ProjectCard } from "@/components/dashboard/ProjectCard";
+import { Plus, Folder } from "lucide-react";
 import type { Project } from "@fr-clone/shared";
 
 export default function ProjectsPage() {
@@ -62,7 +62,7 @@ export default function ProjectsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-muted-foreground">Đang tải...</div>
+        <div className="text-text-secondary">Đang tải...</div>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function ProjectsPage() {
         <h1 className="text-3xl font-bold">Dự án</h1>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
         >
           <Plus className="w-5 h-5" />
           <span>Tạo dự án mới</span>
@@ -82,14 +82,14 @@ export default function ProjectsPage() {
 
       {projects.length === 0 ? (
         <div className="text-center py-16">
-          <Folder className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+          <Folder className="w-16 h-16 mx-auto text-text-secondary mb-4" />
           <h3 className="text-xl font-medium mb-2">Chưa có dự án nào</h3>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-text-secondary mb-6">
             Tạo dự án đầu tiên để bắt đầu review video
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors"
+            className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
           >
             Tạo dự án mới
           </button>
@@ -97,35 +97,12 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div
+            <ProjectCard
               key={project.id}
+              project={project}
               onClick={() => router.push(`/projects/${project.id}`)}
-              className="bg-card border border-border rounded-lg p-6 cursor-pointer hover:border-primary/50 transition-colors group"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Folder className="w-6 h-6 text-primary" />
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProject(project.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-2 hover:bg-secondary rounded-md transition-all"
-                >
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </button>
-              </div>
-              <h3 className="text-lg font-semibold mb-1 truncate">{project.name}</h3>
-              {project.description && (
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                  {project.description}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Cập nhật {formatRelativeTime(project.updatedAt)}
-              </p>
-            </div>
+              onDelete={() => handleDeleteProject(project.id)}
+            />
           ))}
         </div>
       )}
@@ -133,7 +110,7 @@ export default function ProjectsPage() {
       {/* Create Project Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md">
+          <div className="bg-bg-secondary border border-border rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Tạo dự án mới</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
@@ -144,7 +121,7 @@ export default function ProjectsPage() {
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Nhập tên dự án"
                   autoFocus
                 />
@@ -156,7 +133,7 @@ export default function ProjectsPage() {
                 <textarea
                   value={newProjectDesc}
                   onChange={(e) => setNewProjectDesc(e.target.value)}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   placeholder="Mô tả dự án"
                   rows={3}
                 />
@@ -165,13 +142,13 @@ export default function ProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-md transition-colors"
+                  className="flex-1 px-4 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-md transition-colors"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors"
+                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
                 >
                   Tạo
                 </button>

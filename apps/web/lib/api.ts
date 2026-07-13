@@ -60,8 +60,10 @@ export const videosApi = {
     api.get(`/api/projects/${projectId}/videos`),
   getById: (id: string) => api.get(`/api/videos/${id}`),
   delete: (id: string) => api.delete(`/api/videos/${id}`),
-  getStreamUrl: (videoId: string, quality: string) =>
-    `${API_URL}/api/videos/${videoId}/stream/${quality}`,
+  getStreamUrl: (videoId: string, quality: string) => {
+    const token = useAuthStore.getState().accessToken;
+    return `${API_URL}/api/videos/${videoId}/stream/${quality}?token=${encodeURIComponent(token || '')}`;
+  },
 };
 
 // Comments API
@@ -92,6 +94,13 @@ export const uploadApi = {
     });
   },
   complete: (uploadId: string) => api.post(`/api/upload/complete/${uploadId}`),
+};
+
+// Annotations API
+export const annotationsApi = {
+  getByVideo: (videoId: string) => api.get(`/api/videos/${videoId}/annotations`),
+  create: (commentId: string, data: { type: string; data: Record<string, unknown> }) =>
+    api.post(`/api/comments/${commentId}/annotations`, data),
 };
 
 // Export API

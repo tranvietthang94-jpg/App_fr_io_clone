@@ -1,19 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
-
-interface Comment {
-  id: string;
-  timestamp: number;
-  content: string;
-  user?: {
-    name: string;
-  };
-}
+import { cn, formatTimecode } from '@/lib/utils';
+import type { Comment } from '@fr-clone/shared';
 
 interface TimelineProps {
   duration: number;
   currentTime: number;
   comments: Comment[];
+  fps?: number;
   onSeek: (time: number) => void;
   className?: string;
 }
@@ -22,23 +15,12 @@ export const Timeline: React.FC<TimelineProps> = ({
   duration,
   currentTime,
   comments,
+  fps = 30,
   onSeek,
   className,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-
-  const formatTime = (time: number) => {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-    const frames = Math.floor((time % 1) * 30);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
-  };
 
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!timelineRef.current || duration === 0) return;
@@ -118,8 +100,8 @@ export const Timeline: React.FC<TimelineProps> = ({
 
       {/* Time Display */}
       <div className="flex justify-between items-center mt-2 text-xs font-mono text-text-secondary">
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
+        <span>{formatTimecode(currentTime, fps)}</span>
+        <span>{formatTimecode(duration, fps)}</span>
       </div>
     </div>
   );

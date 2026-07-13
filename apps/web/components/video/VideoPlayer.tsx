@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatTimecode } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import {
   Play,
@@ -14,19 +14,32 @@ import {
 
 interface VideoPlayerProps {
   src: string;
+  fps?: number;
   className?: string;
   onTimeUpdate?: (time: number) => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
+  seekTo?: number;
+  // Applied programmatically (co-watching sync) — does NOT trigger onUserPlay/onUserPause.
+  remotePlayback?: { action: 'play' | 'pause'; nonce: number };
+  onUserPlay?: () => void;
+  onUserPause?: () => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   src,
+  fps = 30,
   className,
   onTimeUpdate,
   onPlayStateChange,
+  seekTo,
+  remotePlayback,
+  onUserPlay,
+  onUserPause,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastSeekTimeRef = useRef<number | null>(null);
+  const lastPlaybackNonceRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -72,14 +85,51 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [onTimeUpdate, onPlayStateChange]);
 
+  // Handle seek from external source (e.g., Timeline)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (seekTo === undefined) {
+      // Parent cleared the signal — allow the same timestamp to be seeked to again later.
+      lastSeekTimeRef.current = null;
+      return;
+    }
+
+    // Skip if this seekTo value was already processed (avoid loops from timeupdate)
+    if (lastSeekTimeRef.current === seekTo) return;
+
+    // Only seek if the time is significantly different from current time
+    if (Math.abs(video.currentTime - seekTo) > 0.1) {
+      lastSeekTimeRef.current = seekTo;
+      video.currentTime = seekTo;
+      setCurrentTime(seekTo);
+    }
+  }, [seekTo]);
+
+  // Apply play/pause commands from other co-watchers without re-broadcasting them.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !remotePlayback) return;
+    if (lastPlaybackNonceRef.current === remotePlayback.nonce) return;
+    lastPlaybackNonceRef.current = remotePlayback.nonce;
+
+    if (remotePlayback.action === 'play') {
+      video.play();
+    } else {
+      video.pause();
+    }
+  }, [remotePlayback]);
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
 
     if (isPlaying) {
       video.pause();
+      onUserPause?.();
     } else {
       video.play();
+      onUserPlay?.();
     }
   };
 
@@ -128,23 +178,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const frameStep = (direction: 'forward' | 'backward') => {
     const video = videoRef.current;
     if (!video) return;
-    const frameTime = 1 / 30; // 30fps
-    const newTime = direction === 'forward' 
-      ? video.currentTime + frameTime 
+    const frameTime = 1 / fps;
+    const newTime = direction === 'forward'
+      ? video.currentTime + frameTime
       : video.currentTime - frameTime;
     handleSeek(Math.max(0, Math.min(newTime, duration)));
-  };
-
-  const formatTime = (time: number) => {
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-    const frames = Math.floor((time % 1) * 30);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -152,7 +190,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ref={containerRef}
       className={cn('relative bg-black rounded-lg overflow-hidden group', className)}
       onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(false)}
     >
       {/* Video Element */}
       <video
@@ -235,7 +273,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             {/* Time Display */}
             <span className="text-sm font-mono ml-2">
-              {formatTime(currentTime)} / {formatTime(duration)}
+              {formatTimecode(currentTime, fps)} / {formatTimecode(duration, fps)}
             </span>
           </div>
 

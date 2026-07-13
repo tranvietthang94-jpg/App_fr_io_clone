@@ -20,7 +20,7 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-primary mb-4">Frame.io Clone</h1>
-        <p className="text-muted-foreground">Đang chuyển hướng...</p>
+        <p className="text-text-secondary">Đang chuyển hướng...</p>
       </div>
     </div>
   );
