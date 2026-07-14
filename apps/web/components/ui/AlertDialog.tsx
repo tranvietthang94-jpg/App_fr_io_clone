@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
@@ -32,10 +32,19 @@ export function AlertDialog({
   // their own state), not Radix's <Trigger>, so Radix has no trigger element
   // to return focus to on close (its internal triggerRef stays null). Track
   // it ourselves so keyboard/screen-reader users land back where they were.
+  //
+  // Captured synchronously during render (not in a useEffect) on the
+  // false->true transition: Radix's own FocusScope moves focus into the
+  // dialog from a useLayoutEffect on AlertDialogPrimitive.Content, a
+  // descendant, and React fires descendant layout/passive effects before
+  // ancestor ones in the same commit — so a useEffect here would already see
+  // the dialog's own focused element instead of the real page trigger.
   const triggerElRef = useRef<Element | null>(null);
-  useEffect(() => {
-    if (open) triggerElRef.current = document.activeElement;
-  }, [open]);
+  const wasOpenRef = useRef(open);
+  if (open && !wasOpenRef.current) {
+    triggerElRef.current = document.activeElement;
+  }
+  wasOpenRef.current = open;
 
   return (
     <AlertDialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

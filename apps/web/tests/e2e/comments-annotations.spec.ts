@@ -53,7 +53,13 @@ test.describe.serial('Comments and annotations', () => {
     await input.fill(commentText);
     const form = input.locator('xpath=ancestor::form[1]');
     await form.locator('button[type=submit]').click();
-    await expect(page.locator(`text=${commentText}`)).toBeVisible({ timeout: 5000 });
+    // Scoped to the active tab panel: the Export tab is now `forceMount`ed
+    // alongside Comments (so switching tabs doesn't drop CommentPanel's
+    // in-progress state — see Tabs.tsx), and its live XML preview embeds
+    // comment text too, so an unscoped page-wide locator matches both.
+    await expect(
+      page.locator('[role="tabpanel"][data-state="active"]').getByText(commentText, { exact: true })
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('5.2.3 a marker appears on the timeline for the new comment', async () => {
@@ -65,7 +71,28 @@ test.describe.serial('Comments and annotations', () => {
     await page.waitForTimeout(300);
     const confirmBtn = page.locator('button:has-text("Xóa")').last();
     if (await confirmBtn.count()) await confirmBtn.click();
-    await expect(page.locator(`text=${commentText}`)).toHaveCount(0, { timeout: 5000 });
+    await expect(
+      page.locator('[role="tabpanel"][data-state="active"]').getByText(commentText, { exact: true })
+    ).toHaveCount(0, { timeout: 5000 });
+  });
+
+  test('an unsent comment draft survives switching to the Export tab and back', async () => {
+    // Regression guard: the Comments/Export panel merge (Phase 3) put both
+    // behind Radix Tabs, which unmounts inactive content by default — that
+    // silently wiped CommentPanel's local state (including any unsent
+    // draft) on every tab switch. Fixed via `forceMount` + CSS-hidden
+    // inactive content (see Tabs.tsx) so the panel just stays mounted.
+    const input = page.locator('[placeholder="Thêm bình luận..."]');
+    await input.waitFor({ timeout: 8000 });
+    const draft = `unsent draft ${Date.now()}`;
+    await input.fill(draft);
+
+    await page.getByRole('tab', { name: /Xuất/ }).click();
+    await expect(page.locator('text=Xuất báo cáo')).toBeVisible();
+
+    await page.getByRole('tab', { name: /Bình luận/ }).click();
+    await expect(input).toHaveValue(draft);
+    await input.fill('');
   });
 
   test('6.1.1 + 6.1.2 enabling draw mode shows the toolbar and a freehand stroke renders', async () => {

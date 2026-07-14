@@ -105,6 +105,10 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
 
   useEffect(() => {
     onTyping?.(isTyping);
+    // If the panel unmounts (tab switch, closing the panel) while isTyping
+    // is still true, this effect never re-runs to send the false — tell
+    // collaborators typing stopped so the indicator doesn't stick.
+    return () => onTyping?.(false);
   }, [isTyping]);
 
   const startEditing = (comment: Comment) => {

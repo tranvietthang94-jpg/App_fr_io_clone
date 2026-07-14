@@ -12,10 +12,11 @@ interface ToastItem {
   title: string;
   description?: string;
   variant: ToastVariant;
+  open: boolean;
 }
 
 interface ToastContextValue {
-  toast: (item: Omit<ToastItem, 'id'>) => void;
+  toast: (item: Omit<ToastItem, 'id' | 'open'>) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -33,17 +34,24 @@ const VARIANT_STYLES: Record<ToastVariant, string> = {
 };
 
 const AUTO_DISMISS_MS = 4000;
+// Longest exit animation in tailwind.config.ts (fade-out is 0.2s, slide-out
+// 0.15s) — the item must stay in the array at least this long after being
+// flagged closed, or Root unmounts before the CSS animation gets to run.
+const REMOVE_DELAY_MS = 200;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: false } : t)));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, REMOVE_DELAY_MS);
   }, []);
 
-  const toast = useCallback((item: Omit<ToastItem, 'id'>) => {
+  const toast = useCallback((item: Omit<ToastItem, 'id' | 'open'>) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setToasts((prev) => [...prev, { ...item, id }]);
+    setToasts((prev) => [...prev, { ...item, id, open: true }]);
   }, []);
 
   return (
@@ -55,6 +63,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <ToastPrimitive.Root
               key={t.id}
+              open={t.open}
               onOpenChange={(open) => !open && dismiss(t.id)}
               className={cn(
                 'flex items-start gap-3 rounded-lg border bg-bg-secondary p-3 shadow-lg',

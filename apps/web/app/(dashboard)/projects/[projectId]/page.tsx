@@ -310,7 +310,7 @@ export default function ProjectDetailPage() {
           >
             ← Quay lại
           </button>
-          <h1 className="text-3xl font-bold truncate max-w-[70vw] sm:max-w-none">{project?.name}</h1>
+          <h1 className="text-3xl font-bold truncate max-w-[70vw] sm:max-w-none" title={project?.name}>{project?.name}</h1>
           {project?.description && (
             <p className="text-text-secondary mt-1">{project.description}</p>
           )}

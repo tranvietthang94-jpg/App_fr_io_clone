@@ -466,7 +466,7 @@ export default function VideoReviewPage() {
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-semibold truncate max-w-[40vw] sm:max-w-none">{video.title}</h1>
+              <h1 className="font-semibold truncate max-w-[40vw] sm:max-w-none" title={video.title}>{video.title}</h1>
               {versions.length > 1 && (
                 <div className="relative">
                   <button
@@ -523,6 +523,7 @@ export default function VideoReviewPage() {
               variant="ghost"
               active={showRightPanel && rightPanelTab === 'export'}
               icon={<Download className="w-5 h-5" />}
+              aria-label="Xuất"
               onClick={() => openRightPanelTab('export')}
             >
               <span className="hidden sm:inline">Xuất</span>
@@ -530,6 +531,7 @@ export default function VideoReviewPage() {
             <Button
               variant="ghost"
               icon={<Share2 className="w-5 h-5" />}
+              aria-label="Chia sẻ"
               onClick={() => setShowShareLinks(true)}
             >
               <span className="hidden sm:inline">Chia sẻ</span>
@@ -614,7 +616,10 @@ export default function VideoReviewPage() {
                 <TabsTrigger value="comments">Bình luận ({comments.length})</TabsTrigger>
                 <TabsTrigger value="export">Xuất</TabsTrigger>
               </TabsList>
-              <TabsContent value="comments" className="flex flex-col min-h-0">
+              {/* forceMount on both panels: switching tabs must not unmount
+                  CommentPanel — it drops the in-progress typing-indicator
+                  broadcast (no unmount cleanup) and any unsent draft text. */}
+              <TabsContent value="comments" className="flex flex-col min-h-0" forceMount>
                 <CommentPanel
                   comments={comments}
                   currentTime={currentTime}
@@ -634,7 +639,7 @@ export default function VideoReviewPage() {
                   onTyping={handleTypingChange}
                 />
               </TabsContent>
-              <TabsContent value="export" className="overflow-y-auto min-h-0">
+              <TabsContent value="export" className="overflow-y-auto min-h-0" forceMount>
                 <ExportPanel
                   video={video}
                   comments={comments}

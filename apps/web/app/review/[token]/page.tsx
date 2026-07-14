@@ -376,7 +376,7 @@ export default function GuestReviewPage() {
       <div className="flex flex-wrap items-center justify-between gap-y-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-border">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold truncate max-w-[60vw] sm:max-w-none">{video.title}</h1>
+            <h1 className="font-semibold truncate max-w-[60vw] sm:max-w-none" title={video.title}>{video.title}</h1>
             <ReviewStatusControl
               status={video.reviewStatus}
               readOnly={!canComment}
