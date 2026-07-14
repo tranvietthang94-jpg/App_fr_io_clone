@@ -95,15 +95,15 @@ export function UserPresence({ videoId }: UserPresenceProps) {
         )}
       </div>
 
-      {/* Online count */}
-      <span className="text-sm text-text-secondary">
+      {/* Online count — polite live region so join/leave changes reach screen readers */}
+      <span className="text-sm text-text-secondary" role="status" aria-live="polite">
         {users.length} online
       </span>
 
-      {/* Typing indicator */}
+      {/* Typing indicator — was purely visual (socket-driven, no text alternative) */}
       {typingUsers.size > 0 && (
-        <div className="flex items-center gap-1 text-xs text-text-secondary ml-2">
-          <div className="flex gap-0.5">
+        <div className="flex items-center gap-1 text-xs text-text-secondary ml-2" role="status" aria-live="polite">
+          <div className="flex gap-0.5" aria-hidden="true">
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />

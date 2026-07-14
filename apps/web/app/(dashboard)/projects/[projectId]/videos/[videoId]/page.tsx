@@ -14,6 +14,8 @@ import { UserPresence } from "@/components/presence/UserPresence";
 import { ReviewStatusControl } from "@/components/video/ReviewStatusControl";
 import { ShareLinkPanel } from "@/components/video/ShareLinkPanel";
 import { Button } from "@/components/ui/Button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { socketService } from "@/lib/socket";
 import {
   ArrowLeft,
@@ -22,6 +24,7 @@ import {
   Pencil,
   Share2,
   ChevronDown,
+  Keyboard,
 } from "lucide-react";
 import type { Video, Comment, Annotation, VideoReviewStatus } from "@fr-clone/shared";
 import type { MentionMember } from "@/components/comments/MentionInput";
@@ -59,9 +62,10 @@ export default function VideoReviewPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showComments, setShowComments] = useState(true);
-  const [showExport, setShowExport] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [rightPanelTab, setRightPanelTab] = useState<'comments' | 'export'>('comments');
   const [showShareLinks, setShowShareLinks] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [pendingAnnotations, setPendingAnnotations] = useState<PendingAnnotation[]>([]);
   const [remotePlayback, setRemotePlayback] = useState<{ action: 'play' | 'pause'; nonce: number } | null>(null);
@@ -370,6 +374,37 @@ export default function VideoReviewPage() {
     socketService.sendTyping(videoId, isTyping);
   };
 
+  // Header buttons for Comments/Export now drive one shared panel: clicking
+  // the tab that's already open+active closes the panel, otherwise it opens
+  // (or switches) to that tab. Replaces two independently-toggled `w-96`
+  // panels that could previously both be open at once, eating 768px of width
+  // — the actual cause of this page having no viable layout below `lg`.
+  const openRightPanelTab = (tab: 'comments' | 'export') => {
+    if (showRightPanel && rightPanelTab === tab) {
+      setShowRightPanel(false);
+    } else {
+      setRightPanelTab(tab);
+      setShowRightPanel(true);
+    }
+  };
+
+  // '?' opens a cheat-sheet for the player/timeline shortcuts (Space, Arrow,
+  // Shift+Arrow, Home, End) that already work but were only discoverable by
+  // reading the source. Ignored while typing in an input/textarea/contentEditable.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '?') return;
+      const target = e.target as HTMLElement;
+      const isTyping =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isTyping) return;
+      e.preventDefault();
+      setShowShortcuts(true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Annotations are pinned to whichever comment is currently "active" (same
   // window CommentPanel uses to highlight a comment). Memoized on the active
   // comment's id (not on currentTime directly) so AnnotationCanvas only
@@ -416,9 +451,11 @@ export default function VideoReviewPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-4">
+      {/* Header — wraps onto a second line rather than pushing buttons off
+          the right edge; the left title block was pinned to its content
+          width, plus 5 icon buttons + presence, which never fit under ~600px. */}
+      <div className="flex flex-wrap items-center justify-between gap-y-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-border">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Button
             variant="ghost"
             size="sm"
@@ -427,9 +464,9 @@ export default function VideoReviewPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-semibold">{video.title}</h1>
+              <h1 className="font-semibold truncate max-w-[40vw] sm:max-w-none">{video.title}</h1>
               {versions.length > 1 && (
                 <div className="relative">
                   <button
@@ -471,31 +508,31 @@ export default function VideoReviewPage() {
           </div>
           <ReviewStatusControl status={video.reviewStatus} onChange={handleReviewStatusChange} />
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <UserPresence videoId={videoId} />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
-              active={showComments}
+              active={showRightPanel && rightPanelTab === 'comments'}
               icon={<MessageSquare className="w-5 h-5" />}
-              onClick={() => setShowComments(!showComments)}
+              onClick={() => openRightPanelTab('comments')}
             >
               {comments.length}
             </Button>
             <Button
               variant="ghost"
-              active={showExport}
+              active={showRightPanel && rightPanelTab === 'export'}
               icon={<Download className="w-5 h-5" />}
-              onClick={() => setShowExport(!showExport)}
+              onClick={() => openRightPanelTab('export')}
             >
-              Xuất
+              <span className="hidden sm:inline">Xuất</span>
             </Button>
             <Button
               variant="ghost"
               icon={<Share2 className="w-5 h-5" />}
               onClick={() => setShowShareLinks(true)}
             >
-              Chia sẻ
+              <span className="hidden sm:inline">Chia sẻ</span>
             </Button>
             <Button
               variant="ghost"
@@ -506,14 +543,25 @@ export default function VideoReviewPage() {
             >
               <Pencil className="w-5 h-5" />
             </Button>
+            <Button
+              variant="ghost"
+              aria-label="Phím tắt"
+              title="Phím tắt (?)"
+              onClick={() => setShowShortcuts(true)}
+            >
+              <Keyboard className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main content — stacked (video above, panel below) under `lg`; the
+          panel needs real horizontal room for its controls, so side-by-side
+          only kicks in once there's room for it rather than at a small `md`
+          breakpoint. */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Video player area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-[240px] lg:min-h-0 lg:min-w-0">
           <div className="flex-1 relative bg-black">
             {video.status === "ready" ? (
               <VideoPlayer
@@ -552,38 +600,49 @@ export default function VideoReviewPage() {
           />
         </div>
 
-        {/* Right panel */}
-        {showComments && (
-          <div className="w-96 border-l border-border flex flex-col h-full overflow-hidden">
-            <CommentPanel
-              comments={comments}
-              currentTime={currentTime}
-              fps={video.fps}
-              currentUserId={user?.id}
-              members={members}
-              sortMode={sortMode}
-              onSortChange={handleSortChange}
-              hasMore={hasMoreComments}
-              onLoadMore={handleLoadMoreComments}
-              onAddComment={handleAddComment}
-              onDeleteComment={handleDeleteComment}
-              onEditComment={handleEditComment}
-              onResolveComment={handleResolveComment}
-              onReactToComment={handleReactToComment}
-              onSeekToComment={handleUserSeek}
-              onTyping={handleTypingChange}
-            />
-          </div>
-        )}
-
-        {showExport && (
-          <div className="w-96 border-l border-border">
-            <ExportPanel
-              video={video}
-              comments={comments}
-              onExportXml={handleExportXml}
-              onExportPdf={handleExportPdf}
-            />
+        {/* Right panel — one Tabs-driven panel instead of two independently
+            toggled w-96 panels (which could both be open at once). Stacks
+            full-width below the video under `lg`, sits beside it above that. */}
+        {showRightPanel && (
+          <div className="border-t lg:border-t-0 lg:border-l border-border flex flex-col h-64 lg:h-full w-full lg:w-96 shrink-0 overflow-hidden">
+            <Tabs
+              value={rightPanelTab}
+              onValueChange={(v) => setRightPanelTab(v as 'comments' | 'export')}
+              className="flex flex-col h-full min-h-0"
+            >
+              <TabsList>
+                <TabsTrigger value="comments">Bình luận ({comments.length})</TabsTrigger>
+                <TabsTrigger value="export">Xuất</TabsTrigger>
+              </TabsList>
+              <TabsContent value="comments" className="flex flex-col min-h-0">
+                <CommentPanel
+                  comments={comments}
+                  currentTime={currentTime}
+                  fps={video.fps}
+                  currentUserId={user?.id}
+                  members={members}
+                  sortMode={sortMode}
+                  onSortChange={handleSortChange}
+                  hasMore={hasMoreComments}
+                  onLoadMore={handleLoadMoreComments}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                  onEditComment={handleEditComment}
+                  onResolveComment={handleResolveComment}
+                  onReactToComment={handleReactToComment}
+                  onSeekToComment={handleUserSeek}
+                  onTyping={handleTypingChange}
+                />
+              </TabsContent>
+              <TabsContent value="export" className="overflow-y-auto min-h-0">
+                <ExportPanel
+                  video={video}
+                  comments={comments}
+                  onExportXml={handleExportXml}
+                  onExportPdf={handleExportPdf}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </div>
@@ -591,6 +650,29 @@ export default function VideoReviewPage() {
       {showShareLinks && (
         <ShareLinkPanel videoId={videoId} onClose={() => setShowShareLinks(false)} />
       )}
+
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Phím tắt</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-2 text-sm">
+            {[
+              ['Space', 'Phát / Tạm dừng'],
+              ['←  →', 'Lùi / Tiến 1 khung hình'],
+              ['Shift + ←  →', 'Lùi / Tiến 5 giây'],
+              ['Home', 'Về đầu timeline'],
+              ['End', 'Đến cuối timeline'],
+              ['?', 'Mở bảng phím tắt này'],
+            ].map(([key, desc]) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <dt className="text-text-secondary">{desc}</dt>
+                <dd className="font-mono bg-bg-tertiary px-2 py-0.5 rounded text-xs">{key}</dd>
+              </div>
+            ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

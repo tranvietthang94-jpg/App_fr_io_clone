@@ -282,9 +282,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           showControls ? 'opacity-100' : 'opacity-0'
         )}
       >
-        {/* Controls Row */}
-        <div className="flex items-center justify-between text-white px-4 py-2">
-          <div className="flex items-center gap-2">
+        {/* Controls Row — wraps instead of clipping if it doesn't fit (mobile) */}
+        <div className="flex flex-wrap items-center justify-between gap-y-1 text-white px-2 sm:px-4 py-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {/* Play/Pause */}
             <ControlButton label={isPlaying ? 'Tạm dừng' : 'Phát'} onClick={togglePlay}>
               {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
@@ -295,11 +295,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <Rewind className="w-4 h-4" />
             </ControlButton>
 
-            {/* Frame Step */}
-            <ControlButton label="Lùi 1 khung hình" onClick={() => frameStep('backward')}>
+            {/* Frame Step — precision control, hidden on the smallest screens to leave
+                room for the essentials (play/skip/mute) instead of wrapping/clipping */}
+            <ControlButton
+              label="Lùi 1 khung hình"
+              className="hidden sm:inline-flex"
+              onClick={() => frameStep('backward')}
+            >
               <SkipBack className="w-4 h-4" />
             </ControlButton>
-            <ControlButton label="Tiến 1 khung hình" onClick={() => frameStep('forward')}>
+            <ControlButton
+              label="Tiến 1 khung hình"
+              className="hidden sm:inline-flex"
+              onClick={() => frameStep('forward')}
+            >
               <SkipForward className="w-4 h-4" />
             </ControlButton>
 
@@ -321,12 +330,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 value={isMuted ? 0 : volume}
                 onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                 aria-label="Âm lượng"
-                className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white"
+                className="hidden sm:block w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white"
               />
             </div>
 
             {/* Time Display */}
-            <span className="text-sm font-mono ml-2">
+            <span className="text-xs sm:text-sm font-mono ml-1 sm:ml-2 whitespace-nowrap">
               {formatTimecode(currentTime, fps)} / {formatTimecode(duration, fps)}
             </span>
           </div>
