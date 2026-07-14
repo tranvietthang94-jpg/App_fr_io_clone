@@ -13,7 +13,7 @@ import { ReviewStatusControl } from "@/components/video/ReviewStatusControl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Lock, Film } from "lucide-react";
+import { Lock, Film, Keyboard } from "lucide-react";
 import { SharePermission, VideoReviewStatus, type Comment, type Annotation } from "@fr-clone/shared";
 
 interface PendingAnnotation {
@@ -94,6 +94,7 @@ export default function GuestReviewPage() {
   const pendingSubmitRef = useRef<null | (() => void)>(null);
 
   const [editTokens, setEditTokens] = useState<Record<string, string>>({});
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const canComment = permission === SharePermission.CAN_COMMENT;
 
@@ -168,6 +169,22 @@ export default function GuestReviewPage() {
     setSeekTarget(timestamp);
     setTimeout(() => setSeekTarget(null), 100);
   };
+
+  // Same '?' shortcuts cheat-sheet as the authenticated review page — the
+  // VideoPlayer/Timeline keyboard shortcuts work here too (shared component).
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '?') return;
+      const target = e.target as HTMLElement;
+      const isTyping =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isTyping) return;
+      e.preventDefault();
+      setShowShortcuts(true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,10 +373,10 @@ export default function GuestReviewPage() {
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary text-text-primary">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-y-2 px-3 sm:px-6 py-3 sm:py-4 border-b border-border">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold">{video.title}</h1>
+            <h1 className="font-semibold truncate max-w-[60vw] sm:max-w-none">{video.title}</h1>
             <ReviewStatusControl
               status={video.reviewStatus}
               readOnly={!canComment}
@@ -370,10 +387,22 @@ export default function GuestReviewPage() {
             {formatTimecode(video.duration, video.fps)} • {video.width}x{video.height}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          aria-label="Phím tắt"
+          title="Phím tắt (?)"
+          onClick={() => setShowShortcuts(true)}
+        >
+          <Keyboard className="w-5 h-5" />
+        </Button>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex flex-col">
+      {/* Below `lg`: panel stacks under the video instead of beside it — same
+          breakpoint as the authenticated review page (VideoPlayer's control
+          bar needs the room). Only one panel here (comments), so no Tabs
+          needed like the authenticated page's comments/export split. */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col min-h-[240px] lg:min-h-0 lg:min-w-0">
           <div className="flex-1 relative bg-black">
             {video.status === "ready" ? (
               <VideoPlayer
@@ -396,7 +425,7 @@ export default function GuestReviewPage() {
           <Timeline duration={video.duration} currentTime={currentTime} comments={comments} fps={video.fps} onSeek={handleUserSeek} />
         </div>
 
-        <div className="w-96 border-l border-border flex flex-col h-full overflow-hidden">
+        <div className="border-t lg:border-t-0 lg:border-l border-border flex flex-col h-64 lg:h-full w-full lg:w-96 shrink-0 overflow-hidden">
           {canComment && (
             <div className="px-4 py-2 border-b border-border">
               <Button
@@ -429,6 +458,29 @@ export default function GuestReviewPage() {
           />
         </div>
       </div>
+
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Phím tắt</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-2 text-sm">
+            {[
+              ['Space', 'Phát / Tạm dừng'],
+              ['←  →', 'Lùi / Tiến 1 khung hình'],
+              ['Shift + ←  →', 'Lùi / Tiến 5 giây'],
+              ['Home', 'Về đầu timeline'],
+              ['End', 'Đến cuối timeline'],
+              ['?', 'Mở bảng phím tắt này'],
+            ].map(([key, desc]) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <dt className="text-text-secondary">{desc}</dt>
+                <dd className="font-mono bg-bg-tertiary px-2 py-0.5 rounded text-xs">{key}</dd>
+              </div>
+            ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={identityPromptOpen} onOpenChange={setIdentityPromptOpen}>
         <DialogContent>
