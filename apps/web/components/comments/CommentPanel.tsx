@@ -20,18 +20,23 @@ interface CommentPanelProps {
   onSortChange: (mode: 'timecode' | 'date') => void;
   hasMore?: boolean;
   onLoadMore?: () => void;
-  onAddComment: (data: {
+  onAddComment?: (data: {
     content: string;
     timestamp: number;
     frameNumber: number;
     parentId?: string;
   }) => void;
-  onDeleteComment: (commentId: string) => void;
-  onEditComment: (commentId: string, content: string) => void;
-  onResolveComment: (commentId: string, resolved: boolean) => void;
-  onReactToComment: (commentId: string, emoji: string) => void;
+  onDeleteComment?: (commentId: string) => void;
+  onEditComment?: (commentId: string, content: string) => void;
+  onResolveComment?: (commentId: string, resolved: boolean) => void;
+  onReactToComment?: (commentId: string, emoji: string) => void;
   onSeekToComment: (timestamp: number) => void;
   onTyping?: (isTyping: boolean) => void;
+  // Overrides the default author-only edit gate and always-visible delete
+  // gate — used by the guest review page, where a comment's own author has
+  // no account to match against `currentUserId` and ownership is instead
+  // proven by a locally-held per-comment edit token.
+  canModifyComment?: (comment: Comment) => boolean;
 }
 
 function renderContent(content: string, members: MentionMember[]) {
@@ -87,6 +92,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   onReactToComment,
   onSeekToComment,
   onTyping,
+  canModifyComment,
 }) => {
   const [newComment, setNewComment] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -113,7 +119,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
 
   const saveEditing = (commentId: string) => {
     if (editContent.trim()) {
-      onEditComment(commentId, editContent.trim());
+      onEditComment?.(commentId, editContent.trim());
     }
     cancelEditing();
   };
@@ -121,7 +127,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   const submitNewComment = () => {
     if (!newComment.trim()) return;
 
-    onAddComment({
+    onAddComment?.({
       content: serializeMentions(newComment, mentionMapRef.current),
       timestamp: currentTime,
       frameNumber: getFrameNumber(currentTime, fps),
@@ -139,7 +145,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
 
   const submitReply = (parentId: string) => {
     if (!replyContent.trim()) return;
-    onAddComment({
+    onAddComment?.({
       content: serializeMentions(replyContent, replyMentionMapRef.current),
       timestamp: currentTime,
       frameNumber: getFrameNumber(currentTime, fps),
@@ -188,6 +194,8 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
           comments.map((comment) => {
             const reactionGroups = groupReactions(comment.reactions, currentUserId);
             const isAuthor = comment.userId === currentUserId;
+            const canEdit = isAuthor || (canModifyComment?.(comment) ?? false);
+            const canDelete = canModifyComment ? canModifyComment(comment) : true;
             return (
               <div
                 key={comment.id}
@@ -199,11 +207,11 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               >
                 {/* Comment Header */}
                 <div className="flex items-start gap-2 mb-2">
-                  <Avatar name={comment.user?.name || 'User'} size="sm" />
+                  <Avatar name={comment.user?.name || comment.guestName || 'User'} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-text-primary">
-                        {comment.user?.name || 'User'}
+                        {comment.user?.name || comment.guestName || 'User'}
                       </span>
                       <button
                         onClick={() => onSeekToComment(comment.timestamp)}
@@ -222,50 +230,56 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onResolveComment(comment.id, !comment.resolved)}
-                      aria-label={comment.resolved ? 'Mở lại bình luận' : 'Đánh dấu đã xử lý'}
-                      title={comment.resolved ? 'Mở lại' : 'Đánh dấu đã xử lý'}
-                      className={cn(
-                        'p-1 h-auto',
-                        comment.resolved ? 'text-accent-green' : 'text-text-secondary hover:text-accent-green'
-                      )}
-                    >
-                      {comment.resolved ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                    </button>
+                    {onResolveComment && (
+                      <button
+                        onClick={() => onResolveComment(comment.id, !comment.resolved)}
+                        aria-label={comment.resolved ? 'Mở lại bình luận' : 'Đánh dấu đã xử lý'}
+                        title={comment.resolved ? 'Mở lại' : 'Đánh dấu đã xử lý'}
+                        className={cn(
+                          'p-1 h-auto',
+                          comment.resolved ? 'text-accent-green' : 'text-text-secondary hover:text-accent-green'
+                        )}
+                      >
+                        {comment.resolved ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                      </button>
+                    )}
                     {editingCommentId !== comment.id && (
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              aria-label="Bày tỏ cảm xúc"
-                              className="p-1 h-auto text-text-secondary hover:text-text-primary"
-                              title="Bày tỏ cảm xúc"
-                            >
-                              <Smile className="w-3.5 h-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="flex w-fit min-w-0 items-center gap-1">
-                            {REACTION_EMOJIS.map((emoji) => (
-                              <DropdownMenuItem
-                                key={emoji}
-                                onSelect={() => onReactToComment(comment.id, emoji)}
-                                className="justify-center px-1.5 text-base"
+                        {onReactToComment && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                aria-label="Bày tỏ cảm xúc"
+                                className="p-1 h-auto text-text-secondary hover:text-text-primary"
+                                title="Bày tỏ cảm xúc"
                               >
-                                {emoji}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <button
-                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                          aria-label="Trả lời"
-                          className="p-1 h-auto text-text-secondary hover:text-text-primary"
-                          title="Trả lời"
-                        >
-                          <Reply className="w-3.5 h-3.5" />
-                        </button>
-                        {isAuthor && (
+                                <Smile className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="flex w-fit min-w-0 items-center gap-1">
+                              {REACTION_EMOJIS.map((emoji) => (
+                                <DropdownMenuItem
+                                  key={emoji}
+                                  onSelect={() => onReactToComment(comment.id, emoji)}
+                                  className="justify-center px-1.5 text-base"
+                                >
+                                  {emoji}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        {onAddComment && (
+                          <button
+                            onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                            aria-label="Trả lời"
+                            className="p-1 h-auto text-text-secondary hover:text-text-primary"
+                            title="Trả lời"
+                          >
+                            <Reply className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onEditComment && canEdit && (
                           <button
                             onClick={() => startEditing(comment)}
                             aria-label="Sửa bình luận"
@@ -274,13 +288,15 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                             <Edit2 className="w-3 h-3" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onDeleteComment(comment.id)}
-                          aria-label="Xóa bình luận"
-                          className="p-1 h-auto text-text-secondary hover:text-accent-red"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        {onDeleteComment && canDelete && (
+                          <button
+                            onClick={() => onDeleteComment(comment.id)}
+                            aria-label="Xóa bình luận"
+                            className="p-1 h-auto text-text-secondary hover:text-accent-red"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -310,7 +326,8 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                     {reactionGroups.map((g) => (
                       <button
                         key={g.emoji}
-                        onClick={() => onReactToComment(comment.id, g.emoji)}
+                        onClick={() => onReactToComment?.(comment.id, g.emoji)}
+                        disabled={!onReactToComment}
                         className={cn(
                           'text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1',
                           g.reactedByMe ? 'border-accent-blue bg-accent-blue/10' : 'border-border bg-bg-tertiary'
@@ -328,11 +345,11 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                   <div className="mt-3 pl-4 border-l-2 border-border space-y-2">
                     {comment.replies.map((reply) => (
                       <div key={reply.id} className="flex items-start gap-2">
-                        <Avatar name={reply.user?.name || 'User'} size="sm" />
+                        <Avatar name={reply.user?.name || reply.guestName || 'User'} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-text-primary">
-                              {reply.user?.name || 'User'}
+                              {reply.user?.name || reply.guestName || 'User'}
                             </span>
                           </div>
                           <p className="text-sm text-text-primary mt-1 whitespace-pre-wrap">
@@ -345,7 +362,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 )}
 
                 {/* Reply composer */}
-                {replyingTo === comment.id && (
+                {onAddComment && replyingTo === comment.id && (
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -382,32 +399,34 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       </div>
 
       {/* Add Comment Form */}
-      <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <MentionInput
-            value={newComment}
-            onChange={handleInputChange}
-            onMentionAdded={(name, userId) => mentionMapRef.current.set(name, userId)}
-            members={members}
-            placeholder="Thêm bình luận..."
-            onEnter={submitNewComment}
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            disabled={!newComment.trim()}
-            className="px-3"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
-        {isTyping && (
-          <p className="text-xs text-text-muted mt-2">
-            Bình luận sẽ được thêm vào lúc {formatTimecode(currentTime, fps)}
-          </p>
-        )}
-      </div>
+      {onAddComment && (
+        <div className="border-t border-border p-4">
+          <form onSubmit={handleSubmit} className="flex items-center gap-2">
+            <MentionInput
+              value={newComment}
+              onChange={handleInputChange}
+              onMentionAdded={(name, userId) => mentionMapRef.current.set(name, userId)}
+              members={members}
+              placeholder="Thêm bình luận..."
+              onEnter={submitNewComment}
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={!newComment.trim()}
+              className="px-3"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+          {isTyping && (
+            <p className="text-xs text-text-muted mt-2">
+              Bình luận sẽ được thêm vào lúc {formatTimecode(currentTime, fps)}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

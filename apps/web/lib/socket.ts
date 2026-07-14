@@ -13,7 +13,15 @@ class SocketService {
       console.warn('Cannot connect socket: no token');
       return;
     }
+    this.openSocket({ token });
+  }
 
+  /** Guest path for the public share-link review page — no account, no accessToken. */
+  connectAsGuest(shareToken: string, guestName: string) {
+    this.openSocket({ shareToken, guestName });
+  }
+
+  private openSocket(auth: Record<string, string>) {
     if (this.socket?.connected) {
       return;
     }
@@ -21,13 +29,13 @@ class SocketService {
     if (this.socket) {
       // Existing socket never connected (or reconnection attempts were
       // exhausted after a drop) — drop it and open a fresh connection with
-      // the current token instead of blocking forever.
+      // the current auth instead of blocking forever.
       this.socket.disconnect();
       this.socket = null;
     }
 
     this.socket = io(`${SOCKET_URL}/collaboration`, {
-      auth: { token },
+      auth,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

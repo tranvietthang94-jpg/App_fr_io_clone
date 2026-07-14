@@ -2,6 +2,13 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { randomUUID } from 'crypto';
 import { Project } from '../projects/project.entity';
 
+export enum VideoReviewStatus {
+  IN_REVIEW = 'in_review',
+  APPROVED = 'approved',
+  NEEDS_REVIEW = 'needs_review',
+  REJECTED = 'rejected',
+}
+
 @Entity('videos')
 export class Video {
   @PrimaryGeneratedColumn('uuid')
@@ -55,6 +62,17 @@ export class Video {
 
   @Column({ default: 'processing' })
   status: string;
+
+  // Editorial review decision (approved/rejected/etc), independent of the
+  // transcode `status` above.
+  @Column({ type: 'enum', enum: VideoReviewStatus, default: VideoReviewStatus.IN_REVIEW })
+  reviewStatus: VideoReviewStatus;
+
+  @Column({ type: 'varchar', nullable: true })
+  reviewStatusUpdatedBy: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  reviewStatusUpdatedAt: Date | null;
 
   // Stable id for the exported PDF's permalink footer (kept separate from
   // the video's own id so re-exports of the same video always print the

@@ -26,7 +26,7 @@ export class ReactionsService {
     await this.reactionsRepository.save(reaction);
 
     const comment = await this.commentsService.findOne(commentId);
-    if (comment.userId !== userId) {
+    if (comment.userId && comment.userId !== userId) {
       await this.notificationsService.create(comment.userId, NotificationType.REACTION, {
         actorId: userId,
         actorName,

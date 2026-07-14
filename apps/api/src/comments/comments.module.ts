@@ -12,6 +12,7 @@ import { CommentReaction } from './comment-reaction.entity';
 import { VideosModule } from '../videos/videos.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     VideosModule,
     ProjectsModule,
     NotificationsModule,
+    ActivityModule,
   ],
   controllers: [CommentsController, AnnotationsController, ReactionsController],
   providers: [CommentsService, AnnotationsService, ReactionsService],

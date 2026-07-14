@@ -106,12 +106,17 @@ export const authApi = {
   forgotPassword: (email: string) => api.post('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, newPassword: string) =>
     api.post('/api/auth/reset-password', { token, newPassword }),
+  updateProfile: (data: { name?: string; avatarUrl?: string }) =>
+    api.patch('/api/auth/me', data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/api/auth/change-password', { currentPassword, newPassword }),
   googleLoginUrl: () => `${API_URL}/api/auth/google`,
 };
 
 // Projects API
 export const projectsApi = {
-  getAll: () => api.get('/api/projects'),
+  getAll: (opts?: { search?: string }) =>
+    api.get('/api/projects', { params: opts?.search ? { search: opts.search } : undefined }),
   getById: (id: string) => api.get(`/api/projects/${id}`),
   create: (data: { name: string; description?: string }) =>
     api.post('/api/projects', data),
@@ -134,8 +139,14 @@ export const projectMembersApi = {
 
 // Videos API
 export const videosApi = {
-  getByProject: (projectId: string, folderId?: string | null) =>
-    api.get(`/api/projects/${projectId}/videos`, { params: folderId ? { folderId } : undefined }),
+  getByProject: (
+    projectId: string,
+    folderId?: string | null,
+    opts?: { search?: string; reviewStatus?: string },
+  ) =>
+    api.get(`/api/projects/${projectId}/videos`, {
+      params: { folderId: folderId || undefined, search: opts?.search, reviewStatus: opts?.reviewStatus },
+    }),
   getTrash: (projectId: string) => api.get(`/api/projects/${projectId}/trash`),
   getById: (id: string) => api.get(`/api/videos/${id}`),
   getVersions: (id: string) => api.get(`/api/videos/${id}/versions`),
@@ -143,6 +154,8 @@ export const videosApi = {
   move: (id: string, folderId: string | null) => api.patch(`/api/videos/${id}/move`, { folderId }),
   delete: (id: string) => api.delete(`/api/videos/${id}`),
   restore: (id: string) => api.post(`/api/videos/${id}/restore`),
+  setReviewStatus: (id: string, status: string) =>
+    api.patch(`/api/videos/${id}/review-status`, { status }),
   getStreamUrl: (videoId: string, quality: string) => {
     const token = useAuthStore.getState().accessToken;
     return `${API_URL}/api/videos/${videoId}/stream/${quality}?token=${encodeURIComponent(token || '')}`;
@@ -223,6 +236,20 @@ export const annotationsApi = {
     api.patch(`/api/comments/${commentId}/annotations/${id}`, data),
   delete: (commentId: string, id: string) =>
     api.delete(`/api/comments/${commentId}/annotations/${id}`),
+};
+
+// Share Links API
+export const shareLinksApi = {
+  create: (videoId: string, data: { permission?: string; expiresAt?: string; password?: string }) =>
+    api.post(`/api/videos/${videoId}/share-links`, data),
+  list: (videoId: string) => api.get(`/api/videos/${videoId}/share-links`),
+  revoke: (id: string) => api.patch(`/api/share-links/${id}/revoke`),
+};
+
+// Activity API
+export const activityApi = {
+  getByProject: (projectId: string, before?: string) =>
+    api.get(`/api/projects/${projectId}/activity`, { params: before ? { before } : undefined }),
 };
 
 // Export API

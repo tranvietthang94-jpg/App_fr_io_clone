@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { projectsApi } from "@/lib/api";
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
@@ -9,25 +9,35 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/Dialog";
 import { AlertDialog } from "@/components/ui/AlertDialog";
-import { Plus, Folder } from "lucide-react";
+import { Plus, Folder, Search } from "lucide-react";
 import type { Project } from "@fr-clone/shared";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDesc, setNewProjectDesc] = useState("");
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
-    loadProjects();
-  }, []);
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      loadProjects();
+      return;
+    }
+    const timer = setTimeout(() => loadProjects(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const loadProjects = async () => {
+  const loadProjects = async (searchTerm?: string) => {
     try {
-      const res = await projectsApi.getAll();
+      const res = await projectsApi.getAll(searchTerm ? { search: searchTerm } : undefined);
       setProjects(res.data);
     } catch (err) {
       console.error("Failed to load projects:", err);
@@ -88,23 +98,38 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Dự án</h1>
         <Button onClick={() => setShowCreateModal(true)} icon={<Plus className="w-5 h-5" />}>
           Tạo dự án mới
         </Button>
       </div>
 
+      <div className="mb-8 max-w-sm">
+        <Input
+          icon={<Search className="w-4 h-4" />}
+          placeholder="Tìm kiếm dự án..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {projects.length === 0 ? (
         <div className="text-center py-16">
           <Folder className="w-16 h-16 mx-auto text-text-secondary mb-4" />
-          <h3 className="text-xl font-medium mb-2">Chưa có dự án nào</h3>
-          <p className="text-text-secondary mb-6">
-            Tạo dự án đầu tiên để bắt đầu review video
-          </p>
-          <Button size="lg" onClick={() => setShowCreateModal(true)}>
-            Tạo dự án mới
-          </Button>
+          <h3 className="text-xl font-medium mb-2">
+            {search ? "Không tìm thấy dự án nào" : "Chưa có dự án nào"}
+          </h3>
+          {!search && (
+            <>
+              <p className="text-text-secondary mb-6">
+                Tạo dự án đầu tiên để bắt đầu review video
+              </p>
+              <Button size="lg" onClick={() => setShowCreateModal(true)}>
+                Tạo dự án mới
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

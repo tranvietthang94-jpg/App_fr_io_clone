@@ -2,11 +2,11 @@ import { Controller, Get, Delete, Post, Patch, Body, Param, Query, UseGuards, Re
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
 import { VideosService } from './videos.service';
 import { MediaService } from '../media/media.service';
 import { ProjectsService } from '../projects/projects.service';
+import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
+import { resolveStreamFilePath, streamVideoFile } from './stream-file.util';
 
 @Controller()
 export class VideosController {
@@ -22,10 +22,12 @@ export class VideosController {
   async findByProject(
     @Param('projectId') projectId: string,
     @Query('folderId') folderId: string | undefined,
+    @Query('search') search: string | undefined,
+    @Query('reviewStatus') reviewStatus: string | undefined,
     @Req() req: any,
   ) {
     await this.projectsService.findOne(projectId, req.user.userId);
-    return this.videosService.findByProject(projectId, folderId ?? null);
+    return this.videosService.findByProject(projectId, folderId ?? null, { search, reviewStatus });
   }
 
   @Get('projects/:projectId/trash')
@@ -76,66 +78,23 @@ export class VideosController {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    // Determine file path based on quality
-    let filePath: string;
-    if (quality === 'original') {
-      filePath = video.filePath;
-    } else {
-      filePath = path.join(
-        process.cwd(),
-        'uploads',
-        'transcoded',
-        id,
-        `${quality}.mp4`,
-      );
-    }
-
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      // Fallback to original file
-      filePath = video.filePath;
-    }
-
-    if (!fs.existsSync(filePath)) {
+    const filePath = resolveStreamFilePath(video, quality);
+    if (!filePath) {
       return res.status(404).json({ error: 'Video file not found' });
     }
-
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-
-    if (range) {
-      // Partial content response (for seeking)
-      const parts = range.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = end - start + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': 'video/mp4',
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      // Full content response
-      const head = {
-        'Content-Length': fileSize,
-        'Content-Type': 'video/mp4',
-        'Accept-Ranges': 'bytes',
-      };
-      res.writeHead(200, head);
-      const file = fs.createReadStream(filePath);
-      file.pipe(res);
-    }
+    streamVideoFile(filePath, req, res);
   }
 
   @Patch('videos/:id')
   @UseGuards(AuthGuard('jwt'))
   async rename(@Param('id') id: string, @Body() body: { title: string }, @Req() req: any) {
     return this.videosService.rename(id, body.title, req.user.userId);
+  }
+
+  @Patch('videos/:id/review-status')
+  @UseGuards(AuthGuard('jwt'))
+  async setReviewStatus(@Param('id') id: string, @Body() body: UpdateReviewStatusDto, @Req() req: any) {
+    return this.videosService.setReviewStatus(id, body.status, req.user.userId, req.user.username || req.user.email);
   }
 
   @Patch('videos/:id/move')

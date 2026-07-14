@@ -2,10 +2,12 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { Video } from './video.entity';
+import { Video, VideoReviewStatus } from './video.entity';
 import { Folder } from './folder.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
+import { ActivityLogService } from '../activity/activity-log.service';
+import { ActivityType } from '../activity/activity-log.entity';
 
 const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 10);
 
@@ -17,10 +19,20 @@ export class VideosService {
     @InjectRepository(Folder)
     private foldersRepository: Repository<Folder>,
     private projectsService: ProjectsService,
+    private activityLogService: ActivityLogService,
   ) {}
 
-  /** Latest (highest versionNumber), non-deleted video per asset, optionally scoped to a folder. */
-  async findByProject(projectId: string, folderId?: string | null) {
+  /**
+   * Latest (highest versionNumber), non-deleted video per asset, optionally
+   * scoped to a folder. When `opts.search` is given, folder scoping is
+   * dropped so the search spans the whole project (matching Frame.io's
+   * cross-folder search UX).
+   */
+  async findByProject(
+    projectId: string,
+    folderId?: string | null,
+    opts: { search?: string; reviewStatus?: string } = {},
+  ) {
     const qb = this.videosRepository
       .createQueryBuilder('video')
       .where('video.projectId = :projectId', { projectId })
@@ -33,10 +45,16 @@ export class VideosService {
       )
       .orderBy('video.createdAt', 'DESC');
 
-    if (folderId === null || folderId === undefined) {
+    if (opts.search) {
+      qb.andWhere('video.title ILIKE :search', { search: `%${opts.search}%` });
+    } else if (folderId === null || folderId === undefined) {
       qb.andWhere('video.folderId IS NULL');
     } else {
       qb.andWhere('video.folderId = :folderId', { folderId });
+    }
+
+    if (opts.reviewStatus) {
+      qb.andWhere('video.reviewStatus = :reviewStatus', { reviewStatus: opts.reviewStatus });
     }
 
     return qb.getMany();
@@ -101,13 +119,26 @@ export class VideosService {
     assetGroupId?: string;
     versionNumber?: number;
     versionLabel?: string;
+    uploadedBy?: { userId: string; actorName: string };
   }) {
+    const { uploadedBy, ...videoData } = data;
     const video = this.videosRepository.create({
-      ...data,
+      ...videoData,
       assetGroupId: data.assetGroupId || randomUUID(),
       versionNumber: data.versionNumber || 1,
     });
-    return this.videosRepository.save(video);
+    const saved = await this.videosRepository.save(video);
+    if (uploadedBy) {
+      await this.activityLogService.record(
+        data.projectId,
+        ActivityType.VIDEO_UPLOADED,
+        uploadedBy.userId,
+        uploadedBy.actorName,
+        { videoTitle: saved.title },
+        saved.id,
+      );
+    }
+    return saved;
   }
 
   /** Highest-versionNumber row in the asset group, regardless of deletedAt — used to seed the next version's folder placement. */
@@ -141,6 +172,36 @@ export class VideosService {
       Object.assign(video, metadata);
     }
     return this.videosRepository.save(video);
+  }
+
+  /** REVIEWER is the lowest project rank, so every accepted member can set review status. */
+  async setReviewStatus(id: string, status: VideoReviewStatus, userId: string, actorName: string) {
+    const video = await this.findOne(id);
+    await this.projectsService.assertRole(video.projectId, userId, MemberRole.REVIEWER);
+    return this.applyReviewStatus(video, status, userId, actorName);
+  }
+
+  /** Used only by the guest share-link route — guests have no ProjectMember row to check. */
+  async setReviewStatusAsGuest(id: string, status: VideoReviewStatus, actorName: string) {
+    const video = await this.findOne(id);
+    return this.applyReviewStatus(video, status, null, actorName);
+  }
+
+  private async applyReviewStatus(video: Video, status: VideoReviewStatus, updatedBy: string | null, actorName: string) {
+    const oldStatus = video.reviewStatus;
+    video.reviewStatus = status;
+    video.reviewStatusUpdatedBy = updatedBy;
+    video.reviewStatusUpdatedAt = new Date();
+    const saved = await this.videosRepository.save(video);
+    await this.activityLogService.record(
+      video.projectId,
+      ActivityType.REVIEW_STATUS_CHANGED,
+      updatedBy,
+      actorName,
+      { oldStatus, newStatus: status },
+      video.id,
+    );
+    return saved;
   }
 
   /** Lazily generates and persists a stable id for the PDF export permalink. */

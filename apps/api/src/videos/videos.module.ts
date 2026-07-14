@@ -9,6 +9,7 @@ import { Video } from './video.entity';
 import { Folder } from './folder.entity';
 import { MediaModule } from '../media/media.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { ActivityModule } from '../activity/activity.module';
 import { jwtModuleOptions } from '../config/jwt.config';
 
 @Module({
@@ -16,6 +17,7 @@ import { jwtModuleOptions } from '../config/jwt.config';
     TypeOrmModule.forFeature([Video, Folder]),
     MediaModule,
     ProjectsModule,
+    ActivityModule,
     JwtModule.register(jwtModuleOptions),
   ],
   controllers: [VideosController, FoldersController],

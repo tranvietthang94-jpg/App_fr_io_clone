@@ -73,11 +73,21 @@ export interface Video {
   fps: number;
   fileSize: number;
   status: VideoStatus;
+  reviewStatus: VideoReviewStatus;
+  reviewStatusUpdatedBy?: string | null;
+  reviewStatusUpdatedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   project?: Project;
   versions?: VideoVersion[];
   comments?: Comment[];
+}
+
+export enum VideoReviewStatus {
+  IN_REVIEW = 'in_review',
+  APPROVED = 'approved',
+  NEEDS_REVIEW = 'needs_review',
+  REJECTED = 'rejected',
 }
 
 export interface Folder {
@@ -110,8 +120,11 @@ export interface VideoVersion {
 export interface Comment {
   id: string;
   videoId: string;
-  userId: string;
+  userId?: string | null;
   parentId?: string;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  shareLinkId?: string | null;
   content: string;
   timestamp: number;
   frameNumber: number;
@@ -225,6 +238,44 @@ export interface UploadCompleteDto {
   filename: string;
   mimeType: string;
   totalSize: number;
+}
+
+// Share link types
+export enum SharePermission {
+  VIEW_ONLY = 'view_only',
+  CAN_COMMENT = 'can_comment',
+}
+
+export interface ShareLink {
+  id: string;
+  videoId: string;
+  createdBy: string;
+  token: string;
+  permission: SharePermission;
+  expiresAt?: string | null;
+  revokedAt?: string | null;
+  createdAt: Date;
+}
+
+// Activity log types
+export enum ActivityType {
+  VIDEO_UPLOADED = 'video_uploaded',
+  REVIEW_STATUS_CHANGED = 'review_status_changed',
+  COMMENT_ADDED = 'comment_added',
+  MEMBER_ADDED = 'member_added',
+  MEMBER_REMOVED = 'member_removed',
+  SHARE_LINK_CREATED = 'share_link_created',
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  projectId: string;
+  videoId?: string | null;
+  actorId?: string | null;
+  actorName: string;
+  type: ActivityType;
+  payload: Record<string, unknown>;
+  createdAt: Date;
 }
 
 // Export types

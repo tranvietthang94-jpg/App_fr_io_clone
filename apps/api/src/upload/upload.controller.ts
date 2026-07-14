@@ -58,6 +58,6 @@ export class UploadController {
 
   @Post('complete/:uploadId')
   async completeUpload(@Param('uploadId') uploadId: string, @Request() req) {
-    return this.uploadService.completeUpload(uploadId, req.user.userId);
+    return this.uploadService.completeUpload(uploadId, req.user.userId, req.user.username || req.user.email);
   }
 }

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import {
   FolderOpen,
   LogOut,
+  Settings,
   User,
   Menu,
   X,
@@ -84,6 +85,13 @@ export default function DashboardLayout({
           >
             <FolderOpen className="w-5 h-5" />
             <span>Dự án</span>
+          </Link>
+          <Link
+            href="/settings/profile"
+            className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-bg-tertiary transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            <span>Cài đặt</span>
           </Link>
         </nav>
 

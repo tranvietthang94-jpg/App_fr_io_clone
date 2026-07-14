@@ -10,9 +10,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/DropdownMenu';
-import { Film, Trash2, CheckCircle, AlertCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput } from 'lucide-react';
+import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
-import type { Video, Folder } from '@fr-clone/shared';
+import { VideoReviewStatus, type Video, type Folder } from '@fr-clone/shared';
 
 interface VideoCardProps {
   video: Video;
@@ -56,6 +56,34 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onCli
     }
   };
 
+  const getReviewStatusBadge = () => {
+    switch (video.reviewStatus) {
+      case VideoReviewStatus.APPROVED:
+        return (
+          <div className="flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded-full text-xs">
+            <CheckCircle className="w-3 h-3" />
+            <span>Đã duyệt</span>
+          </div>
+        );
+      case VideoReviewStatus.NEEDS_REVIEW:
+        return (
+          <div className="flex items-center gap-1 px-2 py-1 bg-accent-yellow/10 text-accent-yellow rounded-full text-xs">
+            <AlertCircle className="w-3 h-3" />
+            <span>Cần xem lại</span>
+          </div>
+        );
+      case VideoReviewStatus.REJECTED:
+        return (
+          <div className="flex items-center gap-1 px-2 py-1 bg-accent-red/10 text-accent-red rounded-full text-xs">
+            <XCircle className="w-3 h-3" />
+            <span>Từ chối</span>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   const submitRename = () => {
     if (titleInput.trim() && titleInput.trim() !== video.title) {
       onRename?.(titleInput.trim());
@@ -76,6 +104,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onCli
         )}
         <div className="absolute top-2 left-2 flex items-center gap-1">
           {getStatusBadge()}
+          {getReviewStatusBadge()}
           {video.versionNumber > 1 && (
             <span className="px-2 py-1 bg-black/60 text-white rounded-full text-xs">v{video.versionNumber}</span>
           )}

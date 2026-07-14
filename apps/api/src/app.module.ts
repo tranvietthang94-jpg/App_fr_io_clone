@@ -11,6 +11,7 @@ import { ExportModule } from './export/export.module';
 import { MediaModule } from './media/media.module';
 import { CollaborationModule } from './gateway/collaboration.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ShareLinksModule } from './share-links/share-links.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     MediaModule,
     CollaborationModule,
     NotificationsModule,
+    ShareLinksModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

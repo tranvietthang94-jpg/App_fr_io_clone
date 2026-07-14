@@ -11,6 +11,8 @@ import { AnnotationCanvas } from "@/components/video/AnnotationCanvas";
 import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
 import { UserPresence } from "@/components/presence/UserPresence";
+import { ReviewStatusControl } from "@/components/video/ReviewStatusControl";
+import { ShareLinkPanel } from "@/components/video/ShareLinkPanel";
 import { Button } from "@/components/ui/Button";
 import { socketService } from "@/lib/socket";
 import {
@@ -18,9 +20,10 @@ import {
   MessageSquare,
   Download,
   Pencil,
+  Share2,
   ChevronDown,
 } from "lucide-react";
-import type { Video, Comment, Annotation } from "@fr-clone/shared";
+import type { Video, Comment, Annotation, VideoReviewStatus } from "@fr-clone/shared";
 import type { MentionMember } from "@/components/comments/MentionInput";
 
 interface PendingAnnotation {
@@ -58,6 +61,7 @@ export default function VideoReviewPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(true);
   const [showExport, setShowExport] = useState(false);
+  const [showShareLinks, setShowShareLinks] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [pendingAnnotations, setPendingAnnotations] = useState<PendingAnnotation[]>([]);
   const [remotePlayback, setRemotePlayback] = useState<{ action: 'play' | 'pause'; nonce: number } | null>(null);
@@ -309,6 +313,15 @@ export default function VideoReviewPage() {
     }
   };
 
+  const handleReviewStatusChange = async (status: VideoReviewStatus) => {
+    try {
+      const res = await videosApi.setReviewStatus(videoId, status);
+      setVideo((prev) => (prev ? { ...prev, reviewStatus: res.data.reviewStatus } : prev));
+    } catch (err) {
+      console.error("Failed to update review status:", err);
+    }
+  };
+
   const handleExportXml = async () => {
     try {
       const res = await exportApi.getXml(videoId);
@@ -456,6 +469,7 @@ export default function VideoReviewPage() {
               {formatTimecode(video.duration, video.fps)} • {video.width}x{video.height}
             </p>
           </div>
+          <ReviewStatusControl status={video.reviewStatus} onChange={handleReviewStatusChange} />
         </div>
         <div className="flex items-center gap-4">
           <UserPresence videoId={videoId} />
@@ -475,6 +489,13 @@ export default function VideoReviewPage() {
               onClick={() => setShowExport(!showExport)}
             >
               Xuất
+            </Button>
+            <Button
+              variant="ghost"
+              icon={<Share2 className="w-5 h-5" />}
+              onClick={() => setShowShareLinks(true)}
+            >
+              Chia sẻ
             </Button>
             <Button
               variant="ghost"
@@ -566,6 +587,10 @@ export default function VideoReviewPage() {
           </div>
         )}
       </div>
+
+      {showShareLinks && (
+        <ShareLinkPanel videoId={videoId} onClose={() => setShowShareLinks(false)} />
+      )}
     </div>
   );
 }

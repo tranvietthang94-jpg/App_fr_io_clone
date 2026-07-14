@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Project } from './project.entity';
 import { ProjectMember, MemberRole, MemberStatus, MEMBER_ROLE_RANK } from './project-member.entity';
 import { User } from '../auth/user.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { ActivityLogService } from '../activity/activity-log.service';
+import { ActivityType } from '../activity/activity-log.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -17,6 +19,7 @@ export class ProjectsService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private mailerService: MailerService,
+    private activityLogService: ActivityLogService,
   ) {}
 
   /**
@@ -59,17 +62,21 @@ export class ProjectsService {
     return member?.role ?? null;
   }
 
-  async findAll(userId: string) {
+  async findAll(userId: string, search?: string) {
     const memberships = await this.membersRepository.find({
       where: { userId, status: MemberStatus.ACCEPTED },
     });
     if (memberships.length === 0) {
       return [];
     }
-    return this.projectsRepository.find({
-      where: { id: In(memberships.map((m) => m.projectId)) },
-      order: { createdAt: 'DESC' },
-    });
+    const qb = this.projectsRepository
+      .createQueryBuilder('project')
+      .where('project.id IN (:...ids)', { ids: memberships.map((m) => m.projectId) })
+      .orderBy('project.createdAt', 'DESC');
+    if (search) {
+      qb.andWhere('project.name ILIKE :search', { search: `%${search}%` });
+    }
+    return qb.getMany();
   }
 
   async findOne(id: string, userId: string) {
@@ -131,7 +138,7 @@ export class ProjectsService {
     });
   }
 
-  async invite(projectId: string, userId: string, data: { email: string; role: MemberRole }) {
+  async invite(projectId: string, userId: string, data: { email: string; role: MemberRole }, actorName: string) {
     const project = await this.assertRole(projectId, userId, MemberRole.ADMIN);
 
     const existingUser = await this.usersRepository.findOne({ where: { email: data.email } });
@@ -160,6 +167,14 @@ export class ProjectsService {
       `Lời mời tham gia dự án "${project.name}"`,
       `<p>Bạn được mời tham gia dự án <strong>${project.name}</strong> trên FrameClone.</p><p><a href="${acceptUrl}">Chấp nhận lời mời</a></p>`,
       acceptUrl,
+    );
+
+    await this.activityLogService.record(
+      projectId,
+      ActivityType.MEMBER_ADDED,
+      userId,
+      actorName,
+      { memberEmail: data.email, role: data.role },
     );
 
     return saved;
@@ -197,9 +212,9 @@ export class ProjectsService {
     return this.membersRepository.save(member);
   }
 
-  async removeMember(projectId: string, memberId: string, userId: string) {
+  async removeMember(projectId: string, memberId: string, userId: string, actorName: string) {
     await this.assertRole(projectId, userId, MemberRole.ADMIN);
-    const member = await this.membersRepository.findOne({ where: { id: memberId, projectId } });
+    const member = await this.membersRepository.findOne({ where: { id: memberId, projectId }, relations: ['user'] });
     if (!member) {
       throw new NotFoundException('Member not found');
     }
@@ -207,6 +222,13 @@ export class ProjectsService {
       throw new ForbiddenException('Cannot remove the project owner');
     }
     await this.membersRepository.remove(member);
+    await this.activityLogService.record(
+      projectId,
+      ActivityType.MEMBER_REMOVED,
+      userId,
+      actorName,
+      { memberEmail: member.user?.email || member.invitedEmail, role: member.role },
+    );
     return { success: true };
   }
 }

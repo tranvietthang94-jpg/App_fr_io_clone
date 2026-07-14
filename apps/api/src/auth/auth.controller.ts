@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Response as Res, UnauthorizedException, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Request, Response as Res, UnauthorizedException, HttpCode } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
@@ -7,6 +7,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { GoogleOAuthConfiguredGuard } from './google-oauth-configured.guard';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
@@ -87,6 +89,21 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   async getMe(@Request() req) {
     return this.authService.getMe(req.user.userId);
+  }
+
+  @Patch('me')
+  @UseGuards(AuthGuard('jwt'))
+  async updateMe(@Body() body: UpdateProfileDto, @Request() req) {
+    return this.authService.updateProfile(req.user.userId, body);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async changePassword(@Body() body: ChangePasswordDto, @Request() req) {
+    await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true };
   }
 
   @Get('google')

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { Comment } from './comment.entity';
 import { CommentReaction } from './comment-reaction.entity';
 import { VideosService } from '../videos/videos.service';
@@ -8,6 +9,8 @@ import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/notification.entity';
 import { MemberRole } from '../projects/project-member.entity';
+import { ActivityLogService } from '../activity/activity-log.service';
+import { ActivityType } from '../activity/activity-log.entity';
 
 const MENTION_REGEX = /@\[([0-9a-fA-F-]{36})\]/g;
 
@@ -21,6 +24,7 @@ export class CommentsService {
     private videosService: VideosService,
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
+    private activityLogService: ActivityLogService,
   ) {}
 
   /**
@@ -123,7 +127,10 @@ export class CommentsService {
 
   async create(data: {
     videoId: string;
-    userId: string;
+    userId?: string | null;
+    guestName?: string;
+    guestEmail?: string;
+    shareLinkId?: string;
     actorName: string;
     content: string;
     timestamp: number;
@@ -142,10 +149,27 @@ export class CommentsService {
       }
     }
 
-    const comment = this.commentsRepository.create(commentData);
+    const isGuest = !commentData.userId;
+    const comment = this.commentsRepository.create({
+      ...commentData,
+      userId: commentData.userId ?? null,
+      guestEditToken: isGuest ? randomBytes(16).toString('hex') : null,
+    });
     const saved = await this.commentsRepository.save(comment);
 
-    if (parent && parent.userId !== saved.userId) {
+    if (!saved.parentId) {
+      const video = await this.videosService.findOne(saved.videoId);
+      await this.activityLogService.record(
+        video.projectId,
+        ActivityType.COMMENT_ADDED,
+        saved.userId,
+        actorName,
+        { snippet: saved.content.slice(0, 140) },
+        saved.videoId,
+      );
+    }
+
+    if (parent && parent.userId && parent.userId !== saved.userId) {
       await this.notificationsService.create(parent.userId, NotificationType.REPLY, {
         actorId: saved.userId,
         actorName,
@@ -159,6 +183,29 @@ export class CommentsService {
     await this.notifyMentions(saved, actorName);
 
     return saved;
+  }
+
+  /** Guest-authored comments have no account, so ownership is proven by a bearer token issued at creation time. */
+  private async assertGuestOwnership(id: string, editToken: string): Promise<void> {
+    const comment = await this.commentsRepository.findOne({
+      where: { id },
+      select: ['id', 'guestEditToken'],
+    });
+    if (!comment || !comment.guestEditToken || comment.guestEditToken !== editToken) {
+      throw new ForbiddenException('Not allowed to modify this comment');
+    }
+  }
+
+  async updateAsGuest(id: string, editToken: string, data: { content?: string }) {
+    await this.assertGuestOwnership(id, editToken);
+    await this.commentsRepository.update(id, data);
+    return this.findOne(id);
+  }
+
+  async deleteAsGuest(id: string, editToken: string) {
+    await this.assertGuestOwnership(id, editToken);
+    await this.commentsRepository.delete(id);
+    return { success: true };
   }
 
   private async notifyMentions(comment: Comment, actorName: string) {
@@ -230,7 +277,7 @@ export class CommentsService {
     comment.resolvedAt = resolved ? new Date() : null;
     const saved = await this.commentsRepository.save(comment);
 
-    if (resolved && !isAuthor) {
+    if (resolved && !isAuthor && comment.userId) {
       await this.notificationsService.create(comment.userId, NotificationType.RESOLVE, {
         actorId: userId,
         actorName,

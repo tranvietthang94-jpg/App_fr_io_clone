@@ -15,15 +15,17 @@ import {
   Upload,
   FileVideo,
   Users,
+  Settings,
   Folder as FolderIcon,
   FolderPlus,
   Trash2,
   RotateCcw,
   ChevronRight,
   Home,
+  Search,
   X,
 } from "lucide-react";
-import type { Project, Video, Folder } from "@fr-clone/shared";
+import { VideoReviewStatus, type Project, type Video, type Folder } from "@fr-clone/shared";
 
 type DeleteTarget = { type: "folder" | "video"; id: string };
 
@@ -55,18 +57,25 @@ export default function ProjectDetailPage() {
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [search, setSearch] = useState("");
+  const [reviewStatusFilter, setReviewStatusFilter] = useState("");
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
+  const isSearching = search.trim().length > 0;
 
   useEffect(() => {
     loadProject();
   }, [projectId]);
 
   useEffect(() => {
-    setLoading(true);
     loadFolders();
-    loadVideos();
   }, [projectId, currentFolderId]);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(loadVideos, search ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [projectId, currentFolderId, search, reviewStatusFilter]);
 
   useEffect(() => {
     if (showTrash) loadTrash();
@@ -92,7 +101,10 @@ export default function ProjectDetailPage() {
 
   const loadVideos = async () => {
     try {
-      const res = await videosApi.getByProject(projectId, currentFolderId);
+      const res = await videosApi.getByProject(projectId, currentFolderId, {
+        search: search.trim() || undefined,
+        reviewStatus: reviewStatusFilter || undefined,
+      });
       setVideos(res.data);
     } catch (err) {
       console.error("Failed to load videos:", err);
@@ -306,6 +318,13 @@ export default function ProjectDetailPage() {
           </Button>
           <Button
             variant="secondary"
+            aria-label="Cài đặt dự án"
+            onClick={() => router.push(`/projects/${projectId}/settings`)}
+          >
+            <Settings className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="secondary"
             active={showTrash}
             icon={<Trash2 className="w-5 h-5" />}
             onClick={() => setShowTrash((v) => !v)}
@@ -438,8 +457,34 @@ export default function ProjectDetailPage() {
             ))}
           </div>
 
-          {/* Folders */}
-          {folders.length > 0 && (
+          {/* Search & filter */}
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-64">
+              <Input
+                icon={<Search className="w-4 h-4" />}
+                placeholder="Tìm video theo tên..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <select
+              value={reviewStatusFilter}
+              onChange={(e) => setReviewStatusFilter(e.target.value)}
+              className="text-sm bg-bg-tertiary border border-border rounded-md px-2 py-2"
+            >
+              <option value="">Mọi trạng thái duyệt</option>
+              <option value={VideoReviewStatus.IN_REVIEW}>Đang xem xét</option>
+              <option value={VideoReviewStatus.APPROVED}>Đã duyệt</option>
+              <option value={VideoReviewStatus.NEEDS_REVIEW}>Cần xem lại</option>
+              <option value={VideoReviewStatus.REJECTED}>Từ chối</option>
+            </select>
+            {isSearching && (
+              <span className="text-xs text-text-muted">Kết quả tìm kiếm trong toàn bộ dự án</span>
+            )}
+          </div>
+
+          {/* Folders (hidden while searching — search spans the whole project, not just this folder) */}
+          {!isSearching && folders.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
               {folders.map((folder) => (
                 <div
@@ -465,13 +510,17 @@ export default function ProjectDetailPage() {
           )}
 
           {/* Videos list */}
-          {videos.length === 0 && folders.length === 0 ? (
+          {videos.length === 0 && (isSearching || folders.length === 0) ? (
             <div className="text-center py-16">
               <FileVideo className="w-16 h-16 mx-auto text-text-secondary mb-4" />
-              <h3 className="text-xl font-medium mb-2">Chưa có video nào</h3>
-              <p className="text-text-secondary">
-                Tải video lên hoặc kéo-thả vào đây để bắt đầu duyệt
-              </p>
+              <h3 className="text-xl font-medium mb-2">
+                {isSearching ? "Không tìm thấy video nào" : "Chưa có video nào"}
+              </h3>
+              {!isSearching && (
+                <p className="text-text-secondary">
+                  Tải video lên hoặc kéo-thả vào đây để bắt đầu duyệt
+                </p>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -137,6 +137,35 @@ export class AuthService {
     return this.toPublicUser(user);
   }
 
+  async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    Object.assign(user, data);
+    await this.usersRepository.save(user);
+    return this.toPublicUser(user);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.usersRepository.save(user);
+
+    // Same "invalidate every session" behavior as resetPassword.
+    await this.refreshTokensRepository.update(
+      { userId: user.id, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+  }
+
   /** Always succeeds from the caller's perspective — never reveals whether the email exists. */
   async forgotPassword(email: string): Promise<void> {
     const user = await this.usersRepository.findOne({ where: { email } });

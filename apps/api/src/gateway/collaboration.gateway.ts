@@ -11,12 +11,18 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
 import { VideosService } from '../videos/videos.service';
+import { ShareLinksService } from '../share-links/share-links.service';
 
 interface UserSocketData {
   userId: string;
   username: string;
   currentRoom?: string;
+  // Guests are pinned to the single video their share-link token resolved to
+  // at connect time — join:video only ever accepts this id for them.
+  isGuest?: boolean;
+  boundVideoId?: string;
 }
 
 @WebSocketGateway({
@@ -38,6 +44,7 @@ export class CollaborationGateway
   constructor(
     private jwtService: JwtService,
     private videosService: VideosService,
+    private shareLinksService: ShareLinksService,
   ) {}
 
   afterInit(server: Server) {
@@ -45,32 +52,56 @@ export class CollaborationGateway
   }
 
   async handleConnection(client: Socket) {
-    try {
-      // Authenticate user from token
-      const token = client.handshake.auth.token;
-      if (!token) {
+    const { token, shareToken, guestName } = client.handshake.auth as {
+      token?: string;
+      shareToken?: string;
+      guestName?: string;
+    };
+
+    if (token) {
+      try {
+        const payload = this.jwtService.verify(token);
+        const userData: UserSocketData = {
+          userId: payload.sub,
+          username: payload.username || payload.email,
+        };
+
+        this.userSockets.set(client.id, userData);
+        client.data = userData;
+
+        // Personal room for server-initiated pushes (notifications) that
+        // aren't tied to any particular video room.
+        client.join(`user:${userData.userId}`);
+
+        this.logger.log(`Client connected: ${client.id} (${userData.username})`);
+      } catch (error) {
+        this.logger.error('Authentication failed:', error);
         client.disconnect();
-        return;
       }
-
-      const payload = this.jwtService.verify(token);
-      const userData: UserSocketData = {
-        userId: payload.sub,
-        username: payload.username || payload.email,
-      };
-
-      this.userSockets.set(client.id, userData);
-      client.data = userData;
-
-      // Personal room for server-initiated pushes (notifications) that
-      // aren't tied to any particular video room.
-      client.join(`user:${userData.userId}`);
-
-      this.logger.log(`Client connected: ${client.id} (${userData.username})`);
-    } catch (error) {
-      this.logger.error('Authentication failed:', error);
-      client.disconnect();
+      return;
     }
+
+    if (shareToken) {
+      try {
+        const link = await this.shareLinksService.resolveForAccess(shareToken);
+        const userData: UserSocketData = {
+          userId: `guest:${randomUUID()}`,
+          username: (guestName || 'Guest').slice(0, 60),
+          isGuest: true,
+          boundVideoId: link.videoId,
+        };
+        this.userSockets.set(client.id, userData);
+        client.data = userData;
+        // No personal `user:${id}` room — guests never receive notifications.
+        this.logger.log(`Guest connected: ${client.id} (${userData.username})`);
+      } catch (error) {
+        this.logger.error('Guest authentication failed:', error);
+        client.disconnect();
+      }
+      return;
+    }
+
+    client.disconnect();
   }
 
   handleDisconnect(client: Socket) {
@@ -98,11 +129,18 @@ export class CollaborationGateway
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
 
-    try {
-      await this.videosService.findOwned(data.videoId, userData.userId);
-    } catch {
-      client.emit('error', { message: 'Not authorized to join this video' });
-      return;
+    if (userData.isGuest) {
+      if (data.videoId !== userData.boundVideoId) {
+        client.emit('error', { message: 'Not authorized to join this video' });
+        return;
+      }
+    } else {
+      try {
+        await this.videosService.findOwned(data.videoId, userData.userId);
+      } catch {
+        client.emit('error', { message: 'Not authorized to join this video' });
+        return;
+      }
     }
 
     const room = `video:${data.videoId}`;

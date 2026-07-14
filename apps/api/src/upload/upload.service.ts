@@ -120,7 +120,7 @@ export class UploadService {
     return { success: true, chunkIndex };
   }
 
-  async completeUpload(uploadId: string, userId: string) {
+  async completeUpload(uploadId: string, userId: string, actorName: string) {
     const uploadChunkDir = path.join(this.chunkDir, uploadId);
     const metadataPath = path.join(uploadChunkDir, 'metadata.json');
 
@@ -175,6 +175,7 @@ export class UploadService {
       folderId: resolvedFolderId,
       assetGroupId: assetGroupId || undefined,
       versionNumber,
+      uploadedBy: { userId, actorName },
     });
 
     // Cleanup chunks

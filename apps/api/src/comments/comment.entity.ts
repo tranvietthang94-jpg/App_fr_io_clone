@@ -10,11 +10,27 @@ export class Comment {
   @Column()
   videoId: string;
 
-  @Column()
-  userId: string;
+  // Null for a guest comment (posted via a share link) — see guestName/guestEmail/shareLinkId below.
+  @Column({ type: 'varchar', nullable: true })
+  userId: string | null;
 
   @Column({ nullable: true })
   parentId: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  guestName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  guestEmail: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  shareLinkId: string | null;
+
+  // Bearer secret returned once at creation time so a guest (no account) can
+  // later prove ownership to edit/delete their own comment. Never selected by
+  // default — only pulled via addSelect() for that one authorization check.
+  @Column({ type: 'varchar', nullable: true, select: false })
+  guestEditToken: string | null;
 
   @Column({ type: 'text' })
   content: string;
@@ -50,7 +66,7 @@ export class Comment {
   @JoinColumn({ name: 'videoId' })
   video: Video;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: User | null;
 }
