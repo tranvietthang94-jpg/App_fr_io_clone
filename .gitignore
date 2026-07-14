@@ -6,6 +6,10 @@ node_modules/
 # Testing
 coverage/
 *.log
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/tests/e2e/.shared-user.json
+apps/web/tests/e2e/fixtures/not-a-video.txt
 
 # Production
 build/
@@ -37,6 +41,10 @@ docker/volumes/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Python bytecode cache (skill scripts run locally with `python`)
+__pycache__/
+*.pyc
 
 # Temp files
 tmp/

@@ -1,57 +1,51 @@
 import React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+const buttonVariants = cva(
+  'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-accent-blue text-white hover:bg-primary-hover focus-visible:ring-accent-blue',
+        secondary: 'bg-bg-tertiary text-text-primary hover:bg-bg-hover focus-visible:ring-bg-tertiary',
+        danger: 'bg-accent-red text-white hover:bg-red-600 focus-visible:ring-accent-red',
+        ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary focus-visible:ring-bg-tertiary',
+      },
+      size: {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2 text-sm',
+        lg: 'px-6 py-3 text-base',
+      },
+      active: {
+        true: 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20',
+        false: '',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+      active: false,
+    },
+  }
+);
+
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   icon?: React.ReactNode;
   loading?: boolean;
-  // Tinted "pressed" look for toggle-style buttons (e.g. a panel show/hide
-  // control), independent of `variant` — wins over it regardless of which
-  // variant is passed as the "off" state.
-  active?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    {
-      children,
-      variant = 'primary',
-      size = 'md',
-      icon,
-      loading = false,
-      active = false,
-      className,
-      disabled,
-      ...props
-    },
+    { children, variant, size, icon, loading = false, active, className, disabled, ...props },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed';
-
-    const variants = {
-      primary: 'bg-accent-blue text-white hover:bg-blue-600 focus:ring-accent-blue',
-      secondary: 'bg-bg-tertiary text-text-primary hover:bg-bg-hover focus:ring-bg-tertiary',
-      danger: 'bg-accent-red text-white hover:bg-red-600 focus:ring-accent-red',
-      ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary focus:ring-bg-tertiary',
-    };
-
-    const sizes = {
-      sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-6 py-3 text-base',
-    };
-
     return (
       <button
         ref={ref}
-        className={cn(
-          baseStyles,
-          variants[variant],
-          sizes[size],
-          active && 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20',
-          className
-        )}
+        className={cn(buttonVariants({ variant, size, active }), className)}
         disabled={disabled || loading}
         {...props}
       >

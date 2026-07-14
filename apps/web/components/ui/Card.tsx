@@ -1,28 +1,28 @@
 import React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-interface CardProps {
+const cardVariants = cva('bg-bg-secondary border border-border rounded-lg overflow-hidden', {
+  variants: {
+    hover: {
+      true: 'hover:border-accent-blue hover:shadow-lg transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue',
+      false: '',
+    },
+  },
+  defaultVariants: {
+    hover: false,
+  },
+});
+
+interface CardProps extends VariantProps<typeof cardVariants> {
   children: React.ReactNode;
   className?: string;
-  hover?: boolean;
   onClick?: () => void;
 }
 
-export const Card: React.FC<CardProps> = ({
-  children,
-  className,
-  hover = false,
-  onClick,
-}) => {
+export const Card: React.FC<CardProps> = ({ children, className, hover, onClick }) => {
   return (
-    <div
-      className={cn(
-        'bg-bg-secondary border border-border rounded-lg overflow-hidden',
-        hover && 'hover:border-accent-blue hover:shadow-lg transition-all duration-200 cursor-pointer',
-        className
-      )}
-      onClick={onClick}
-    >
+    <div className={cn(cardVariants({ hover }), className)} onClick={onClick}>
       {children}
     </div>
   );

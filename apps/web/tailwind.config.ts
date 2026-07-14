@@ -8,34 +8,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Frame.io Color Palette
+        // FrameReview Color Palette — see design-system/MASTER.md for provenance
         bg: {
-          primary: '#1a1a1a',
-          secondary: '#2a2a2a',
-          tertiary: '#3a3a3a',
-          hover: '#4a4a4a',
+          primary: '#0B0F1A',
+          secondary: '#1B2336',
+          tertiary: '#272F42',
+          hover: '#334155',
         },
         text: {
-          primary: '#ffffff',
-          secondary: '#a0a0a0',
-          muted: '#6a6a6a',
+          primary: '#F8FAFC',
+          secondary: '#94A3B8',
+          muted: '#64748B',
         },
         accent: {
-          blue: '#4a9eff',
-          green: '#4ade80',
-          red: '#ef4444',
-          yellow: '#fbbf24',
+          blue: '#2563EB',
+          green: '#22C55E',
+          red: '#DC2626',
+          yellow: '#F59E0B',
           purple: '#a855f7',
         },
         border: {
-          DEFAULT: '#3a3a3a',
-          light: '#4a4a4a',
-          dark: '#2a2a2a',
+          DEFAULT: '#334155',
+          light: '#475569',
+          dark: '#1B2336',
         },
         primary: {
-          DEFAULT: '#4a9eff',
-          hover: '#3a8eef',
-          active: '#2a7edf',
+          DEFAULT: '#2563EB',
+          hover: '#1D4ED8',
+          active: '#1E40AF',
         },
       },
       fontFamily: {
@@ -80,7 +80,9 @@ const config: Config = {
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-in-out',
+        'fade-out': 'fadeOut 0.2s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
+        'slide-out': 'slideOut 0.15s ease-in',
         'bounce-slow': 'bounce 2s infinite',
       },
       keyframes: {
@@ -88,9 +90,17 @@ const config: Config = {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
         slideIn: {
           '0%': { transform: 'translateY(-10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideOut: {
+          '0%': { transform: 'translateX(0)', opacity: '1' },
+          '100%': { transform: 'translateX(100%)', opacity: '0' },
         },
       },
     },
