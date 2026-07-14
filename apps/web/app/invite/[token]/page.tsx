@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { projectMembersApi } from "@/lib/api";
+import { buttonVariants } from "@/components/ui/Button";
 
 export default function InviteAcceptPage() {
   const params = useParams();
@@ -47,16 +48,10 @@ export default function InviteAcceptPage() {
               đường dẫn này để tiếp tục.
             </p>
             <div className="flex gap-3 justify-center">
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-              >
+              <Link href="/login" className={buttonVariants({ variant: "primary" })}>
                 Đăng nhập
               </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-md transition-colors"
-              >
+              <Link href="/register" className={buttonVariants({ variant: "secondary" })}>
                 Đăng ký
               </Link>
             </div>
@@ -64,7 +59,9 @@ export default function InviteAcceptPage() {
         )}
 
         {status === "error" && isAuthenticated && (
-          <p className="text-accent-red">{error}</p>
+          <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+            {error}
+          </div>
         )}
       </div>
     </div>

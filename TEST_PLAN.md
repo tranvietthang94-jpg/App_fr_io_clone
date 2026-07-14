@@ -12,6 +12,15 @@ chạy end-to-end kèm kịch bản thao tác lỗi (email trùng, password ng�
 XSS trong tên, SQL injection trong ô đăng nhập, file không phải video, mất mạng giữa chừng, truy
 cập project của người khác). Chi tiết log ở phần DEBUG LOG bên dưới.
 
+**Phase 6 (2026-07-14):** áp dụng UI overhaul cho các trang còn lại ngoài phạm vi 53 test case gốc
+(login/register/forgot-password/reset-password, Google OAuth callback, invite accept, cài đặt tài
+khoản `/settings/profile`) — các trang này đã tự động thừa hưởng bảng màu dark-slate mới từ Phase
+0-2 (cùng tên token, chỉ đổi hex) nên không cần sửa cấu trúc; phần sửa thực tế là đồng bộ hoá 2 nút
+trên trang invite (trước đó hand-rolled thay vì dùng `Button`/`buttonVariants`) và thêm focus ring
+còn thiếu ở `GoogleButton`. Thêm 12 Playwright case mới (2 file: `account-pages.spec.ts`,
+`account-pages-responsive.spec.ts`) cho các trang này (trước đây chưa có test nào) + full suite
+52/52 pass, xác nhận 53/53 test case gốc bên dưới không bị ảnh hưởng.
+
 ---
 
 ## 1. AUTHENTICATION
