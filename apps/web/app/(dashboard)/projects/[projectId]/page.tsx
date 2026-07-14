@@ -265,7 +265,7 @@ export default function ProjectDetailPage() {
 
   if (loading && !showTrash) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <Skeleton className="h-8 w-64 mb-2" />
         <Skeleton className="h-4 w-96 mb-8" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -283,7 +283,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div
-      className="p-8 relative min-h-full"
+      className="p-4 sm:p-8 relative min-h-full"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={(e) => e.preventDefault()}
@@ -298,23 +298,31 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      {/* Header — flex-wrap so the 5-button action row drops to its own line
+          instead of overflowing on narrow screens (same fix as the video
+          review pages: a `justify-between` row with no wrap silently pushes
+          items past the viewport rather than causing document scroll). */}
+      <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+        <div className="min-w-0">
           <button
             onClick={() => router.push("/projects")}
             className="text-sm text-text-secondary hover:text-text-primary mb-2"
           >
             ← Quay lại
           </button>
-          <h1 className="text-3xl font-bold">{project?.name}</h1>
+          <h1 className="text-3xl font-bold truncate max-w-[70vw] sm:max-w-none">{project?.name}</h1>
           {project?.description && (
             <p className="text-text-secondary mt-1">{project.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" icon={<Users className="w-5 h-5" />} onClick={() => setShowMembers(true)}>
-            Thành viên
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            aria-label="Thành viên"
+            icon={<Users className="w-5 h-5" />}
+            onClick={() => setShowMembers(true)}
+          >
+            <span className="hidden sm:inline">Thành viên</span>
           </Button>
           <Button
             variant="secondary"
@@ -325,11 +333,12 @@ export default function ProjectDetailPage() {
           </Button>
           <Button
             variant="secondary"
+            aria-label="Thùng rác"
             active={showTrash}
             icon={<Trash2 className="w-5 h-5" />}
             onClick={() => setShowTrash((v) => !v)}
           >
-            Thùng rác
+            <span className="hidden sm:inline">Thùng rác</span>
           </Button>
           <Button
             variant="secondary"
@@ -347,7 +356,8 @@ export default function ProjectDetailPage() {
             className="hidden"
           />
           <Button icon={<Upload className="w-5 h-5" />} onClick={() => fileInputRef.current?.click()}>
-            Tải video lên
+            <span className="hidden sm:inline">Tải video lên</span>
+            <span className="sm:hidden">Tải lên</span>
           </Button>
         </div>
       </div>
@@ -357,8 +367,8 @@ export default function ProjectDetailPage() {
       )}
 
       {newFolderOpen && (
-        <form onSubmit={handleCreateFolder} className="flex items-center gap-2 mb-4">
-          <div className="w-56">
+        <form onSubmit={handleCreateFolder} className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="w-full sm:w-56">
             <Input
               autoFocus
               value={newFolderName}
@@ -437,7 +447,7 @@ export default function ProjectDetailPage() {
       ) : (
         <>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1 text-sm mb-6 text-text-secondary">
+          <div className="flex flex-wrap items-center gap-1 text-sm mb-6 text-text-secondary">
             <button
               onClick={() => setFolderPath([])}
               className={`flex items-center gap-1 hover:text-text-primary ${folderPath.length === 0 ? "text-text-primary font-medium" : ""}`}
@@ -458,8 +468,8 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Search & filter */}
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-64">
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <div className="w-full sm:w-64">
               <Input
                 icon={<Search className="w-4 h-4" />}
                 placeholder="Tìm video theo tên..."

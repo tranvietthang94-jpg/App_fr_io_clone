@@ -162,7 +162,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
         {canManage && (
           <form onSubmit={handleInvite} className="border-t border-border pt-4 space-y-2">
             {error && <p className="text-xs text-accent-red">{error}</p>}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <div className="flex-1">
                 <Input
                   type="email"

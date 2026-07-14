@@ -78,7 +78,7 @@ export default function ProjectsPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Dự án</h1>
         </div>
@@ -97,7 +97,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Dự án</h1>
         <Button onClick={() => setShowCreateModal(true)} icon={<Plus className="w-5 h-5" />}>
