@@ -24,7 +24,7 @@ export class ExportController {
   @Get('pdf')
   async exportPdf(@Param('videoId') videoId: string, @Request() req, @Res() res: Response) {
     await this.videosService.findOwned(videoId, req.user.userId);
-    const pdfBuffer = await this.exportService.exportPdf(videoId);
+    const pdfBuffer = await this.exportService.exportPdf(videoId, req.user);
     
     // Check if it's actually PDF (starts with %PDF) or HTML fallback
     const isPdf = pdfBuffer.slice(0, 4).toString() === '%PDF';

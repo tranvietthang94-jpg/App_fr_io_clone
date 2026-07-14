@@ -31,13 +31,22 @@ export class Comment {
   @Column({ type: 'float', nullable: true })
   positionY: number;
 
-  @CreateDateColumn()
+  @Column({ default: false })
+  resolved: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  resolvedBy: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resolvedAt: Date | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
-  @ManyToOne(() => Video)
+  @ManyToOne(() => Video, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'videoId' })
   video: Video;
 

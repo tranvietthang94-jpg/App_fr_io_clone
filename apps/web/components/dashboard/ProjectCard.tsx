@@ -24,7 +24,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, onDe
                 e.stopPropagation();
                 onDelete();
               }}
-              className="opacity-0 group-hover:opacity-100 p-2 hover:bg-bg-tertiary rounded-md transition-all"
+              aria-label="Xóa dự án"
+              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 p-2 hover:bg-bg-tertiary rounded-md transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-blue"
             >
               <Trash2 className="w-4 h-4 text-accent-red" />
             </button>

@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Param,
@@ -19,14 +20,30 @@ export class UploadController {
 
   @Post('init')
   async initUpload(
-    @Body() body: { projectId: string; filename: string; fileSize: number; mimeType: string },
+    @Body() body: {
+      projectId: string;
+      filename: string;
+      fileSize: number;
+      mimeType: string;
+      assetGroupId?: string;
+      folderId?: string;
+    },
+    @Request() req,
   ) {
     return this.uploadService.initUpload(
       body.projectId,
       body.filename,
       body.fileSize,
       body.mimeType,
+      req.user.userId,
+      body.assetGroupId,
+      body.folderId,
     );
+  }
+
+  @Get(':uploadId/status')
+  async getStatus(@Param('uploadId') uploadId: string) {
+    return this.uploadService.getUploadStatus(uploadId);
   }
 
   @Post('chunk/:uploadId/:chunkIndex')
@@ -40,7 +57,7 @@ export class UploadController {
   }
 
   @Post('complete/:uploadId')
-  async completeUpload(@Param('uploadId') uploadId: string) {
-    return this.uploadService.completeUpload(uploadId);
+  async completeUpload(@Param('uploadId') uploadId: string, @Request() req) {
+    return this.uploadService.completeUpload(uploadId, req.user.userId);
   }
 }

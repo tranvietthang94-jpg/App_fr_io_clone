@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Post, Param, Query, UseGuards, Res, Req } from '@nestjs/common';
+import { Controller, Get, Delete, Post, Patch, Body, Param, Query, UseGuards, Res, Req } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
@@ -19,15 +19,33 @@ export class VideosController {
 
   @Get('projects/:projectId/videos')
   @UseGuards(AuthGuard('jwt'))
-  async findByProject(@Param('projectId') projectId: string, @Req() req: any) {
+  async findByProject(
+    @Param('projectId') projectId: string,
+    @Query('folderId') folderId: string | undefined,
+    @Req() req: any,
+  ) {
     await this.projectsService.findOne(projectId, req.user.userId);
-    return this.videosService.findByProject(projectId);
+    return this.videosService.findByProject(projectId, folderId ?? null);
+  }
+
+  @Get('projects/:projectId/trash')
+  @UseGuards(AuthGuard('jwt'))
+  async findTrash(@Param('projectId') projectId: string, @Req() req: any) {
+    await this.projectsService.findOne(projectId, req.user.userId);
+    return this.videosService.findTrash(projectId);
   }
 
   @Get('videos/:id')
   @UseGuards(AuthGuard('jwt'))
   async findOne(@Param('id') id: string, @Req() req: any) {
     return this.videosService.findOwned(id, req.user.userId);
+  }
+
+  @Get('videos/:id/versions')
+  @UseGuards(AuthGuard('jwt'))
+  async getVersions(@Param('id') id: string, @Req() req: any) {
+    const video = await this.videosService.findOwned(id, req.user.userId);
+    return this.videosService.getVersions(video.assetGroupId, req.user.userId);
   }
 
   @Get('videos/:id/stream/:quality')
@@ -114,11 +132,28 @@ export class VideosController {
     }
   }
 
+  @Patch('videos/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async rename(@Param('id') id: string, @Body() body: { title: string }, @Req() req: any) {
+    return this.videosService.rename(id, body.title, req.user.userId);
+  }
+
+  @Patch('videos/:id/move')
+  @UseGuards(AuthGuard('jwt'))
+  async move(@Param('id') id: string, @Body() body: { folderId: string | null }, @Req() req: any) {
+    return this.videosService.move(id, body.folderId, req.user.userId);
+  }
+
   @Delete('videos/:id')
   @UseGuards(AuthGuard('jwt'))
   async delete(@Param('id') id: string, @Req() req: any) {
-    await this.videosService.findOwned(id, req.user.userId);
-    return this.videosService.delete(id);
+    return this.videosService.softDelete(id, req.user.userId);
+  }
+
+  @Post('videos/:id/restore')
+  @UseGuards(AuthGuard('jwt'))
+  async restore(@Param('id') id: string, @Req() req: any) {
+    return this.videosService.restore(id, req.user.userId);
   }
 
   @Post('videos/:id/transcode')
@@ -132,4 +167,3 @@ export class VideosController {
     return { message: 'Transcode started', videoId: id };
   }
 }
-

@@ -10,15 +10,15 @@ export class Annotation {
   commentId: string;
 
   @Column()
-  type: string; // 'draw', 'highlight', 'text', 'shape'
+  type: string; // 'draw', 'highlight', 'text', 'rectangle'
 
   @Column({ type: 'jsonb' })
   data: Record<string, any>; // SVG path, points, color, etc.
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @ManyToOne(() => Comment)
+  @ManyToOne(() => Comment, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'commentId' })
   comment: Comment;
 }

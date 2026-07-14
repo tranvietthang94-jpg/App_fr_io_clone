@@ -1,25 +1,120 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Comment } from './comment.entity';
+import { CommentReaction } from './comment-reaction.entity';
+import { VideosService } from '../videos/videos.service';
+import { ProjectsService } from '../projects/projects.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/notification.entity';
+import { MemberRole } from '../projects/project-member.entity';
+
+const MENTION_REGEX = /@\[([0-9a-fA-F-]{36})\]/g;
 
 @Injectable()
 export class CommentsService {
   constructor(
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
+    @InjectRepository(CommentReaction)
+    private reactionsRepository: Repository<CommentReaction>,
+    private videosService: VideosService,
+    private projectsService: ProjectsService,
+    private notificationsService: NotificationsService,
   ) {}
 
-  async findByVideo(videoId: string) {
-    return this.commentsRepository.find({
-      where: { videoId },
-      relations: ['user'],
-      order: { timestamp: 'ASC' },
+  /**
+   * Top-level comments for a video (replies are attached, not returned as
+   * separate rows), with #N sequence numbers, replies, and reactions embedded.
+   * No `limit` = every comment (backward compatible for callers like the PDF
+   * export that need the full set). Pass `limit` to paginate.
+   */
+  async findByVideo(
+    videoId: string,
+    opts: { sort?: 'timecode' | 'date'; offset?: number; limit?: number } = {},
+  ): Promise<{ items: any[]; nextOffset: number | null; totalCount: number }> {
+    const sortColumn = opts.sort === 'date' ? 'createdAt' : 'timestamp';
+
+    const qb = this.commentsRepository
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.user', 'user')
+      .where('comment.videoId = :videoId', { videoId })
+      .andWhere('comment.parentId IS NULL')
+      .orderBy(`comment.${sortColumn}`, 'ASC')
+      .addOrderBy('comment.id', 'ASC');
+
+    if (opts.offset) {
+      qb.skip(opts.offset);
+    }
+    if (opts.limit) {
+      qb.take(opts.limit);
+    }
+
+    const [pageItems, totalCount] = await qb.getManyAndCount();
+
+    if (pageItems.length === 0) {
+      return { items: [], nextOffset: null, totalCount };
+    }
+
+    const topLevelIds = pageItems.map((c) => c.id);
+
+    const [replies, reactions, sequenceMap] = await Promise.all([
+      this.commentsRepository.find({
+        where: { parentId: In(topLevelIds) },
+        relations: ['user'],
+        order: { createdAt: 'ASC' },
+      }),
+      this.reactionsRepository.find({ where: { commentId: In(topLevelIds) } }),
+      this.getSequenceNumbers(videoId),
+    ]);
+
+    const repliesByParent = new Map<string, Comment[]>();
+    for (const reply of replies) {
+      const list = repliesByParent.get(reply.parentId) || [];
+      list.push(reply);
+      repliesByParent.set(reply.parentId, list);
+    }
+    const reactionsByComment = new Map<string, CommentReaction[]>();
+    for (const r of reactions) {
+      const list = reactionsByComment.get(r.commentId) || [];
+      list.push(r);
+      reactionsByComment.set(r.commentId, list);
+    }
+
+    const items = pageItems.map((c) => ({
+      ...c,
+      sequenceNumber: sequenceMap.get(c.id) ?? null,
+      replies: repliesByParent.get(c.id) || [],
+      reactions: reactionsByComment.get(c.id) || [],
+    }));
+
+    const nextOffset =
+      opts.limit && (opts.offset ?? 0) + pageItems.length < totalCount
+        ? (opts.offset ?? 0) + pageItems.length
+        : null;
+
+    return { items, nextOffset, totalCount };
+  }
+
+  /**
+   * Stable #N rank of every top-level comment on a video, by creation order.
+   * Shared by the live UI and the PDF export so both show the same numbers.
+   * Not persisted — deleting an older comment will shift later numbers; a
+   * persisted sequence column is the upgrade path if that ever proves wrong.
+   */
+  async getSequenceNumbers(videoId: string): Promise<Map<string, number>> {
+    const topLevel = await this.commentsRepository.find({
+      where: { videoId, parentId: IsNull() },
+      order: { createdAt: 'ASC' },
+      select: ['id'],
     });
+    const map = new Map<string, number>();
+    topLevel.forEach((c, i) => map.set(c.id, i + 1));
+    return map;
   }
 
   async findOne(id: string) {
-    const comment = await this.commentsRepository.findOne({ where: { id } });
+    const comment = await this.commentsRepository.findOne({ where: { id }, relations: ['user'] });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -29,6 +124,7 @@ export class CommentsService {
   async create(data: {
     videoId: string;
     userId: string;
+    actorName: string;
     content: string;
     timestamp: number;
     frameNumber: number;
@@ -36,29 +132,113 @@ export class CommentsService {
     positionY?: number;
     parentId?: string;
   }) {
-    const comment = this.commentsRepository.create(data);
-    return this.commentsRepository.save(comment);
+    const { actorName, ...commentData } = data;
+
+    let parent: Comment | null = null;
+    if (commentData.parentId) {
+      parent = await this.commentsRepository.findOne({ where: { id: commentData.parentId } });
+      if (!parent || parent.videoId !== commentData.videoId) {
+        throw new BadRequestException('Parent comment does not belong to this video');
+      }
+    }
+
+    const comment = this.commentsRepository.create(commentData);
+    const saved = await this.commentsRepository.save(comment);
+
+    if (parent && parent.userId !== saved.userId) {
+      await this.notificationsService.create(parent.userId, NotificationType.REPLY, {
+        actorId: saved.userId,
+        actorName,
+        commentId: saved.id,
+        parentCommentId: parent.id,
+        videoId: saved.videoId,
+        content: saved.content,
+      });
+    }
+
+    await this.notifyMentions(saved, actorName);
+
+    return saved;
   }
 
-  async update(id: string, data: { content?: string }, userId: string) {
-    const comment = await this.commentsRepository.findOne({
-      where: { id, userId },
-    });
-    if (!comment) {
-      throw new NotFoundException('Comment not found');
+  private async notifyMentions(comment: Comment, actorName: string) {
+    const mentionedIds = this.extractMentionedUserIds(comment.content);
+    if (mentionedIds.length === 0) {
+      return;
+    }
+    const video = await this.videosService.findOne(comment.videoId);
+    for (const mentionedUserId of mentionedIds) {
+      if (mentionedUserId === comment.userId) {
+        continue;
+      }
+      const role = await this.projectsService.getMemberRole(video.projectId, mentionedUserId);
+      if (!role) {
+        continue; // not a project member — ignore silently, don't leak membership info
+      }
+      await this.notificationsService.create(mentionedUserId, NotificationType.MENTION, {
+        actorId: comment.userId,
+        actorName,
+        commentId: comment.id,
+        videoId: comment.videoId,
+        content: comment.content,
+      });
+    }
+  }
+
+  private extractMentionedUserIds(content: string): string[] {
+    const ids = new Set<string>();
+    let match: RegExpExecArray | null;
+    MENTION_REGEX.lastIndex = 0;
+    while ((match = MENTION_REGEX.exec(content)) !== null) {
+      ids.add(match[1]);
+    }
+    return [...ids];
+  }
+
+  private canModerate(role: MemberRole | null): boolean {
+    return role === MemberRole.ADMIN || role === MemberRole.OWNER;
+  }
+
+  async update(id: string, data: { content?: string }, userId: string, role: MemberRole | null) {
+    const comment = await this.findOne(id);
+    if (comment.userId !== userId && !this.canModerate(role)) {
+      throw new ForbiddenException('Not allowed to edit this comment');
     }
     Object.assign(comment, data);
     return this.commentsRepository.save(comment);
   }
 
-  async delete(id: string, userId: string) {
-    const comment = await this.commentsRepository.findOne({
-      where: { id, userId },
-    });
-    if (!comment) {
-      throw new NotFoundException('Comment not found');
+  async delete(id: string, userId: string, role: MemberRole | null) {
+    const comment = await this.findOne(id);
+    if (comment.userId !== userId && !this.canModerate(role)) {
+      throw new ForbiddenException('Not allowed to delete this comment');
     }
     await this.commentsRepository.remove(comment);
     return { success: true };
+  }
+
+  async setResolved(id: string, resolved: boolean, userId: string, role: MemberRole | null, actorName: string) {
+    const comment = await this.findOne(id);
+    const isAuthor = comment.userId === userId;
+    // Reviewer can resolve their own comments; Editor/Admin/Owner can resolve any.
+    const canModerateAny = role === MemberRole.EDITOR || this.canModerate(role);
+    if (!isAuthor && !canModerateAny) {
+      throw new ForbiddenException('Not allowed to resolve this comment');
+    }
+    comment.resolved = resolved;
+    comment.resolvedBy = resolved ? userId : null;
+    comment.resolvedAt = resolved ? new Date() : null;
+    const saved = await this.commentsRepository.save(comment);
+
+    if (resolved && !isAuthor) {
+      await this.notificationsService.create(comment.userId, NotificationType.RESOLVE, {
+        actorId: userId,
+        actorName,
+        commentId: comment.id,
+        videoId: comment.videoId,
+      });
+    }
+
+    return saved;
   }
 }

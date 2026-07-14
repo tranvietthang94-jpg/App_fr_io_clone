@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { videosApi, commentsApi, exportApi, annotationsApi } from "@/lib/api";
+import { videosApi, commentsApi, exportApi, annotationsApi, reactionsApi, projectMembersApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { formatTimecode, isCommentActive } from "@/lib/utils";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
@@ -11,20 +11,30 @@ import { AnnotationCanvas } from "@/components/video/AnnotationCanvas";
 import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
 import { UserPresence } from "@/components/presence/UserPresence";
+import { Button } from "@/components/ui/Button";
 import { socketService } from "@/lib/socket";
 import {
   ArrowLeft,
   MessageSquare,
   Download,
   Pencil,
+  ChevronDown,
 } from "lucide-react";
 import type { Video, Comment, Annotation } from "@fr-clone/shared";
+import type { MentionMember } from "@/components/comments/MentionInput";
 
 interface PendingAnnotation {
   type: string;
   color: string;
-  points: Array<{ x: number; y: number }>;
+  points?: Array<{ x: number; y: number }>;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  text?: string;
 }
+
+const COMMENTS_PAGE_SIZE = 30;
 
 export default function VideoReviewPage() {
   const params = useParams();
@@ -34,7 +44,13 @@ export default function VideoReviewPage() {
   const projectId = params.projectId as string;
 
   const [video, setVideo] = useState<Video | null>(null);
+  const [versions, setVersions] = useState<Video[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsOffset, setCommentsOffset] = useState(0);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [sortMode, setSortMode] = useState<'timecode' | 'date'>('timecode');
+  const [members, setMembers] = useState<MentionMember[]>([]);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -43,7 +59,7 @@ export default function VideoReviewPage() {
   const [showComments, setShowComments] = useState(true);
   const [showExport, setShowExport] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
-  const [pendingAnnotation, setPendingAnnotation] = useState<PendingAnnotation | null>(null);
+  const [pendingAnnotations, setPendingAnnotations] = useState<PendingAnnotation[]>([]);
   const [remotePlayback, setRemotePlayback] = useState<{ action: 'play' | 'pause'; nonce: number } | null>(null);
   const playbackNonceRef = useRef(0);
 
@@ -55,8 +71,22 @@ export default function VideoReviewPage() {
     setTimeout(() => setSeekTarget(null), 100);
   };
 
+  const loadComments = async (opts?: { sort?: 'timecode' | 'date'; append?: boolean }) => {
+    try {
+      const sort = opts?.sort ?? sortMode;
+      const offset = opts?.append ? commentsOffset : 0;
+      const res = await commentsApi.getByVideo(videoId, { sort, offset, limit: COMMENTS_PAGE_SIZE });
+      setComments((prev) => (opts?.append ? [...prev, ...res.data.items] : res.data.items));
+      setCommentsOffset(offset + res.data.items.length);
+      setHasMoreComments(res.data.nextOffset != null);
+    } catch (err) {
+      console.error("Failed to load comments:", err);
+    }
+  };
+
   useEffect(() => {
     loadVideo();
+    loadVersions();
     loadComments();
     loadAnnotations();
 
@@ -64,21 +94,27 @@ export default function VideoReviewPage() {
     socketService.connect();
     socketService.joinVideo(videoId);
 
-    // Listen for real-time comments
-    const handleNewComment = (data: any) => {
-      setComments((prev) => [
-        ...prev,
-        {
-          id: `temp-${Date.now()}`,
-          videoId,
-          userId: data.userId,
-          content: data.content,
-          timestamp: data.timestamp,
-          frameNumber: data.frameNumber,
-          createdAt: data.createdAt,
-          user: { name: data.username },
-        } as Comment,
-      ]);
+    // Listen for real-time comments/replies — refetch to get correctly
+    // threaded/numbered/reaction-embedded data rather than hand-building it.
+    const handleNewComment = () => {
+      loadComments();
+    };
+
+    const handleRemoteResolved = (data: { commentId: string; resolved: boolean }) => {
+      setComments((prev) =>
+        prev.map((c) => (c.id === data.commentId ? { ...c, resolved: data.resolved } : c))
+      );
+    };
+
+    const handleRemoteReaction = async (data: { commentId: string }) => {
+      try {
+        const res = await reactionsApi.getByComment(data.commentId);
+        setComments((prev) =>
+          prev.map((c) => (c.id === data.commentId ? { ...c, reactions: res.data } : c))
+        );
+      } catch (err) {
+        console.error("Failed to refresh reactions:", err);
+      }
     };
 
     // Co-watching: apply playback actions from other users in the room.
@@ -99,18 +135,36 @@ export default function VideoReviewPage() {
     };
 
     socketService.on('comment:new', handleNewComment);
+    socketService.on('comment:resolved', handleRemoteResolved);
+    socketService.on('comment:reaction', handleRemoteReaction);
     socketService.on('video:seek', handleRemoteSeek);
     socketService.on('video:play', handleRemotePlay);
     socketService.on('video:pause', handleRemotePause);
 
     return () => {
       socketService.off('comment:new', handleNewComment);
+      socketService.off('comment:resolved', handleRemoteResolved);
+      socketService.off('comment:reaction', handleRemoteReaction);
       socketService.off('video:seek', handleRemoteSeek);
       socketService.off('video:play', handleRemotePlay);
       socketService.off('video:pause', handleRemotePause);
       socketService.leaveVideo();
     };
   }, [videoId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    projectMembersApi
+      .getMembers(projectId)
+      .then((res) => {
+        setMembers(
+          res.data
+            .filter((m: any) => m.status === 'accepted' && m.user)
+            .map((m: any) => ({ userId: m.user.id, name: m.user.name }))
+        );
+      })
+      .catch((err: any) => console.error("Failed to load members:", err));
+  }, [projectId]);
 
   const loadVideo = async () => {
     try {
@@ -123,12 +177,12 @@ export default function VideoReviewPage() {
     }
   };
 
-  const loadComments = async () => {
+  const loadVersions = async () => {
     try {
-      const res = await commentsApi.getByVideo(videoId);
-      setComments(res.data);
+      const res = await videosApi.getVersions(videoId);
+      setVersions(res.data);
     } catch (err) {
-      console.error("Failed to load comments:", err);
+      console.error("Failed to load versions:", err);
     }
   };
 
@@ -141,34 +195,55 @@ export default function VideoReviewPage() {
     }
   };
 
+  const handleSortChange = (mode: 'timecode' | 'date') => {
+    setSortMode(mode);
+    loadComments({ sort: mode, append: false });
+  };
+
+  const handleLoadMoreComments = () => {
+    loadComments({ append: true });
+  };
+
   const handleAddComment = async (data: {
     content: string;
     timestamp: number;
     frameNumber: number;
-    positionX?: number;
-    positionY?: number;
+    parentId?: string;
   }) => {
     try {
       const res = await commentsApi.create(videoId, data);
-      setComments([...comments, res.data]);
 
       // Broadcast to other users via socket
       socketService.sendComment(videoId, data.content, data.timestamp, data.frameNumber);
 
-      // Attach any in-progress annotation drawing to the new comment
-      if (pendingAnnotation) {
-        try {
-          const annotationRes = await annotationsApi.create(res.data.id, {
-            type: pendingAnnotation.type,
-            data: { color: pendingAnnotation.color, points: pendingAnnotation.points },
-          });
-          setAnnotations((prev) => [...prev, annotationRes.data]);
-        } catch (err) {
-          console.error("Failed to save annotation:", err);
+      // Attach any in-progress annotation strokes to the new (top-level) comment
+      if (!data.parentId && pendingAnnotations.length > 0) {
+        const created: Annotation[] = [];
+        for (const pending of pendingAnnotations) {
+          try {
+            const annotationRes = await annotationsApi.create(res.data.id, {
+              type: pending.type,
+              data: {
+                color: pending.color,
+                points: pending.points,
+                x: pending.x,
+                y: pending.y,
+                width: pending.width,
+                height: pending.height,
+                text: pending.text,
+              },
+            });
+            created.push(annotationRes.data);
+          } catch (err) {
+            console.error("Failed to save annotation:", err);
+          }
         }
-        setPendingAnnotation(null);
+        setAnnotations((prev) => [...prev, ...created]);
+        setPendingAnnotations([]);
         setIsAnnotating(false);
       }
+
+      await loadComments();
     } catch (err) {
       console.error("Failed to add comment:", err);
     }
@@ -177,7 +252,7 @@ export default function VideoReviewPage() {
   const handleDeleteComment = async (commentId: string) => {
     try {
       await commentsApi.delete(commentId);
-      setComments(comments.filter((c) => c.id !== commentId));
+      await loadComments();
     } catch (err) {
       console.error("Failed to delete comment:", err);
     }
@@ -186,9 +261,51 @@ export default function VideoReviewPage() {
   const handleEditComment = async (commentId: string, content: string) => {
     try {
       const res = await commentsApi.update(commentId, { content });
-      setComments(comments.map((c) => (c.id === commentId ? res.data : c)));
+      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, content: res.data.content } : c)));
     } catch (err) {
       console.error("Failed to edit comment:", err);
+    }
+  };
+
+  const handleResolveComment = async (commentId: string, resolved: boolean) => {
+    try {
+      const res = await commentsApi.setResolved(commentId, resolved);
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, resolved: res.data.resolved, resolvedBy: res.data.resolvedBy, resolvedAt: res.data.resolvedAt }
+            : c
+        )
+      );
+      socketService.sendCommentResolved(videoId, commentId, resolved);
+    } catch (err) {
+      console.error("Failed to resolve comment:", err);
+    }
+  };
+
+  const handleReactToComment = async (commentId: string, emoji: string) => {
+    try {
+      await reactionsApi.toggle(commentId, emoji);
+      const res = await reactionsApi.getByComment(commentId);
+      setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, reactions: res.data } : c)));
+      socketService.sendCommentReaction(videoId, commentId);
+    } catch (err) {
+      console.error("Failed to toggle reaction:", err);
+    }
+  };
+
+  const handleAnnotationComplete = (data: PendingAnnotation) => {
+    setPendingAnnotations((prev) => [...prev, data]);
+  };
+
+  const handleDeleteAnnotation = async (id: string) => {
+    const annotation = annotations.find((a) => a.id === id);
+    if (!annotation) return;
+    try {
+      await annotationsApi.delete(annotation.commentId, id);
+      setAnnotations((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      console.error("Failed to delete annotation:", err);
     }
   };
 
@@ -240,6 +357,34 @@ export default function VideoReviewPage() {
     socketService.sendTyping(videoId, isTyping);
   };
 
+  // Annotations are pinned to whichever comment is currently "active" (same
+  // window CommentPanel uses to highlight a comment). Memoized on the active
+  // comment's id (not on currentTime directly) so AnnotationCanvas only
+  // redraws when the active comment actually changes, not on every
+  // timeupdate tick during playback.
+  const activeCommentId = useMemo(
+    () => comments.find((c) => isCommentActive(c.timestamp, currentTime))?.id,
+    [comments, currentTime]
+  );
+  const savedAnnotationsForCanvas = useMemo(
+    () =>
+      annotations
+        .filter((a) => a.commentId === activeCommentId)
+        .map((a) => {
+          const data = a.data as {
+            color: string;
+            points?: Array<{ x: number; y: number }>;
+            x?: number;
+            y?: number;
+            width?: number;
+            height?: number;
+            text?: string;
+          };
+          return { id: a.id, type: a.type, ...data };
+        }),
+    [annotations, activeCommentId]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -256,39 +401,57 @@ export default function VideoReviewPage() {
     );
   }
 
-  // Annotations are pinned to whichever comment is currently "active" (same
-  // window CommentPanel uses to highlight a comment). Memoized on the active
-  // comment's id (not on currentTime directly) so AnnotationCanvas only
-  // redraws when the active comment actually changes, not on every
-  // timeupdate tick during playback.
-  const activeCommentId = useMemo(
-    () => comments.find((c) => isCommentActive(c.timestamp, currentTime))?.id,
-    [comments, currentTime]
-  );
-  const savedAnnotationsForCanvas = useMemo(
-    () =>
-      annotations
-        .filter((a) => a.commentId === activeCommentId)
-        .map((a) => {
-          const data = a.data as { color: string; points: Array<{ x: number; y: number }> };
-          return { type: a.type, color: data.color, points: data.points };
-        }),
-    [annotations, activeCommentId]
-  );
-
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Quay lại"
             onClick={() => router.push(`/projects/${projectId}`)}
-            className="p-2 hover:bg-bg-tertiary rounded-md transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </Button>
           <div>
-            <h1 className="font-semibold">{video.title}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-semibold">{video.title}</h1>
+              {versions.length > 1 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowVersions((v) => !v)}
+                    className="flex items-center gap-1 px-2 py-0.5 text-xs bg-bg-tertiary hover:bg-bg-hover rounded-full"
+                  >
+                    v{video.versionNumber} <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {showVersions && (
+                    <div className="absolute left-0 mt-1 w-48 bg-bg-secondary border border-border rounded-md shadow-lg z-30 py-1">
+                      {versions
+                        .slice()
+                        .sort((a, b) => b.versionNumber - a.versionNumber)
+                        .map((v) => (
+                          <button
+                            key={v.id}
+                            onClick={() => {
+                              setShowVersions(false);
+                              if (v.id !== videoId) {
+                                router.push(`/projects/${projectId}/videos/${v.id}`);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-bg-tertiary text-left ${
+                              v.id === videoId ? "text-primary font-medium" : ""
+                            }`}
+                          >
+                            <span>Phiên bản {v.versionNumber}</span>
+                            {v.id === videoId && <span className="text-xs">(hiện tại)</span>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <p className="text-sm text-text-secondary">
               {formatTimecode(video.duration, video.fps)} • {video.width}x{video.height}
             </p>
@@ -297,33 +460,31 @@ export default function VideoReviewPage() {
         <div className="flex items-center gap-4">
           <UserPresence videoId={videoId} />
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              active={showComments}
+              icon={<MessageSquare className="w-5 h-5" />}
               onClick={() => setShowComments(!showComments)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-                showComments ? "bg-primary/10 text-primary" : "hover:bg-bg-tertiary"
-              }`}
             >
-              <MessageSquare className="w-5 h-5" />
-              <span>{comments.length}</span>
-            </button>
-            <button
+              {comments.length}
+            </Button>
+            <Button
+              variant="ghost"
+              active={showExport}
+              icon={<Download className="w-5 h-5" />}
               onClick={() => setShowExport(!showExport)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-                showExport ? "bg-primary/10 text-primary" : "hover:bg-bg-tertiary"
-              }`}
             >
-              <Download className="w-5 h-5" />
-              <span>Xuất</span>
-            </button>
-            <button
-              onClick={() => setIsAnnotating(!isAnnotating)}
+              Xuất
+            </Button>
+            <Button
+              variant="ghost"
+              active={isAnnotating}
+              aria-label="Vẽ chú thích trên video"
               title="Vẽ chú thích trên video"
-              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-                isAnnotating ? "bg-primary/10 text-primary" : "hover:bg-bg-tertiary"
-              }`}
+              onClick={() => setIsAnnotating(!isAnnotating)}
             >
               <Pencil className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -355,7 +516,8 @@ export default function VideoReviewPage() {
             <AnnotationCanvas
               isActive={isAnnotating}
               savedAnnotations={savedAnnotationsForCanvas}
-              onAnnotationComplete={setPendingAnnotation}
+              onAnnotationComplete={handleAnnotationComplete}
+              onDeleteAnnotation={handleDeleteAnnotation}
             />
           </div>
 
@@ -376,9 +538,17 @@ export default function VideoReviewPage() {
               comments={comments}
               currentTime={currentTime}
               fps={video.fps}
+              currentUserId={user?.id}
+              members={members}
+              sortMode={sortMode}
+              onSortChange={handleSortChange}
+              hasMore={hasMoreComments}
+              onLoadMore={handleLoadMoreComments}
               onAddComment={handleAddComment}
               onDeleteComment={handleDeleteComment}
               onEditComment={handleEditComment}
+              onResolveComment={handleResolveComment}
+              onReactToComment={handleReactToComment}
               onSeekToComment={handleUserSeek}
               onTyping={handleTypingChange}
             />

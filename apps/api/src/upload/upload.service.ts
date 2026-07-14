@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { VideosService } from '../videos/videos.service';
 import { MediaService } from '../media/media.service';
+import { ProjectsService } from '../projects/projects.service';
+import { MemberRole } from '../projects/project-member.entity';
 
 // parseInt(x) || fallback treats an explicit "0" the same as unset — an env
 // var set to 0 (e.g. to reject all uploads) would be silently overridden.
@@ -22,6 +24,7 @@ export class UploadService {
   constructor(
     private videosService: VideosService,
     private mediaService: MediaService,
+    private projectsService: ProjectsService,
   ) {
     // Create upload directories if they don't exist
     if (!fs.existsSync(this.uploadDir)) {
@@ -32,7 +35,19 @@ export class UploadService {
     }
   }
 
-  async initUpload(projectId: string, filename: string, fileSize: number, mimeType: string) {
+  async initUpload(
+    projectId: string,
+    filename: string,
+    fileSize: number,
+    mimeType: string,
+    userId: string,
+    assetGroupId?: string,
+    folderId?: string | null,
+  ) {
+    // Editor+ only — anyone with a valid JWT could otherwise upload into any
+    // project just by guessing/knowing its id.
+    await this.projectsService.assertRole(projectId, userId, MemberRole.EDITOR);
+
     const maxFileSize = parseEnvInt(process.env.MAX_FILE_SIZE, 5 * 1024 * 1024 * 1024);
     if (fileSize > maxFileSize) {
       throw new BadRequestException(`File vượt quá giới hạn ${maxFileSize} bytes`);
@@ -46,7 +61,8 @@ export class UploadService {
     const uploadChunkDir = path.join(this.chunkDir, uploadId);
     fs.mkdirSync(uploadChunkDir, { recursive: true });
 
-    // Store upload metadata
+    // Store upload metadata. userId is re-checked against project membership
+    // at completeUpload() too, in case access changes mid-upload.
     const metadata = {
       uploadId,
       projectId,
@@ -55,6 +71,9 @@ export class UploadService {
       mimeType,
       totalChunks,
       chunkSize,
+      userId,
+      assetGroupId: assetGroupId || null,
+      folderId: folderId || null,
     };
     fs.writeFileSync(
       path.join(uploadChunkDir, 'metadata.json'),
@@ -66,6 +85,23 @@ export class UploadService {
       chunkSize,
       totalChunks,
     };
+  }
+
+  /** Which chunk indices already made it to disk — lets a client resume after a page refresh instead of restarting. */
+  async getUploadStatus(uploadId: string) {
+    const uploadChunkDir = path.join(this.chunkDir, uploadId);
+    const metadataPath = path.join(uploadChunkDir, 'metadata.json');
+    if (!fs.existsSync(metadataPath)) {
+      throw new NotFoundException('Upload not found');
+    }
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+    const uploadedChunks: number[] = [];
+    for (let i = 0; i < metadata.totalChunks; i++) {
+      if (fs.existsSync(path.join(uploadChunkDir, `chunk_${i}`))) {
+        uploadedChunks.push(i);
+      }
+    }
+    return { uploadId, totalChunks: metadata.totalChunks, chunkSize: metadata.chunkSize, uploadedChunks };
   }
 
   async uploadChunk(uploadId: string, chunkIndex: number, chunk: Buffer) {
@@ -84,7 +120,7 @@ export class UploadService {
     return { success: true, chunkIndex };
   }
 
-  async completeUpload(uploadId: string) {
+  async completeUpload(uploadId: string, userId: string) {
     const uploadChunkDir = path.join(this.chunkDir, uploadId);
     const metadataPath = path.join(uploadChunkDir, 'metadata.json');
 
@@ -93,7 +129,10 @@ export class UploadService {
     }
 
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-    const { projectId, filename, fileSize, totalChunks } = metadata;
+    const { projectId, filename, fileSize, totalChunks, assetGroupId, folderId } = metadata;
+
+    // Re-check role in case access changed since initUpload (e.g. removed from the project).
+    await this.projectsService.assertRole(projectId, userId, MemberRole.EDITOR);
 
     // Combine chunks
     const finalPath = path.join(this.uploadDir, `${uploadId}_${filename}`);
@@ -110,13 +149,32 @@ export class UploadService {
     // Wait for write to complete
     await new Promise<void>((resolve) => writeStream.on('finish', resolve));
 
-    // Create video record
+    // Create video record — a version upload (assetGroupId provided by the
+    // client, e.g. "upload new version of this asset") gets the next
+    // versionNumber in that group instead of starting a new one, and — unless
+    // the client explicitly chose a different folder — inherits the previous
+    // version's folder. Without this, a version upload that doesn't repeat
+    // the folderId defaults to root while the max-versionNumber-per-group
+    // query still treats it as "the" current version, making the asset
+    // vanish from the folder it was actually organized into.
+    let versionNumber: number | undefined;
+    let resolvedFolderId = folderId;
+    if (assetGroupId) {
+      const latestVersion = await this.videosService.getLatestVersion(assetGroupId);
+      versionNumber = (latestVersion?.versionNumber || 0) + 1;
+      if (!folderId && latestVersion) {
+        resolvedFolderId = latestVersion.folderId;
+      }
+    }
     const video = await this.videosService.create({
       projectId,
       title: filename,
       originalFilename: filename,
       filePath: finalPath,
       fileSize,
+      folderId: resolvedFolderId,
+      assetGroupId: assetGroupId || undefined,
+      versionNumber,
     });
 
     // Cleanup chunks

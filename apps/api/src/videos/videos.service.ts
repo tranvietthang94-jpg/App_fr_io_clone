@@ -1,22 +1,68 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { Video } from './video.entity';
+import { Folder } from './folder.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { MemberRole } from '../projects/project-member.entity';
+
+const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 10);
 
 @Injectable()
 export class VideosService {
   constructor(
     @InjectRepository(Video)
     private videosRepository: Repository<Video>,
+    @InjectRepository(Folder)
+    private foldersRepository: Repository<Folder>,
     private projectsService: ProjectsService,
   ) {}
 
-  async findByProject(projectId: string) {
-    return this.videosRepository.find({
-      where: { projectId },
-      order: { createdAt: 'DESC' },
-    });
+  /** Latest (highest versionNumber), non-deleted video per asset, optionally scoped to a folder. */
+  async findByProject(projectId: string, folderId?: string | null) {
+    const qb = this.videosRepository
+      .createQueryBuilder('video')
+      .where('video.projectId = :projectId', { projectId })
+      .andWhere('video.deletedAt IS NULL')
+      .andWhere(
+        `video."versionNumber" = (
+          SELECT MAX(v2."versionNumber") FROM videos v2
+          WHERE v2."assetGroupId" = video."assetGroupId" AND v2."deletedAt" IS NULL
+        )`,
+      )
+      .orderBy('video.createdAt', 'DESC');
+
+    if (folderId === null || folderId === undefined) {
+      qb.andWhere('video.folderId IS NULL');
+    } else {
+      qb.andWhere('video.folderId = :folderId', { folderId });
+    }
+
+    return qb.getMany();
+  }
+
+  async findTrash(projectId: string) {
+    await this.purgeExpiredTrash(projectId);
+    return this.videosRepository
+      .createQueryBuilder('video')
+      .where('video.projectId = :projectId', { projectId })
+      .andWhere('video.deletedAt IS NOT NULL')
+      .orderBy('video.deletedAt', 'DESC')
+      .getMany();
+  }
+
+  private async purgeExpiredTrash(projectId: string) {
+    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const expired = await this.videosRepository
+      .createQueryBuilder('video')
+      .where('video.projectId = :projectId', { projectId })
+      .andWhere('video.deletedAt IS NOT NULL')
+      .andWhere('video.deletedAt < :cutoff', { cutoff })
+      .getMany();
+    if (expired.length > 0) {
+      await this.videosRepository.remove(expired);
+    }
   }
 
   async findOne(id: string) {
@@ -28,14 +74,21 @@ export class VideosService {
   }
 
   /**
-   * Same as findOne, but also verifies the requesting user owns the video's
-   * parent project. Reuses ProjectsService.findOne's owner-scoped lookup so
-   * ownership rules live in one place.
+   * Same as findOne, but also verifies the requesting user is a member of
+   * the video's project, and that the video hasn't been trashed (a
+   * soft-deleted video must be restored before it can be viewed/commented on).
    */
   async findOwned(id: string, userId: string) {
     const video = await this.findOne(id);
     await this.projectsService.findOne(video.projectId, userId);
+    if (video.deletedAt) {
+      throw new NotFoundException('Video not found');
+    }
     return video;
+  }
+
+  private async assertEditorAccess(video: Video, userId: string): Promise<void> {
+    await this.projectsService.assertRole(video.projectId, userId, MemberRole.EDITOR);
   }
 
   async create(data: {
@@ -44,9 +97,36 @@ export class VideosService {
     originalFilename: string;
     filePath: string;
     fileSize: number;
+    folderId?: string | null;
+    assetGroupId?: string;
+    versionNumber?: number;
+    versionLabel?: string;
   }) {
-    const video = this.videosRepository.create(data);
+    const video = this.videosRepository.create({
+      ...data,
+      assetGroupId: data.assetGroupId || randomUUID(),
+      versionNumber: data.versionNumber || 1,
+    });
     return this.videosRepository.save(video);
+  }
+
+  /** Highest-versionNumber row in the asset group, regardless of deletedAt — used to seed the next version's folder placement. */
+  async getLatestVersion(assetGroupId: string): Promise<Video | null> {
+    return this.videosRepository.findOne({
+      where: { assetGroupId },
+      order: { versionNumber: 'DESC' },
+    });
+  }
+
+  async getVersions(assetGroupId: string, userId: string) {
+    const versions = await this.videosRepository.find({
+      where: { assetGroupId },
+      order: { versionNumber: 'ASC' },
+    });
+    if (versions.length > 0) {
+      await this.projectsService.findOne(versions[0].projectId, userId);
+    }
+    return versions;
   }
 
   async updateStatus(id: string, status: string, metadata?: {
@@ -63,6 +143,57 @@ export class VideosService {
     return this.videosRepository.save(video);
   }
 
+  /** Lazily generates and persists a stable id for the PDF export permalink. */
+  async ensurePrintUuid(id: string): Promise<string> {
+    const video = await this.findOne(id);
+    if (video.printUuid) {
+      return video.printUuid;
+    }
+    video.printUuid = randomUUID();
+    await this.videosRepository.save(video);
+    return video.printUuid;
+  }
+
+  async rename(id: string, title: string, userId: string) {
+    const video = await this.findOne(id);
+    await this.assertEditorAccess(video, userId);
+    video.title = title;
+    return this.videosRepository.save(video);
+  }
+
+  async move(id: string, folderId: string | null, userId: string) {
+    const video = await this.findOne(id);
+    await this.assertEditorAccess(video, userId);
+    if (folderId) {
+      const folder = await this.foldersRepository.findOne({ where: { id: folderId } });
+      if (!folder || folder.projectId !== video.projectId) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
+    video.folderId = folderId;
+    return this.videosRepository.save(video);
+  }
+
+  async softDelete(id: string, userId: string) {
+    const video = await this.findOne(id);
+    await this.assertEditorAccess(video, userId);
+    video.deletedAt = new Date();
+    await this.videosRepository.save(video);
+    return { success: true };
+  }
+
+  async restore(id: string, userId: string) {
+    const video = await this.findOne(id);
+    await this.assertEditorAccess(video, userId);
+    if (!video.deletedAt) {
+      throw new ForbiddenException('Video is not in trash');
+    }
+    video.deletedAt = null;
+    await this.videosRepository.save(video);
+    return video;
+  }
+
+  /** Permanent delete — used only for legacy hard-delete call sites (e.g. project cascade already handles bulk cleanup). */
   async delete(id: string) {
     const video = await this.findOne(id);
     await this.videosRepository.remove(video);

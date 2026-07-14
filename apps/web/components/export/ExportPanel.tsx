@@ -1,7 +1,8 @@
 "use client";
 
-import { FileText, FileCode, Download, Film, MessageSquare } from "lucide-react";
-import { formatTimecode, formatDate } from "@/lib/utils";
+import { FileText, FileCode, Download } from "lucide-react";
+import { formatTimecode } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
 import type { Video, Comment } from "@fr-clone/shared";
 
 interface ExportPanelProps {
@@ -52,8 +53,8 @@ export function ExportPanel({
         {/* XML Export */}
         <div className="bg-bg-tertiary/50 rounded-lg p-4">
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <FileCode className="w-5 h-5 text-blue-500" />
+            <div className="w-10 h-10 rounded-lg bg-accent-blue/10 flex items-center justify-center">
+              <FileCode className="w-5 h-5 text-accent-blue" />
             </div>
             <div>
               <h4 className="font-medium">Xuất XML</h4>
@@ -62,12 +63,13 @@ export function ExportPanel({
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            className="w-full bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20"
             onClick={onExportXml}
-            className="w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-md transition-colors text-sm font-medium"
           >
             Tải xuống XML
-          </button>
+          </Button>
         </div>
 
         {/* PDF Export */}
@@ -83,12 +85,13 @@ export function ExportPanel({
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            className="w-full bg-accent-red/10 text-accent-red hover:bg-accent-red/20"
             onClick={onExportPdf}
-            className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors text-sm font-medium"
           >
             Tải xuống PDF
-          </button>
+          </Button>
         </div>
       </div>
 

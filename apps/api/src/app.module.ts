@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ProjectsModule } from './projects/projects.module';
 import { VideosModule } from './videos/videos.module';
@@ -8,6 +10,7 @@ import { UploadModule } from './upload/upload.module';
 import { ExportModule } from './export/export.module';
 import { MediaModule } from './media/media.module';
 import { CollaborationModule } from './gateway/collaboration.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,6 +26,9 @@ import { CollaborationModule } from './gateway/collaboration.module';
       synchronize: true,
     }),
 
+    // Generous global default; auth endpoints tighten this with @Throttle.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 100 }]),
+
     // Feature modules
     AuthModule,
     ProjectsModule,
@@ -32,6 +38,8 @@ import { CollaborationModule } from './gateway/collaboration.module';
     ExportModule,
     MediaModule,
     CollaborationModule,
+    NotificationsModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

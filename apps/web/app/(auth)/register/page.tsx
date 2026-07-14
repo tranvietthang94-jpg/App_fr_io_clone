@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { authApi } from "@/lib/api";
+import { GoogleButton } from "@/components/auth/GoogleButton";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -51,96 +54,78 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary">Frame.io Clone</h1>
-          <p className="mt-2 text-text-secondary">Tạo tài khoản mới</p>
+    <>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-primary">Frame.io Clone</h1>
+        <p className="mt-2 text-text-secondary">Tạo tài khoản mới</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
+        {error && (
+          <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        <Input
+          id="name"
+          type="text"
+          label="Họ tên"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Nguyễn Văn A"
+        />
+
+        <Input
+          id="email"
+          type="email"
+          label="Email"
+          required
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          placeholder="your@email.com"
+        />
+
+        <Input
+          id="password"
+          type="password"
+          label="Mật khẩu"
+          required
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          placeholder="••••••••"
+        />
+
+        <Input
+          id="confirmPassword"
+          type="password"
+          label="Xác nhận mật khẩu"
+          required
+          value={formData.confirmPassword}
+          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+          placeholder="••••••••"
+        />
+
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
+          {loading ? "Đang đăng ký..." : "Đăng ký"}
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-text-secondary">hoặc</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
-          {error && (
-            <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
+        <GoogleButton label="Đăng ký với Google" />
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-2">
-              Họ tên
-            </label>
-            <input
-              id="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Nguyễn Văn A"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="your@email.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Mật khẩu
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
-              Xác nhận mật khẩu
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-primary hover:bg-primary/90 text-white font-medium rounded-md transition-colors disabled:opacity-50"
-          >
-            {loading ? "Đang đăng ký..." : "Đăng ký"}
-          </button>
-
-          <p className="text-center text-sm text-text-secondary">
-            Đã có tài khoản?{" "}
-            <Link href="/login" className="text-primary hover:underline">
-              Đăng nhập
-            </Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <p className="text-center text-sm text-text-secondary">
+          Đã có tài khoản?{" "}
+          <Link href="/login" className="text-primary hover:underline">
+            Đăng nhập
+          </Link>
+        </p>
+      </form>
+    </>
   );
 }

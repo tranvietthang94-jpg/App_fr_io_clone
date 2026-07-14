@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { cn, formatTimecode } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/Tooltip';
 import {
   Play,
   Pause,
@@ -11,6 +12,35 @@ import {
   SkipBack,
   SkipForward,
 } from 'lucide-react';
+
+interface ControlButtonProps extends React.ComponentPropsWithoutRef<typeof Button> {
+  label: string;
+}
+
+// Icon-only transport control: adds the aria-label + hover tooltip every
+// button in this bar needs, without repeating the Tooltip wiring six times.
+// Forwards its ref (via forwardRef) so Radix's TooltipTrigger asChild can
+// reach the real <button> DOM node instead of warning about a missing ref.
+const ControlButton = React.forwardRef<HTMLButtonElement, ControlButtonProps>(
+  ({ label, className, children, ...props }, ref) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          ref={ref}
+          variant="ghost"
+          size="sm"
+          aria-label={label}
+          className={cn('text-white hover:bg-white/20', className)}
+          {...props}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+);
+ControlButton.displayName = 'ControlButton';
 
 interface VideoPlayerProps {
   src: string;
@@ -185,12 +215,34 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     handleSeek(Math.max(0, Math.min(newTime, duration)));
   };
 
+  // Only active while the player itself has focus, so Space/Arrow keys don't
+  // hijack typing in the comment box or other controls elsewhere on the page.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlay();
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      frameStep('backward');
+    } else if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      frameStep('forward');
+    }
+  };
+
   return (
     <div
       ref={containerRef}
-      className={cn('relative bg-black rounded-lg overflow-hidden group', className)}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        'relative w-full h-full bg-black rounded-lg overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue',
+        className
+      )}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => setShowControls(false)}
+      onFocus={() => setShowControls(true)}
+      onBlur={() => setShowControls(false)}
     >
       {/* Video Element */}
       <video
@@ -205,6 +257,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <button
             onClick={togglePlay}
+            aria-label="Phát video"
             className="w-20 h-20 rounded-full bg-accent-blue/90 flex items-center justify-center hover:bg-accent-blue transition-colors"
           >
             <Play className="w-10 h-10 text-white ml-1" />
@@ -223,43 +276,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="flex items-center justify-between text-white px-4 py-2">
           <div className="flex items-center gap-2">
             {/* Play/Pause */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={togglePlay}
-              className="text-white hover:bg-white/20"
-            >
+            <ControlButton label={isPlaying ? 'Tạm dừng' : 'Phát'} onClick={togglePlay}>
               {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-            </Button>
+            </ControlButton>
 
             {/* Frame Step */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => frameStep('backward')}
-              className="text-white hover:bg-white/20"
-            >
+            <ControlButton label="Lùi 1 khung hình" onClick={() => frameStep('backward')}>
               <SkipBack className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => frameStep('forward')}
-              className="text-white hover:bg-white/20"
-            >
+            </ControlButton>
+            <ControlButton label="Tiến 1 khung hình" onClick={() => frameStep('forward')}>
               <SkipForward className="w-4 h-4" />
-            </Button>
+            </ControlButton>
 
             {/* Volume */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMute}
-                className="text-white hover:bg-white/20"
-              >
+              <ControlButton label={isMuted ? 'Bật tiếng' : 'Tắt tiếng'} onClick={toggleMute}>
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </Button>
+              </ControlButton>
               <input
                 type="range"
                 min="0"
@@ -267,7 +300,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 step="0.1"
                 value={isMuted ? 0 : volume}
                 onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                aria-label="Âm lượng"
+                className="w-20 h-1 bg-white/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-2 [&::-moz-range-thumb]:h-2 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white"
               />
             </div>
 
@@ -282,6 +316,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <select
               value={playbackSpeed}
               onChange={(e) => changeSpeed(parseFloat(e.target.value))}
+              aria-label="Tốc độ phát"
               className="bg-bg-tertiary text-white text-sm px-2 py-1 rounded border-none cursor-pointer"
             >
               <option value="0.5">0.5x</option>
@@ -291,14 +326,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </select>
 
             {/* Fullscreen */}
-            <Button
-              variant="ghost"
-              size="sm"
+            <ControlButton
+              label={isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
               onClick={toggleFullscreen}
-              className="text-white hover:bg-white/20"
             >
               {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-            </Button>
+            </ControlButton>
           </div>
         </div>
       </div>

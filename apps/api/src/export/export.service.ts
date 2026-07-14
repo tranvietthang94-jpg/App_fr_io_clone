@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CommentsService } from '../comments/comments.service';
+import { AnnotationsService } from '../comments/annotations.service';
+import { Annotation } from '../comments/annotation.entity';
 import { VideosService } from '../videos/videos.service';
 import { ProjectsService } from '../projects/projects.service';
 import * as puppeteer from 'puppeteer';
@@ -12,8 +14,22 @@ import { spawn } from 'child_process';
 export class ExportService {
   private readonly logger = new Logger(ExportService.name);
 
+  // Reverse-engineered from the reference export in DEMO/HXM_EPISODE 10_HGE_01.xml:
+  // MZ.WorkOutPoint there is exactly (254016000000 / 25) * 454 — Premiere's
+  // documented ticks-per-second constant times a small, fixed frame count that
+  // has no relation to that video's actual 8654-frame duration. Every other
+  // MZ.* attribute in this same template (PreviewRenderingClassID, EditingModeGUID,
+  // etc.) is likewise a hardcoded Premiere timeline-panel constant, not derived
+  // from the video, so this is kept as a fixed value to match. ponytail: only
+  // one real Frame.io sample was available to verify this against — if a second
+  // export at a different duration/fps ever contradicts it, replace with the
+  // correct per-video formula.
+  private readonly WORK_OUT_POINT = '4612930560000';
+  private readonly VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
   constructor(
     private commentsService: CommentsService,
+    private annotationsService: AnnotationsService,
     private videosService: VideosService,
     private projectsService: ProjectsService,
   ) {}
@@ -24,12 +40,11 @@ export class ExportService {
    */
   async exportXml(videoId: string): Promise<string> {
     const video = await this.videosService.findOne(videoId);
-    const comments = await this.commentsService.findByVideo(videoId);
+    const { items: comments } = await this.commentsService.findByVideo(videoId);
 
     const sequenceUuid = uuidv4();
     const totalFrames = Math.floor(video.duration * video.fps);
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}-${now.getMinutes().toString().padStart(2,'0')}-${now.getSeconds().toString().padStart(2,'0')}`;
+    const dateStr = this.formatXmlDateStr(new Date());
 
     // Build markers XML
     const markersXml = comments.map(c => {
@@ -49,14 +64,14 @@ export class ExportService {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xmeml>
 <xmeml version="4">
-  <sequence id="sequence" TL.SQAudioVisibleBase="0" TL.SQVideoVisibleBase="0" TL.SQVisibleBaseTime="0" TL.SQAVDividerPosition="0.5" TL.SQHideShyTracks="0" TL.SQHeaderWidth="292" Monitor.ProgramZoomOut="0" Monitor.ProgramZoomIn="0" TL.SQTimePerPixel="0.19999999999999998" MZ.EditLine="0" MZ.Sequence.PreviewFrameSizeHeight="${video.height}" MZ.Sequence.PreviewFrameSizeWidth="${video.width}" MZ.Sequence.AudioTimeDisplayFormat="200" MZ.Sequence.PreviewRenderingClassID="1061109567" MZ.Sequence.PreviewRenderingPresetCodec="1634755439" MZ.Sequence.PreviewRenderingPresetPath="EncoderPresets/SequencePreview/795454d9-d3c2-429d-9474-923ab13b7018/QuickTime.epr" MZ.Sequence.PreviewUseMaxRenderQuality="false" MZ.Sequence.PreviewUseMaxBitDepth="false" MZ.Sequence.EditingModeGUID="795454d9-d3c2-429d-9474-923ab13b7018" MZ.Sequence.VideoTimeDisplayFormat="101" MZ.WorkOutPoint="${totalFrames * 40000}" MZ.WorkInPoint="0" explodedTracks="true">
+  <sequence id="sequence" TL.SQAudioVisibleBase="0" TL.SQVideoVisibleBase="0" TL.SQVisibleBaseTime="0" TL.SQAVDividerPosition="0.5" TL.SQHideShyTracks="0" TL.SQHeaderWidth="292" Monitor.ProgramZoomOut="0" Monitor.ProgramZoomIn="0" TL.SQTimePerPixel="0.19999999999999998" MZ.EditLine="0" MZ.Sequence.PreviewFrameSizeHeight="${video.height}" MZ.Sequence.PreviewFrameSizeWidth="${video.width}" MZ.Sequence.AudioTimeDisplayFormat="200" MZ.Sequence.PreviewRenderingClassID="1061109567" MZ.Sequence.PreviewRenderingPresetCodec="1634755439" MZ.Sequence.PreviewRenderingPresetPath="EncoderPresets/SequencePreview/795454d9-d3c2-429d-9474-923ab13b7018/QuickTime.epr" MZ.Sequence.PreviewUseMaxRenderQuality="false" MZ.Sequence.PreviewUseMaxBitDepth="false" MZ.Sequence.EditingModeGUID="795454d9-d3c2-429d-9474-923ab13b7018" MZ.Sequence.VideoTimeDisplayFormat="101" MZ.WorkOutPoint="${this.WORK_OUT_POINT}" MZ.WorkInPoint="0" explodedTracks="true">
     <uuid>${sequenceUuid}</uuid>
     <duration>${totalFrames}</duration>
     <rate>
       <timebase>${Math.floor(video.fps)}</timebase>
       <ntsc>FALSE</ntsc>
     </rate>
-    <name>${this.escapeXml(video.title)} ${dateStr}</name>
+    <name>${this.escapeXml(video.originalFilename)} ${dateStr}</name>
     <media>
       <video>
         <format>
@@ -277,11 +292,25 @@ ${markersXml}
   }
 
   /**
-   * Export PDF - Frame.io style với screenshots
+   * Export PDF - matches the layout of a real Frame.io "print comments" export:
+   * plain white browser-print header/footer, video poster + project name +
+   * filename + exporter, "Sorted by timecode" row, then one row per comment
+   * with a frame thumbnail on the left and avatar/name/date/#N/timecode-badge
+   * on the right.
    */
-  async exportPdf(videoId: string): Promise<Buffer> {
+  async exportPdf(videoId: string, requestingUser: { userId: string; email?: string; username?: string }): Promise<Buffer> {
     const video = await this.videosService.findOne(videoId);
-    const comments = await this.commentsService.findByVideo(videoId);
+    const { items: comments } = await this.commentsService.findByVideo(videoId);
+    const annotations = await this.annotationsService.findByVideo(videoId);
+    const project = await this.projectsService.findOne(video.projectId, requestingUser.userId);
+    const printUuid = await this.videosService.ensurePrintUuid(videoId);
+
+    const annotationsByComment = new Map<string, Annotation[]>();
+    for (const annotation of annotations) {
+      const list = annotationsByComment.get(annotation.commentId) || [];
+      list.push(annotation);
+      annotationsByComment.set(annotation.commentId, list);
+    }
 
     // Create temp dir for screenshots
     const tempDir = path.join(process.cwd(), 'uploads', 'temp', videoId);
@@ -291,11 +320,11 @@ ${markersXml}
 
     // Capture screenshots for each comment
     const screenshots: Array<{ comment: any; screenshotPath: string }> = [];
-    
+
     for (let i = 0; i < comments.length; i++) {
       const comment = comments[i];
       const screenshotPath = path.join(tempDir, `frame_${i}.jpg`);
-      
+
       try {
         await this.captureScreenshot(video.filePath, comment.timestamp, screenshotPath);
         screenshots.push({ comment, screenshotPath });
@@ -305,29 +334,45 @@ ${markersXml}
       }
     }
 
-    // Generate HTML for PDF
-    const now = new Date().toLocaleString('vi-VN');
-    const totalFrames = Math.floor(video.duration * video.fps);
+    const exportedAt = new Date();
+    const posterPath = path.join(process.cwd(), 'uploads', 'thumbnails', `${videoId}.jpg`);
+    const posterBase64 = fs.existsSync(posterPath)
+      ? `data:image/jpeg;base64,${fs.readFileSync(posterPath).toString('base64')}`
+      : '';
+    const exporterName = requestingUser.username || requestingUser.email || 'Unknown';
+    const pageTitle = `${video.originalFilename} - Frame.io`;
+    const permalinkUrl = `https://next.frame.io/print/comments/${printUuid}`;
 
     const commentsHtml = screenshots.map((s, i) => {
       const c = s.comment;
-      const frame = Math.floor(c.timestamp * video.fps);
       const timecode = this.formatTimecode(c.timestamp, video.fps);
       const screenshotBase64 = s.screenshotPath && fs.existsSync(s.screenshotPath)
         ? `data:image/jpeg;base64,${fs.readFileSync(s.screenshotPath).toString('base64')}`
         : '';
+      const annotationOverlay = this.buildAnnotationOverlaySvg(annotationsByComment.get(c.id) || []);
+      const authorName = c.user?.name || 'Unknown';
+      const postedAt = `${this.formatShortDate(c.createdAt)} at ${this.formatShortTime(c.createdAt)}`;
 
       return `
-        <div class="comment-block">
-          <div class="comment-header">
-            <div class="comment-number">#${i + 1}</div>
-            <div class="comment-meta">
-              <span class="comment-user">${this.escapeHtml(c.user?.name || 'Unknown')}</span>
-              <span class="comment-time">${timecode} | Frame ${frame}</span>
+        <div class="comment-row">
+          ${screenshotBase64 ? `
+          <div class="comment-thumb" style="aspect-ratio:${video.width || 16}/${video.height || 9}">
+            <img src="${screenshotBase64}" />${annotationOverlay}
+          </div>` : ''}
+          <div class="comment-body">
+            <div class="comment-row-header">
+              <div class="comment-author">
+                <span class="avatar">${this.escapeHtml(this.getInitials(authorName))}</span>
+                <span class="author-name">${this.escapeHtml(authorName)}</span>
+                <span class="posted-at">${this.escapeHtml(postedAt)}</span>
+              </div>
+              <div class="comment-number">#${c.sequenceNumber ?? i + 1} <span class="globe-icon">&#127760;</span></div>
+            </div>
+            <div class="comment-text">
+              <span class="timecode-badge">${timecode}</span>
+              <span>${this.escapeHtml(c.content)}</span>
             </div>
           </div>
-          ${screenshotBase64 ? `<div class="screenshot"><img src="${screenshotBase64}" /></div>` : ''}
-          <div class="comment-content">${this.escapeHtml(c.content)}</div>
         </div>`;
     }).join('');
 
@@ -335,142 +380,73 @@ ${markersXml}
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>${this.escapeHtml(pageTitle)}</title>
   <style>
     @page { size: A4; margin: 15mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; line-height: 1.5; }
-    
-    .header {
-      background: #1a1a2e;
-      color: white;
-      padding: 24px 30px;
-      border-radius: 8px;
-      margin-bottom: 20px;
+
+    .video-info { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .video-info .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; background: #000; flex-shrink: 0; }
+    .video-meta { flex: 1; min-width: 0; }
+    .project-name { font-size: 12px; color: #666; }
+    .video-title { font-size: 18px; font-weight: 700; }
+    .export-meta { text-align: right; font-size: 12px; color: #666; flex-shrink: 0; }
+
+    .divider { border: none; border-top: 1px solid #e0e0e0; margin: 12px 0; }
+    .sort-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #2563eb; margin-bottom: 16px; }
+
+    .comment-row {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .header-left h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
-    .header-left p { font-size: 13px; opacity: 0.8; }
-    .header-right { text-align: right; font-size: 12px; opacity: 0.7; }
-    
-    .info-bar {
-      display: flex;
-      gap: 20px;
-      padding: 12px 20px;
-      background: #f5f5f5;
-      border-radius: 6px;
-      margin-bottom: 20px;
-      font-size: 12px;
-    }
-    .info-item { display: flex; gap: 6px; }
-    .info-label { color: #666; }
-    .info-value { font-weight: 600; color: #1a1a1a; }
-    
-    .comment-block {
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      overflow: hidden;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid #eee;
       page-break-inside: avoid;
     }
-    .comment-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 16px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    .comment-number {
-      background: #0ea5e9;
-      color: white;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .comment-meta { display: flex; flex-direction: column; }
-    .comment-user { font-weight: 600; font-size: 13px; }
-    .comment-time { font-size: 11px; color: #666; }
-    
-    .screenshot {
+    .comment-thumb {
+      position: relative;
+      width: 220px;
+      flex-shrink: 0;
       background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      max-height: 300px;
       overflow: hidden;
+      border-radius: 4px;
     }
-    .screenshot img {
-      width: 100%;
-      max-height: 300px;
-      object-fit: contain;
+    .comment-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .annotation-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .comment-author { display: flex; align-items: center; gap: 6px; }
+    .avatar {
+      width: 20px; height: 20px; border-radius: 50%; background: #3b82f6; color: #fff;
+      font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center;
     }
-    
-    .comment-content {
-      padding: 12px 16px;
-      font-size: 14px;
-      color: #333;
+    .author-name { font-weight: 700; font-size: 13px; }
+    .posted-at { font-size: 12px; color: #666; }
+    .comment-number { font-size: 11px; color: #999; display: flex; align-items: center; gap: 4px; }
+    .comment-text { font-size: 13px; color: #1a1a1a; }
+    .timecode-badge {
+      background: #fde047; padding: 1px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; margin-right: 6px;
     }
-    
-    .footer {
-      margin-top: 20px;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
-      text-align: center;
-      font-size: 11px;
-      color: #999;
-    }
-    
-    .no-comments {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-      font-style: italic;
-    }
+
+    .no-comments { text-align: center; padding: 40px; color: #999; font-style: italic; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-left">
-      <h1>${this.escapeHtml(video.title)}</h1>
-      <p>Video Review Report</p>
+  <div class="video-info">
+    ${posterBase64 ? `<img class="thumb" src="${posterBase64}" />` : ''}
+    <div class="video-meta">
+      <div class="project-name">${this.escapeHtml(project.name)}</div>
+      <div class="video-title">${this.escapeHtml(video.originalFilename)}</div>
     </div>
-    <div class="header-right">
-      <div>Exported: ${now}</div>
-      <div>${comments.length} comment${comments.length !== 1 ? 's' : ''}</div>
-    </div>
-  </div>
-  
-  <div class="info-bar">
-    <div class="info-item">
-      <span class="info-label">Duration:</span>
-      <span class="info-value">${this.formatDuration(video.duration)}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Resolution:</span>
-      <span class="info-value">${video.width}x${video.height}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">FPS:</span>
-      <span class="info-value">${video.fps}</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">Frames:</span>
-      <span class="info-value">${totalFrames}</span>
+    <div class="export-meta">
+      <div>${this.escapeHtml(exporterName)}, ${this.formatShortDate(exportedAt)}</div>
     </div>
   </div>
-  
+  <hr class="divider" />
+  <div class="sort-row">&#8801; Sorted by timecode</div>
+
   ${comments.length === 0 ? '<div class="no-comments">No comments yet</div>' : commentsHtml}
-  
-  <div class="footer">
-    Generated by Frame.io Clone | ${now}
-  </div>
 </body>
 </html>`;
 
@@ -482,22 +458,37 @@ ${markersXml}
       });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle0' });
-      
+
+      const headerTemplate = `
+        <div style="font-size:9px; width:100%; padding:0 15mm; display:flex; justify-content:space-between; color:#5f6368; font-family:sans-serif;">
+          <span>${this.escapeHtml(this.formatShortDate(exportedAt))}, ${this.escapeHtml(this.formatShortTime(exportedAt))}</span>
+          <span>${this.escapeHtml(pageTitle)}</span>
+          <span></span>
+        </div>`;
+      const footerTemplate = `
+        <div style="font-size:9px; width:100%; padding:0 15mm; display:flex; justify-content:space-between; color:#5f6368; font-family:sans-serif;">
+          <span>${this.escapeHtml(permalinkUrl)}</span>
+          <span><span class="pageNumber"></span>/<span class="totalPages"></span></span>
+        </div>`;
+
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
+        margin: { top: '20mm', right: '12mm', bottom: '18mm', left: '12mm' },
       });
 
       await browser.close();
-      
+
       // Cleanup temp screenshots
       try {
         fs.rmSync(tempDir, { recursive: true, force: true });
       } catch (e) {
         // ignore cleanup errors
       }
-      
+
       return Buffer.from(pdfBuffer);
     } catch (error: any) {
       this.logger.error(`PDF generation failed: ${error.message}`);
@@ -509,11 +500,115 @@ ${markersXml}
     }
   }
 
+  /**
+   * Renders drawn annotations (freehand/highlight strokes, rectangles, text)
+   * as an SVG overlay sized to match the screenshot exactly, so coordinates
+   * stored as 0-1 fractions of the drawing canvas line up with a 0-1 viewBox
+   * regardless of pixel size.
+   * ponytail: annotation points are recorded against the on-screen video pane,
+   * which can letterbox relative to the video's native aspect ratio — this
+   * overlay assumes no letterbox offset. Revisit once the annotation-recording
+   * pipeline tracks the actual video content box instead of the full pane.
+   */
+  private buildAnnotationOverlaySvg(annotations: Annotation[]): string {
+    if (annotations.length === 0) {
+      return '';
+    }
+
+    const shapes = annotations
+      .map((annotation) => {
+        const data = annotation.data as {
+          color?: string;
+          points?: Array<{ x: number; y: number }>;
+          x?: number;
+          y?: number;
+          width?: number;
+          height?: number;
+          text?: string;
+        };
+        const color = data?.color && /^#[0-9a-fA-F]{6}$/.test(data.color) ? data.color : '#ff0000';
+
+        if (annotation.type === 'rectangle' && [data?.x, data?.y, data?.width, data?.height].every((v) => typeof v === 'number')) {
+          return `<rect x="${data.x}" y="${data.y}" width="${data.width}" height="${data.height}" fill="none" stroke="${color}" stroke-width="3" vector-effect="non-scaling-stroke" />`;
+        }
+
+        if (annotation.type === 'text' && typeof data?.text === 'string' && data.text.trim() && typeof data?.x === 'number' && typeof data?.y === 'number') {
+          return `<text x="${data.x}" y="${data.y}" fill="${color}" font-size="0.035" font-family="sans-serif">${this.escapeHtml(data.text)}</text>`;
+        }
+
+        const points = Array.isArray(data?.points) ? data.points : [];
+        if (points.length < 2) {
+          return '';
+        }
+        const isHighlight = annotation.type === 'highlight';
+        const strokeWidth = isHighlight ? 14 : 3;
+        const opacity = isHighlight ? 0.35 : 1;
+        const pointsAttr = points.map((p) => `${p.x},${p.y}`).join(' ');
+        return `<polyline points="${pointsAttr}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}" vector-effect="non-scaling-stroke" />`;
+      })
+      .join('');
+
+    if (!shapes) {
+      return '';
+    }
+
+    return `<svg class="annotation-overlay" viewBox="0 0 1 1" preserveAspectRatio="none">${shapes}</svg>`;
+  }
+
+  /** "YYYY-M-D HH-MM-SS" in Vietnam time — month/day unpadded, time padded, matching the reference export exactly. */
+  private formatXmlDateStr(date: Date): string {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.VN_TIMEZONE,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '0';
+    const pad = (v: string) => (v === '24' ? '00' : v.padStart(2, '0'));
+    return `${get('year')}-${get('month')}-${get('day')} ${pad(get('hour'))}-${pad(get('minute'))}-${pad(get('second'))}`;
+  }
+
+  /** "M/D/YY" in Vietnam time, matching the reference PDF's date format. */
+  private formatShortDate(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: this.VN_TIMEZONE,
+      year: '2-digit',
+      month: 'numeric',
+      day: 'numeric',
+    }).format(date);
+  }
+
+  /** "H:MM AM/PM" in Vietnam time, matching the reference PDF's time format. */
+  private formatShortTime(date: Date): string {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: this.VN_TIMEZONE,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date);
+  }
+
+  private getInitials(name: string): string {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || '?';
+  }
+
   private escapeXml(text: string): string {
     return text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   private escapeHtml(text: string): string {
@@ -525,12 +620,6 @@ ${markersXml}
       "'": '&#039;',
     };
     return text.replace(/[&<>"']/g, (m) => map[m]);
-  }
-
-  private formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   private formatTimecode(seconds: number, fps: number): string {

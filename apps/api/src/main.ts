@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -11,6 +12,9 @@ async function bootstrap() {
     origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     credentials: true,
   });
+
+  // Needed to read the httpOnly refresh-token cookie on /auth/refresh and /auth/logout
+  app.use(cookieParser());
 
   // Global validation pipe
   app.useGlobalPipes(

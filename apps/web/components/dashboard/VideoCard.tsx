@@ -1,16 +1,34 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Film, Trash2, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui/DropdownMenu';
+import { Film, Trash2, CheckCircle, AlertCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
-import type { Video } from '@fr-clone/shared';
+import type { Video, Folder } from '@fr-clone/shared';
 
 interface VideoCardProps {
   video: Video;
+  folders?: Folder[];
   onClick?: () => void;
   onDelete?: () => void;
+  onRename?: (newTitle: string) => void;
+  onMove?: (folderId: string | null) => void;
+  onUploadVersion?: (file: File) => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick, onDelete }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onClick, onDelete, onRename, onMove, onUploadVersion }) => {
+  const [renaming, setRenaming] = useState(false);
+  const [titleInput, setTitleInput] = useState(video.title);
+  const versionInputRef = useRef<HTMLInputElement>(null);
+
   const getStatusBadge = () => {
     switch (video.status) {
       case 'processing':
@@ -38,8 +56,15 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick, onDelete }
     }
   };
 
+  const submitRename = () => {
+    if (titleInput.trim() && titleInput.trim() !== video.title) {
+      onRename?.(titleInput.trim());
+    }
+    setRenaming(false);
+  };
+
   return (
-    <Card hover onClick={onClick} className="group overflow-hidden">
+    <Card hover onClick={renaming ? undefined : onClick} className="group overflow-hidden relative">
       <div className="relative aspect-video bg-bg-tertiary overflow-hidden flex items-center justify-center">
         {video.status === 'processing' || video.status === 'uploading' ? (
           <div className="text-center">
@@ -49,24 +74,102 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick, onDelete }
         ) : (
           <Film className="w-12 h-12 text-text-muted" />
         )}
-        <div className="absolute top-2 left-2">{getStatusBadge()}</div>
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-black/60 hover:bg-black/80 rounded transition-all"
-          >
-            <Trash2 className="w-4 h-4 text-white" />
-          </button>
+        <div className="absolute top-2 left-2 flex items-center gap-1">
+          {getStatusBadge()}
+          {video.versionNumber > 1 && (
+            <span className="px-2 py-1 bg-black/60 text-white rounded-full text-xs">v{video.versionNumber}</span>
+          )}
+        </div>
+
+        {(onRename || onDelete || onMove || onUploadVersion) && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Tùy chọn video"
+                  className="p-1.5 bg-black/60 hover:bg-black/80 rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                >
+                  <MoreVertical className="w-4 h-4 text-white" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {onRename && (
+                  <DropdownMenuItem onSelect={() => setRenaming(true)}>
+                    <Edit2 className="w-3.5 h-3.5" /> Đổi tên
+                  </DropdownMenuItem>
+                )}
+                {onMove && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <FolderInput className="w-3.5 h-3.5" /> Di chuyển đến...
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-48 overflow-y-auto">
+                      <DropdownMenuItem onSelect={() => onMove(null)}>
+                        (Thư mục gốc)
+                      </DropdownMenuItem>
+                      {folders.map((f) => (
+                        <DropdownMenuItem key={f.id} onSelect={() => onMove(f.id)}>
+                          {f.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+                {onUploadVersion && (
+                  <DropdownMenuItem onSelect={() => versionInputRef.current?.click()}>
+                    <UploadCloud className="w-3.5 h-3.5" /> Tải lên phiên bản mới
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="danger" onSelect={onDelete}>
+                      <Trash2 className="w-3.5 h-3.5" /> Xóa
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {onUploadVersion && (
+              <input
+                ref={versionInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUploadVersion(file);
+                  e.target.value = '';
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
 
       <div className="p-4">
-        <h3 className="font-semibold text-text-primary truncate group-hover:text-accent-blue transition-colors">
-          {video.title}
-        </h3>
+        {renaming ? (
+          <input
+            autoFocus
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={submitRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitRename();
+              if (e.key === 'Escape') {
+                setTitleInput(video.title);
+                setRenaming(false);
+              }
+            }}
+            className="w-full px-2 py-1 text-sm bg-bg-tertiary border border-primary rounded"
+          />
+        ) : (
+          <h3 className="font-semibold text-text-primary truncate group-hover:text-accent-blue transition-colors">
+            {video.title}
+          </h3>
+        )}
         <div className="flex items-center gap-3 mt-1 text-sm text-text-muted">
           <span>{formatFileSize(video.fileSize)}</span>
           <span>•</span>

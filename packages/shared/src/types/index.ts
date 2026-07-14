@@ -58,6 +58,12 @@ export interface UpdateProjectDto {
 export interface Video {
   id: string;
   projectId: string;
+  folderId?: string | null;
+  // Every version of the same uploaded asset shares one assetGroupId.
+  assetGroupId: string;
+  versionNumber: number;
+  versionLabel?: string | null;
+  deletedAt?: string | null;
   title: string;
   originalFilename: string;
   filePath: string;
@@ -72,6 +78,14 @@ export interface Video {
   project?: Project;
   versions?: VideoVersion[];
   comments?: Comment[];
+}
+
+export interface Folder {
+  id: string;
+  projectId: string;
+  parentFolderId?: string | null;
+  name: string;
+  createdAt: Date;
 }
 
 export enum VideoStatus {
@@ -103,11 +117,49 @@ export interface Comment {
   frameNumber: number;
   positionX?: number;
   positionY?: number;
+  resolved: boolean;
+  resolvedBy?: string;
+  resolvedAt?: Date;
+  sequenceNumber?: number | null;
   createdAt: Date;
   updatedAt: Date;
   user?: User;
   replies?: Comment[];
+  reactions?: CommentReaction[];
   annotations?: Annotation[];
+}
+
+export interface CommentReaction {
+  id: string;
+  commentId: string;
+  userId: string;
+  emoji: string;
+  createdAt: Date;
+}
+
+export enum NotificationType {
+  MENTION = 'mention',
+  REPLY = 'reply',
+  RESOLVE = 'resolve',
+  REACTION = 'reaction',
+  PROJECT_INVITE = 'project_invite',
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  payload: {
+    actorId?: string;
+    actorName?: string;
+    commentId?: string;
+    parentCommentId?: string;
+    videoId?: string;
+    projectId?: string;
+    content?: string;
+  };
+  read: boolean;
+  createdAt: Date;
 }
 
 export interface CreateCommentDto {
@@ -132,22 +184,33 @@ export enum AnnotationType {
   DRAW = 'draw',
   HIGHLIGHT = 'highlight',
   TEXT = 'text',
-  SHAPE = 'shape',
+  RECTANGLE = 'rectangle',
 }
 
 // Project Member types
 export interface ProjectMember {
+  id: string;
   projectId: string;
-  userId: string;
+  userId?: string;
+  invitedEmail?: string;
   role: MemberRole;
-  joinedAt: Date;
+  status: MemberStatus;
+  inviteToken?: string;
+  invitedAt: Date;
+  joinedAt?: Date;
   user?: User;
 }
 
 export enum MemberRole {
   OWNER = 'owner',
+  ADMIN = 'admin',
   EDITOR = 'editor',
-  VIEWER = 'viewer',
+  REVIEWER = 'reviewer',
+}
+
+export enum MemberStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
 }
 
 // Upload types

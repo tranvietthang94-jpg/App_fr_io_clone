@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { projectsApi } from "@/lib/api";
 import { ProjectCard } from "@/components/dashboard/ProjectCard";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/Dialog";
+import { AlertDialog } from "@/components/ui/AlertDialog";
 import { Plus, Folder } from "lucide-react";
 import type { Project } from "@fr-clone/shared";
 
@@ -14,6 +19,7 @@ export default function ProjectsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDesc, setNewProjectDesc] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -48,21 +54,34 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xóa dự án này?")) return;
-
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
     try {
-      await projectsApi.delete(id);
-      setProjects(projects.filter((p) => p.id !== id));
+      await projectsApi.delete(projectToDelete);
+      setProjects((prev) => prev.filter((p) => p.id !== projectToDelete));
     } catch (err) {
       console.error("Failed to delete project:", err);
+    } finally {
+      setProjectToDelete(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-text-secondary">Đang tải...</div>
+      <div className="p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold">Dự án</h1>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card p-6 space-y-4">
+              <Skeleton className="h-12 w-12 rounded-lg" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -71,13 +90,9 @@ export default function ProjectsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Dự án</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Tạo dự án mới</span>
-        </button>
+        <Button onClick={() => setShowCreateModal(true)} icon={<Plus className="w-5 h-5" />}>
+          Tạo dự án mới
+        </Button>
       </div>
 
       {projects.length === 0 ? (
@@ -87,12 +102,9 @@ export default function ProjectsPage() {
           <p className="text-text-secondary mb-6">
             Tạo dự án đầu tiên để bắt đầu review video
           </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-          >
+          <Button size="lg" onClick={() => setShowCreateModal(true)}>
             Tạo dự án mới
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -101,62 +113,56 @@ export default function ProjectsPage() {
               key={project.id}
               project={project}
               onClick={() => router.push(`/projects/${project.id}`)}
-              onDelete={() => handleDeleteProject(project.id)}
+              onDelete={() => setProjectToDelete(project.id)}
             />
           ))}
         </div>
       )}
 
-      {/* Create Project Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-secondary border border-border rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Tạo dự án mới</h2>
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Tên dự án
-                </label>
-                <input
-                  type="text"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Nhập tên dự án"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Mô tả (tùy chọn)
-                </label>
-                <textarea
-                  value={newProjectDesc}
-                  onChange={(e) => setNewProjectDesc(e.target.value)}
-                  className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  placeholder="Mô tả dự án"
-                  rows={3}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 bg-bg-tertiary hover:bg-bg-hover rounded-md transition-colors"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-                >
-                  Tạo
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo dự án mới</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateProject} className="space-y-4">
+            <Input
+              label="Tên dự án"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="Nhập tên dự án"
+              autoFocus
+            />
+            <div>
+              <label className="block text-sm font-medium mb-2 text-text-secondary">
+                Mô tả (tùy chọn)
+              </label>
+              <textarea
+                value={newProjectDesc}
+                onChange={(e) => setNewProjectDesc(e.target.value)}
+                className="input resize-none"
+                placeholder="Mô tả dự án"
+                rows={3}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>
+                Hủy
+              </Button>
+              <Button type="submit">Tạo</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!projectToDelete}
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        title="Xóa dự án"
+        description="Bạn có chắc muốn xóa dự án này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        variant="danger"
+        onConfirm={confirmDeleteProject}
+      />
     </div>
   );
 }

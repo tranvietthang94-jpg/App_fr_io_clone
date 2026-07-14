@@ -35,6 +35,9 @@ docker/volumes/
 # Turbo
 .turbo/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Temp files
 tmp/
 temp/

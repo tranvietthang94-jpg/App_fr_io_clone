@@ -115,6 +115,14 @@ class SocketService {
   sendVideoPause(videoId: string, timestamp: number) {
     this.emit('video:pause', { videoId, timestamp });
   }
+
+  sendCommentResolved(videoId: string, commentId: string, resolved: boolean) {
+    this.emit('comment:resolved', { videoId, commentId, resolved });
+  }
+
+  sendCommentReaction(videoId: string, commentId: string) {
+    this.emit('comment:reaction', { videoId, commentId });
+  }
 }
 
 export const socketService = new SocketService();

@@ -17,9 +17,12 @@ export class User {
   @Column({ nullable: true })
   avatarUrl: string;
 
-  @CreateDateColumn()
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  googleId: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

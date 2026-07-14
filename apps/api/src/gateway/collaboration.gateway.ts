@@ -62,6 +62,10 @@ export class CollaborationGateway
       this.userSockets.set(client.id, userData);
       client.data = userData;
 
+      // Personal room for server-initiated pushes (notifications) that
+      // aren't tied to any particular video room.
+      client.join(`user:${userData.userId}`);
+
       this.logger.log(`Client connected: ${client.id} (${userData.username})`);
     } catch (error) {
       this.logger.error('Authentication failed:', error);
@@ -254,5 +258,44 @@ export class CollaborationGateway
       username: userData.username,
       timestamp: data.timestamp,
     });
+  }
+
+  @SubscribeMessage('comment:resolved')
+  handleCommentResolved(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { videoId: string; commentId: string; resolved: boolean },
+  ) {
+    const userData = this.userSockets.get(client.id);
+    if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
+
+    client.to(room).emit('comment:resolved', {
+      commentId: data.commentId,
+      resolved: data.resolved,
+      userId: userData.userId,
+    });
+  }
+
+  @SubscribeMessage('comment:reaction')
+  handleCommentReaction(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { videoId: string; commentId: string },
+  ) {
+    const userData = this.userSockets.get(client.id);
+    if (!userData) return;
+    const room = this.roomFor(userData, data.videoId);
+    if (!room) return;
+
+    // Payload-light: clients just refetch that comment's reactions on receipt.
+    client.to(room).emit('comment:reaction', {
+      commentId: data.commentId,
+      userId: userData.userId,
+    });
+  }
+
+  /** Server-initiated push (e.g. from NotificationsService) to a specific user's personal room. */
+  emitToUser(userId: string, event: string, payload: unknown) {
+    this.server.to(`user:${userId}`).emit(event, payload);
   }
 }
