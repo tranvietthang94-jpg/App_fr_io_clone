@@ -11,6 +11,8 @@ import {
   Minimize,
   SkipBack,
   SkipForward,
+  Rewind,
+  FastForward,
 } from 'lucide-react';
 
 interface ControlButtonProps extends React.ComponentPropsWithoutRef<typeof Button> {
@@ -215,6 +217,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     handleSeek(Math.max(0, Math.min(newTime, duration)));
   };
 
+  const skipSeconds = (seconds: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    handleSeek(Math.max(0, Math.min(video.currentTime + seconds, duration)));
+  };
+
   // Only active while the player itself has focus, so Space/Arrow keys don't
   // hijack typing in the comment box or other controls elsewhere on the page.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -223,10 +231,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       togglePlay();
     } else if (e.code === 'ArrowLeft') {
       e.preventDefault();
-      frameStep('backward');
+      if (e.shiftKey) skipSeconds(-5);
+      else frameStep('backward');
     } else if (e.code === 'ArrowRight') {
       e.preventDefault();
-      frameStep('forward');
+      if (e.shiftKey) skipSeconds(5);
+      else frameStep('forward');
     }
   };
 
@@ -280,12 +290,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </ControlButton>
 
+            {/* Skip 5s */}
+            <ControlButton label="Lùi 5 giây" onClick={() => skipSeconds(-5)}>
+              <Rewind className="w-4 h-4" />
+            </ControlButton>
+
             {/* Frame Step */}
             <ControlButton label="Lùi 1 khung hình" onClick={() => frameStep('backward')}>
               <SkipBack className="w-4 h-4" />
             </ControlButton>
             <ControlButton label="Tiến 1 khung hình" onClick={() => frameStep('forward')}>
               <SkipForward className="w-4 h-4" />
+            </ControlButton>
+
+            {/* Skip 5s */}
+            <ControlButton label="Tiến 5 giây" onClick={() => skipSeconds(5)}>
+              <FastForward className="w-4 h-4" />
             </ControlButton>
 
             {/* Volume */}

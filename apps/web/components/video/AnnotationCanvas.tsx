@@ -45,6 +45,11 @@ export function AnnotationCanvas({
   const [rectStart, setRectStart] = useState<Point | null>(null);
   const [textInputPos, setTextInputPos] = useState<Point | null>(null);
   const [textValue, setTextValue] = useState("");
+  // Strokes drawn in the current session that haven't been attached to a
+  // comment yet (no `id`, not in `savedAnnotations`). Tracked separately so
+  // the eraser can undo them locally without an API call, and so they don't
+  // vanish when redrawAll() repaints (e.g. while dragging a rectangle preview).
+  const [pendingStrokes, setPendingStrokes] = useState<SavedAnnotation[]>([]);
 
   const drawAnnotationShape = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, annotation: SavedAnnotation) => {
     ctx.strokeStyle = annotation.color;
@@ -81,18 +86,18 @@ export function AnnotationCanvas({
     ctx.globalAlpha = 1;
   };
 
-  const redrawSaved = () => {
+  const redrawAll = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const annotation of savedAnnotations) {
+    for (const annotation of [...savedAnnotations, ...pendingStrokes]) {
       drawAnnotationShape(ctx, canvas, annotation);
     }
   };
 
   const drawRectPreview = (start: Point, current: Point) => {
-    redrawSaved();
+    redrawAll();
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!ctx || !canvas) return;
@@ -115,12 +120,20 @@ export function AnnotationCanvas({
     canvas.width = rect.width;
     canvas.height = rect.height;
 
-    redrawSaved();
+    redrawAll();
   }, []);
 
   useEffect(() => {
-    redrawSaved();
-  }, [savedAnnotations]);
+    redrawAll();
+  }, [savedAnnotations, pendingStrokes]);
+
+  // Entering/leaving annotation mode starts a fresh undo session — strokes
+  // from a prior session are by then either persisted (now in savedAnnotations)
+  // or abandoned (existing behavior: unsaved strokes are lost if you toggle
+  // draw mode off without submitting a comment).
+  useEffect(() => {
+    setPendingStrokes([]);
+  }, [isActive]);
 
   const getCoords = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -187,19 +200,23 @@ export function AnnotationCanvas({
       const height = Math.abs(current.y - rectStart.y) / canvas.height;
       setRectStart(null);
       if (width > 0.01 && height > 0.01) {
-        onAnnotationComplete({ type: "rectangle", color, x, y, width, height });
+        const stroke: SavedAnnotation = { type: "rectangle", color, x, y, width, height };
+        setPendingStrokes((prev) => [...prev, stroke]);
+        onAnnotationComplete(stroke);
       } else {
-        redrawSaved();
+        redrawAll();
       }
       return;
     }
 
     if (points.length > 1 && currentTool) {
-      onAnnotationComplete({
+      const stroke: SavedAnnotation = {
         type: currentTool,
         color,
         points: points.map((p) => ({ x: p.x / canvas.width, y: p.y / canvas.height })),
-      });
+      };
+      setPendingStrokes((prev) => [...prev, stroke]);
+      onAnnotationComplete(stroke);
     }
     setPoints([]);
   };
@@ -207,19 +224,27 @@ export function AnnotationCanvas({
   const commitText = () => {
     const canvas = canvasRef.current;
     if (textValue.trim() && textInputPos && canvas) {
-      onAnnotationComplete({
+      const stroke: SavedAnnotation = {
         type: "text",
         color,
         x: textInputPos.x / canvas.width,
         y: textInputPos.y / canvas.height,
         text: textValue.trim(),
-      });
+      };
+      setPendingStrokes((prev) => [...prev, stroke]);
+      onAnnotationComplete(stroke);
     }
     setTextInputPos(null);
     setTextValue("");
   };
 
+  // Undo the most recent stroke of the current session first (local-only,
+  // no API call) before falling back to deleting an already-saved one.
   const eraseLast = () => {
+    if (pendingStrokes.length > 0) {
+      setPendingStrokes((prev) => prev.slice(0, -1));
+      return;
+    }
     const last = savedAnnotations[savedAnnotations.length - 1];
     if (last?.id) onDeleteAnnotation?.(last.id);
   };
@@ -262,7 +287,7 @@ export function AnnotationCanvas({
           />
           <button
             onClick={eraseLast}
-            disabled={savedAnnotations.length === 0}
+            disabled={savedAnnotations.length === 0 && pendingStrokes.length === 0}
             aria-label="Xóa nét gần nhất"
             className="p-2 text-white/70 hover:bg-white/10 rounded disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue"
             title="Xóa nét gần nhất"
