@@ -6,6 +6,11 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 class SocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, Set<(...args: any[]) => void>> = new Map();
+  // The video room to (re)join whenever the socket connects. joinVideo() is
+  // often called right after connect(), before the socket is actually up — the
+  // emit() guard would drop that join. Re-emitting on 'connect' makes room
+  // membership survive the cold-start race and any later reconnection.
+  private currentVideoId: string | null = null;
 
   connect() {
     const token = useAuthStore.getState().accessToken;
@@ -44,6 +49,11 @@ class SocketService {
 
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket?.id);
+      // Rejoin the active video room — covers both the initial connect (when
+      // joinVideo was called pre-connection) and reconnects after a drop.
+      if (this.currentVideoId) {
+        this.socket?.emit('join:video', { videoId: this.currentVideoId });
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -97,10 +107,12 @@ class SocketService {
 
   // Collaboration methods
   joinVideo(videoId: string) {
+    this.currentVideoId = videoId;
     this.emit('join:video', { videoId });
   }
 
   leaveVideo() {
+    this.currentVideoId = null;
     this.emit('leave:video', {});
   }
 

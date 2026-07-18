@@ -51,6 +51,7 @@ export default function VideoReviewPage() {
 
   const [video, setVideo] = useState<Video | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [transcodeProgress, setTranscodeProgress] = useState<number | null>(null);
   const [versions, setVersions] = useState<Video[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -143,12 +144,24 @@ export default function VideoReviewPage() {
       setRemotePlayback({ action: 'pause', nonce: playbackNonceRef.current });
     };
 
+    // Live transcode progress pushed by the BullMQ worker. Refetch the video
+    // once it reports ready/failed so the player (or failure state) replaces
+    // the progress bar.
+    const handleTranscodeProgress = (data: { videoId: string; percent?: number; status?: string }) => {
+      if (data.videoId !== videoId) return;
+      if (typeof data.percent === 'number') setTranscodeProgress(data.percent);
+      if (data.status === 'ready' || data.status === 'failed') {
+        loadVideo();
+      }
+    };
+
     socketService.on('comment:new', handleNewComment);
     socketService.on('comment:resolved', handleRemoteResolved);
     socketService.on('comment:reaction', handleRemoteReaction);
     socketService.on('video:seek', handleRemoteSeek);
     socketService.on('video:play', handleRemotePlay);
     socketService.on('video:pause', handleRemotePause);
+    socketService.on('video:transcode-progress', handleTranscodeProgress);
 
     return () => {
       socketService.off('comment:new', handleNewComment);
@@ -157,6 +170,7 @@ export default function VideoReviewPage() {
       socketService.off('video:seek', handleRemoteSeek);
       socketService.off('video:play', handleRemotePlay);
       socketService.off('video:pause', handleRemotePause);
+      socketService.off('video:transcode-progress', handleTranscodeProgress);
       socketService.leaveVideo();
     };
   }, [videoId]);
@@ -598,11 +612,36 @@ export default function VideoReviewPage() {
                 onUserPlay={handleUserPlay}
                 onUserPause={handleUserPause}
               />
+            ) : video.status === "failed" ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center px-6">
+                  <p className="text-accent-red font-medium mb-1">Xử lý video thất bại</p>
+                  <p className="text-text-secondary text-sm">Vui lòng thử tải lên lại.</p>
+                </div>
+              </div>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
+                <div className="text-center w-64 max-w-[80%]">
                   <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-text-secondary">Video đang được xử lý...</p>
+                  <p className="text-text-secondary mb-3">Đang xử lý video...</p>
+                  {transcodeProgress !== null && (
+                    <>
+                      <div
+                        className="h-1.5 w-full bg-bg-tertiary rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={transcodeProgress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Tiến độ xử lý video"
+                      >
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${transcodeProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-text-secondary text-xs mt-2">{transcodeProgress}%</p>
+                    </>
+                  )}
                 </div>
               </div>
             )}
