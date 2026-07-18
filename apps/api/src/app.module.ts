@@ -9,6 +9,7 @@ import { CommentsModule } from './comments/comments.module';
 import { UploadModule } from './upload/upload.module';
 import { ExportModule } from './export/export.module';
 import { MediaModule } from './media/media.module';
+import { TranscodeModule } from './media/transcode.module';
 import { CollaborationModule } from './gateway/collaboration.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ShareLinksModule } from './share-links/share-links.module';
@@ -38,6 +39,7 @@ import { ShareLinksModule } from './share-links/share-links.module';
     UploadModule,
     ExportModule,
     MediaModule,
+    TranscodeModule,
     CollaborationModule,
     NotificationsModule,
     ShareLinksModule,

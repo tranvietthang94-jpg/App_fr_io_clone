@@ -336,4 +336,9 @@ export class CollaborationGateway
   emitToUser(userId: string, event: string, payload: unknown) {
     this.server.to(`user:${userId}`).emit(event, payload);
   }
+
+  /** Server-initiated push to everyone currently viewing a video (e.g. transcode progress). */
+  emitToVideo(videoId: string, event: string, payload: unknown) {
+    this.server.to(`video:${videoId}`).emit(event, payload);
+  }
 }

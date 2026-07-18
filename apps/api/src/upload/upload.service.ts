@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { VideosService } from '../videos/videos.service';
-import { MediaService } from '../media/media.service';
+import { TranscodeQueue } from '../media/transcode.queue';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
 
@@ -23,7 +23,7 @@ export class UploadService {
 
   constructor(
     private videosService: VideosService,
-    private mediaService: MediaService,
+    private transcodeQueue: TranscodeQueue,
     private projectsService: ProjectsService,
   ) {
     // Create upload directories if they don't exist
@@ -181,22 +181,11 @@ export class UploadService {
     // Cleanup chunks
     fs.rmSync(uploadChunkDir, { recursive: true, force: true });
 
-    // Trigger transcoding (async, don't wait)
-    this.transcodeVideo(video.id, finalPath).catch(err => {
-      this.logger.error(`Transcode failed: ${err.message}`);
-    });
+    // Hand off to the durable transcode queue instead of running ffmpeg inline.
+    // A crash mid-transcode now leaves a recoverable Redis job rather than a
+    // video stuck at `processing` forever.
+    await this.transcodeQueue.enqueue(video.id, finalPath);
 
     return video;
-  }
-
-  private async transcodeVideo(videoId: string, filePath: string) {
-    this.logger.log(`Starting transcode for video ${videoId}`);
-    try {
-      await this.mediaService.transcodeVideo(videoId, filePath);
-      this.logger.log(`Transcode completed for video ${videoId}`);
-    } catch (error: any) {
-      this.logger.error(`Transcode error: ${error.message}`);
-      await this.videosService.updateStatus(videoId, 'failed');
-    }
   }
 }

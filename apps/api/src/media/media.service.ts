@@ -87,43 +87,49 @@ export class MediaService {
   }
 
   /**
-   * Transcode video to multiple qualities
+   * Transcode video to multiple qualities.
+   *
+   * NOTE: this no longer marks the video `failed` on error — it rethrows so the
+   * BullMQ worker can retry, and the worker sets `failed` only after all
+   * attempts are exhausted. Callers must go through the transcode queue.
+   *
+   * @param onProgress optional 0..100 progress reporter (queue → socket).
    */
-  async transcodeVideo(videoId: string, inputPath: string): Promise<void> {
+  async transcodeVideo(
+    videoId: string,
+    inputPath: string,
+    onProgress?: (percent: number) => void,
+  ): Promise<void> {
     this.logger.log(`Starting transcode for video ${videoId}`);
 
-    try {
-      // Get video metadata first
-      const metadata = await this.getVideoMetadata(inputPath);
-      this.logger.log(`Video metadata: ${JSON.stringify(metadata)}`);
+    // Get video metadata first
+    const metadata = await this.getVideoMetadata(inputPath);
+    this.logger.log(`Video metadata: ${JSON.stringify(metadata)}`);
 
-      // Update video with metadata
-      await this.videosService.updateStatus(videoId, 'processing', {
-        duration: metadata.duration,
-        width: metadata.width,
-        height: metadata.height,
-        fps: metadata.fps,
-      });
+    // Update video with metadata
+    await this.videosService.updateStatus(videoId, 'processing', {
+      duration: metadata.duration,
+      width: metadata.width,
+      height: metadata.height,
+      fps: metadata.fps,
+    });
 
-      // Generate thumbnail
-      await this.generateThumbnail(inputPath, videoId);
+    // Generate thumbnail
+    await this.generateThumbnail(inputPath, videoId);
+    onProgress?.(5);
 
-      // Transcode to different qualities
-      const qualities = this.getQualitiesForVideo(metadata.height);
-      
-      for (const quality of qualities) {
-        await this.transcodeToQuality(inputPath, videoId, quality);
-      }
+    // Transcode to different qualities
+    const qualities = this.getQualitiesForVideo(metadata.height);
 
-      // Mark as ready
-      await this.videosService.updateStatus(videoId, 'ready');
-      this.logger.log(`Transcode completed for video ${videoId}`);
-
-    } catch (error: any) {
-      this.logger.error(`Transcode failed for video ${videoId}: ${error.message}`);
-      await this.videosService.updateStatus(videoId, 'failed');
-      throw error;
+    for (let i = 0; i < qualities.length; i++) {
+      await this.transcodeToQuality(inputPath, videoId, qualities[i]);
+      // Reserve the first 5% for thumbnail, spread the rest across qualities.
+      onProgress?.(Math.round(5 + ((i + 1) / qualities.length) * 95));
     }
+
+    // Mark as ready
+    await this.videosService.updateStatus(videoId, 'ready');
+    this.logger.log(`Transcode completed for video ${videoId}`);
   }
 
   /**
