@@ -50,6 +50,7 @@ export default function VideoReviewPage() {
   const projectId = params.projectId as string;
 
   const [video, setVideo] = useState<Video | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [versions, setVersions] = useState<Video[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -173,6 +174,27 @@ export default function VideoReviewPage() {
       })
       .catch((err: any) => console.error("Failed to load members:", err));
   }, [projectId]);
+
+  // Fetch a fresh, video-scoped stream token once the video is ready. Kept out
+  // of the render path so the API access token never lands in the <video> URL.
+  useEffect(() => {
+    if (video?.status !== "ready") {
+      setStreamUrl(null);
+      return;
+    }
+    let cancelled = false;
+    videosApi
+      .getStreamToken(videoId)
+      .then((res) => {
+        if (!cancelled) {
+          setStreamUrl(videosApi.getStreamUrl(videoId, "original", res.data.token));
+        }
+      })
+      .catch((err) => console.error("Failed to get stream token:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [video?.status, videoId]);
 
   const loadVideo = async () => {
     try {
@@ -565,9 +587,9 @@ export default function VideoReviewPage() {
         {/* Video player area */}
         <div className="flex-1 flex flex-col min-h-[240px] lg:min-h-0 lg:min-w-0">
           <div className="flex-1 relative bg-black">
-            {video.status === "ready" ? (
+            {video.status === "ready" && streamUrl ? (
               <VideoPlayer
-                src={videosApi.getStreamUrl(videoId, "original")}
+                src={streamUrl}
                 fps={video.fps}
                 onTimeUpdate={setCurrentTime}
                 onPlayStateChange={setIsPlaying}

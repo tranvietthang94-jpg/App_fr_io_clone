@@ -156,10 +156,13 @@ export const videosApi = {
   restore: (id: string) => api.post(`/api/videos/${id}/restore`),
   setReviewStatus: (id: string, status: string) =>
     api.patch(`/api/videos/${id}/review-status`, { status }),
-  getStreamUrl: (videoId: string, quality: string) => {
-    const token = useAuthStore.getState().accessToken;
-    return `${API_URL}/api/videos/${videoId}/stream/${quality}?token=${encodeURIComponent(token || '')}`;
-  },
+  // Fetch a short-lived, video-scoped stream token (separate from the API JWT).
+  getStreamToken: (videoId: string) =>
+    api.get(`/api/videos/${videoId}/stream-token`),
+  // Build the stream URL from a stream token (obtained via getStreamToken) —
+  // the API access token is NOT put in the URL anymore.
+  getStreamUrl: (videoId: string, quality: string, streamToken: string) =>
+    `${API_URL}/api/videos/${videoId}/stream/${quality}?token=${encodeURIComponent(streamToken)}`,
 };
 
 // Folders API

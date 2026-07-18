@@ -3,16 +3,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
 import { VideosService } from './videos.service';
-import { MediaService } from '../media/media.service';
 import { ProjectsService } from '../projects/projects.service';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { resolveStreamFilePath, streamVideoFile } from './stream-file.util';
+import { getStreamTokenSecret, STREAM_TOKEN_EXPIRES_IN } from '../config/jwt.config';
 
 @Controller()
 export class VideosController {
   constructor(
     private videosService: VideosService,
-    private mediaService: MediaService,
     private projectsService: ProjectsService,
     private jwtService: JwtService,
   ) {}
@@ -50,6 +49,24 @@ export class VideosController {
     return this.videosService.getVersions(video.assetGroupId, req.user.userId);
   }
 
+  /**
+   * Mints a short-lived, video-scoped stream token. Because <video src> can't
+   * send an Authorization header, the token has to travel in the stream URL —
+   * so it's signed with a separate secret and bound to this one video, meaning
+   * a leaked URL can't be replayed against the API or other videos.
+   */
+  @Get('videos/:id/stream-token')
+  @UseGuards(AuthGuard('jwt'))
+  async streamToken(@Param('id') id: string, @Req() req: any) {
+    // Confirms the caller can actually see this video before issuing a token.
+    await this.videosService.findOwned(id, req.user.userId);
+    const token = this.jwtService.sign(
+      { sub: req.user.userId, videoId: id, purpose: 'stream' },
+      { secret: getStreamTokenSecret(), expiresIn: STREAM_TOKEN_EXPIRES_IN },
+    );
+    return { token };
+  }
+
   @Get('videos/:id/stream/:quality')
   async stream(
     @Param('id') id: string,
@@ -58,15 +75,19 @@ export class VideosController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    // <video src> can't set an Authorization header, so this route accepts
-    // the JWT as a query param instead of relying on the AuthGuard.
+    // Accepts a dedicated stream token (see streamToken above), NOT the API
+    // JWT — verified with the stream secret and required to be bound to this
+    // exact video, so it can't be used as a general API credential.
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     let userId: string;
     try {
-      userId = this.jwtService.verify(token).sub;
-      if (!userId) throw new Error('Token missing sub claim');
+      const payload = this.jwtService.verify(token, { secret: getStreamTokenSecret() });
+      if (payload.purpose !== 'stream' || payload.videoId !== id || !payload.sub) {
+        throw new Error('Invalid stream token');
+      }
+      userId = payload.sub;
     } catch {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -113,16 +134,5 @@ export class VideosController {
   @UseGuards(AuthGuard('jwt'))
   async restore(@Param('id') id: string, @Req() req: any) {
     return this.videosService.restore(id, req.user.userId);
-  }
-
-  @Post('videos/:id/transcode')
-  @UseGuards(AuthGuard('jwt'))
-  async transcode(@Param('id') id: string, @Req() req: any) {
-    const video = await this.videosService.findOwned(id, req.user.userId);
-    // Trigger transcode async
-    this.mediaService.transcodeVideo(id, video.filePath).catch(err => {
-      console.error('Transcode failed:', err);
-    });
-    return { message: 'Transcode started', videoId: id };
   }
 }
