@@ -184,7 +184,7 @@ export class UploadService {
     // Hand off to the durable transcode queue instead of running ffmpeg inline.
     // A crash mid-transcode now leaves a recoverable Redis job rather than a
     // video stuck at `processing` forever.
-    await this.transcodeQueue.enqueue(video.id, finalPath);
+    await this.transcodeQueue.enqueue(video.id, finalPath, userId);
 
     return video;
   }

@@ -17,6 +17,8 @@ import { VideoReviewStatus, type Video, type Folder } from '@fr-clone/shared';
 interface VideoCardProps {
   video: Video;
   folders?: Folder[];
+  /** Live transcode percent (0-100) pushed over the socket; null when unknown. */
+  progress?: number | null;
   onClick?: () => void;
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
@@ -24,7 +26,7 @@ interface VideoCardProps {
   onUploadVersion?: (file: File) => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onClick, onDelete, onRename, onMove, onUploadVersion }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, onClick, onDelete, onRename, onMove, onUploadVersion }) => {
   const [renaming, setRenaming] = useState(false);
   const [titleInput, setTitleInput] = useState(video.title);
   const versionInputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onCli
         return (
           <div className="flex items-center gap-1 px-2 py-1 bg-accent-yellow/10 text-accent-yellow rounded-full text-xs">
             <Loader2 className="w-3 h-3 animate-spin" />
-            <span>Đang xử lý</span>
+            <span>{progress === null ? 'Đang xử lý' : `Đang xử lý ${progress}%`}</span>
           </div>
         );
       case 'ready':
@@ -95,9 +97,21 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], onCli
     <Card hover onClick={renaming ? undefined : onClick} className="group overflow-hidden relative">
       <div className="relative aspect-video bg-bg-tertiary overflow-hidden flex items-center justify-center">
         {video.status === 'processing' || video.status === 'uploading' ? (
-          <div className="text-center">
+          <div className="text-center w-32 max-w-[70%]">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             <p className="text-sm text-text-muted">Đang xử lý...</p>
+            {progress !== null && (
+              <div
+                className="mt-2 h-1 w-full bg-bg-hover rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Tiến độ xử lý ${video.title}`}
+              >
+                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+              </div>
+            )}
           </div>
         ) : (
           <Film className="w-12 h-12 text-text-muted" />

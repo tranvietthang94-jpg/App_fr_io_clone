@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { projectsApi, videosApi, foldersApi } from "@/lib/api";
 import { uploadFileWithResume, validateVideoFile } from "@/lib/uploadManager";
+import { socketService } from "@/lib/socket";
 import { VideoCard } from "@/components/dashboard/VideoCard";
 import { MembersPanel } from "@/components/project/MembersPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -59,6 +60,7 @@ export default function ProjectDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [search, setSearch] = useState("");
   const [reviewStatusFilter, setReviewStatusFilter] = useState("");
+  const [transcodeProgress, setTranscodeProgress] = useState<Record<string, number>>({});
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
   const isSearching = search.trim().length > 0;
@@ -80,6 +82,29 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     if (showTrash) loadTrash();
   }, [showTrash]);
+
+  // Live transcode progress. The worker pushes to the uploader's personal room
+  // (the socket is already connected app-wide by NotificationBell), so this
+  // page updates without joining any video room — previously a card sat at
+  // "Đang xử lý" until the user manually reloaded.
+  useEffect(() => {
+    const handleProgress = (data: { videoId: string; percent?: number; status?: string }) => {
+      if (typeof data.percent === "number") {
+        const percent = data.percent;
+        setTranscodeProgress((prev) => ({ ...prev, [data.videoId]: percent }));
+      }
+      if (data.status === "ready" || data.status === "failed") {
+        setTranscodeProgress((prev) => {
+          const next = { ...prev };
+          delete next[data.videoId];
+          return next;
+        });
+        loadVideos();
+      }
+    };
+    socketService.on("video:transcode-progress", handleProgress);
+    return () => socketService.off("video:transcode-progress", handleProgress);
+  }, [projectId, currentFolderId, search, reviewStatusFilter]);
 
   const loadProject = async () => {
     try {
@@ -539,6 +564,7 @@ export default function ProjectDetailPage() {
                   key={video.id}
                   video={video}
                   folders={folders}
+                  progress={transcodeProgress[video.id] ?? null}
                   onClick={() => router.push(`/projects/${projectId}/videos/${video.id}`)}
                   onDelete={() => setDeleteTarget({ type: "video", id: video.id })}
                   onRename={(title) => handleRenameVideo(video.id, title)}

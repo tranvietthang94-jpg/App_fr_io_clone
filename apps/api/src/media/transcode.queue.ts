@@ -5,6 +5,12 @@ import { redisConnectionOptions, TRANSCODE_QUEUE_NAME } from './redis.connection
 export interface TranscodeJobData {
   videoId: string;
   filePath: string;
+  /**
+   * Who uploaded it. Progress is pushed to this user's personal room as well
+   * as the video room, so the uploader sitting on the project file browser
+   * (which isn't in any video room) still sees live progress.
+   */
+  uploaderId?: string;
 }
 
 /**
@@ -26,7 +32,7 @@ export class TranscodeQueue implements OnModuleDestroy {
     },
   });
 
-  async enqueue(videoId: string, filePath: string): Promise<void> {
+  async enqueue(videoId: string, filePath: string, uploaderId?: string): Promise<void> {
     // jobId = videoId prevents stacking duplicate jobs for the same video.
     // A finished job (completed/failed) still occupies the id because of the
     // removeOnComplete/removeOnFail retention, so clear it first to let a
@@ -42,7 +48,7 @@ export class TranscodeQueue implements OnModuleDestroy {
         return;
       }
     }
-    await this.queue.add('transcode', { videoId, filePath }, { jobId: videoId });
+    await this.queue.add('transcode', { videoId, filePath, uploaderId }, { jobId: videoId });
     this.logger.log(`Enqueued transcode job for video ${videoId}`);
   }
 

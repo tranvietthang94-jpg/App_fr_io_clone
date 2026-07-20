@@ -29,12 +29,12 @@ export class TranscodeWorker implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker<TranscodeJobData>(
       TRANSCODE_QUEUE_NAME,
       async (job: Job<TranscodeJobData>) => {
-        const { videoId, filePath } = job.data;
+        const { videoId, filePath, uploaderId } = job.data;
         this.logger.log(`Processing transcode job ${job.id} (video ${videoId})`);
         await this.mediaService.transcodeVideo(videoId, filePath, (percent) => {
-          this.gateway.emitToVideo(videoId, 'video:transcode-progress', { videoId, percent });
+          this.emitProgress(videoId, uploaderId, { videoId, percent });
         });
-        this.gateway.emitToVideo(videoId, 'video:transcode-progress', { videoId, percent: 100, status: 'ready' });
+        this.emitProgress(videoId, uploaderId, { videoId, percent: 100, status: 'ready' });
       },
       { connection: redisConnectionOptions(), concurrency },
     );
@@ -53,7 +53,7 @@ export class TranscodeWorker implements OnModuleInit, OnModuleDestroy {
         await this.videosService.updateStatus(videoId, 'failed').catch((e) =>
           this.logger.error(`Could not mark video ${videoId} failed: ${e.message}`),
         );
-        this.gateway.emitToVideo(videoId, 'video:transcode-progress', { videoId, status: 'failed' });
+        this.emitProgress(videoId, job.data.uploaderId, { videoId, status: 'failed' });
       }
     });
 
@@ -62,6 +62,19 @@ export class TranscodeWorker implements OnModuleInit, OnModuleDestroy {
     });
 
     this.logger.log(`Transcode worker started (concurrency=${concurrency})`);
+  }
+
+  /**
+   * Fan the same progress payload out to everyone who needs it: the video room
+   * (people with the review workspace open) and the uploader's personal room
+   * (they're usually still on the project file browser, which joins no video
+   * room and would otherwise show a stale "Đang xử lý" until a manual reload).
+   */
+  private emitProgress(videoId: string, uploaderId: string | undefined, payload: Record<string, unknown>) {
+    this.gateway.emitToVideo(videoId, 'video:transcode-progress', payload);
+    if (uploaderId) {
+      this.gateway.emitToUser(uploaderId, 'video:transcode-progress', payload);
+    }
   }
 
   async onModuleDestroy() {
