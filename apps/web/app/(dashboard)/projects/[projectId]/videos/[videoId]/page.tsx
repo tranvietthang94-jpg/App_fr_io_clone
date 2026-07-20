@@ -25,6 +25,7 @@ import {
   Share2,
   ChevronDown,
   Keyboard,
+  X,
 } from "lucide-react";
 import type { Video, Comment, Annotation, VideoReviewStatus } from "@fr-clone/shared";
 import type { MentionMember } from "@/components/comments/MentionInput";
@@ -54,6 +55,8 @@ export default function VideoReviewPage() {
   const [transcodeProgress, setTranscodeProgress] = useState<number | null>(null);
   const [versions, setVersions] = useState<Video[]>([]);
   const [showVersions, setShowVersions] = useState(false);
+  const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
+  const [compareStreamUrl, setCompareStreamUrl] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsOffset, setCommentsOffset] = useState(0);
   const [hasMoreComments, setHasMoreComments] = useState(false);
@@ -209,6 +212,27 @@ export default function VideoReviewPage() {
       cancelled = true;
     };
   }, [video?.status, videoId]);
+
+  // Stream token for the version being compared against — each version is its
+  // own video row, so it needs its own video-scoped token.
+  useEffect(() => {
+    if (!compareVersionId) {
+      setCompareStreamUrl(null);
+      return;
+    }
+    let cancelled = false;
+    videosApi
+      .getStreamToken(compareVersionId)
+      .then((res) => {
+        if (!cancelled) {
+          setCompareStreamUrl(videosApi.getStreamUrl(compareVersionId, "original", res.data.token));
+        }
+      })
+      .catch((err) => console.error("Failed to get compare stream token:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [compareVersionId]);
 
   const loadVideo = async () => {
     try {
@@ -469,6 +493,10 @@ export default function VideoReviewPage() {
     [annotations, activeCommentId]
   );
 
+  const compareVersion = compareVersionId
+    ? versions.find((v) => v.id === compareVersionId) ?? null
+    : null;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -517,21 +545,38 @@ export default function VideoReviewPage() {
                         .slice()
                         .sort((a, b) => b.versionNumber - a.versionNumber)
                         .map((v) => (
-                          <button
+                          <div
                             key={v.id}
-                            onClick={() => {
-                              setShowVersions(false);
-                              if (v.id !== videoId) {
-                                router.push(`/projects/${projectId}/videos/${v.id}`);
-                              }
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-bg-tertiary text-left ${
+                            className={`flex items-center justify-between gap-1 px-3 py-2 text-sm hover:bg-bg-tertiary ${
                               v.id === videoId ? "text-primary font-medium" : ""
                             }`}
                           >
-                            <span>Phiên bản {v.versionNumber}</span>
-                            {v.id === videoId && <span className="text-xs">(hiện tại)</span>}
-                          </button>
+                            <button
+                              onClick={() => {
+                                setShowVersions(false);
+                                if (v.id !== videoId) {
+                                  router.push(`/projects/${projectId}/videos/${v.id}`);
+                                }
+                              }}
+                              className="flex-1 text-left"
+                            >
+                              Phiên bản {v.versionNumber}
+                              {v.id === videoId && <span className="ml-1 text-xs">(hiện tại)</span>}
+                            </button>
+                            {v.id !== videoId && v.status === "ready" && (
+                              <button
+                                onClick={() => {
+                                  setShowVersions(false);
+                                  setIsAnnotating(false);
+                                  setCompareVersionId(v.id);
+                                }}
+                                className="px-2 py-0.5 text-xs rounded bg-bg-tertiary hover:bg-bg-hover text-text-secondary"
+                                aria-label={`So sánh với phiên bản ${v.versionNumber}`}
+                              >
+                                So sánh
+                              </button>
+                            )}
+                          </div>
                         ))}
                     </div>
                   )}
@@ -575,8 +620,9 @@ export default function VideoReviewPage() {
             <Button
               variant="ghost"
               active={isAnnotating}
+              disabled={!!compareVersion}
               aria-label="Vẽ chú thích trên video"
-              title="Vẽ chú thích trên video"
+              title={compareVersion ? "Không khả dụng khi đang so sánh phiên bản" : "Vẽ chú thích trên video"}
               onClick={() => setIsAnnotating(!isAnnotating)}
             >
               <Pencil className="w-5 h-5" />
@@ -601,7 +647,39 @@ export default function VideoReviewPage() {
         {/* Video player area */}
         <div className="flex-1 flex flex-col min-h-[240px] lg:min-h-0 lg:min-w-0">
           <div className="flex-1 relative bg-black">
-            {video.status === "ready" && streamUrl ? (
+            {compareVersion ? (
+              // Side-by-side version compare. Stacks on narrow screens — two
+              // players next to each other need real horizontal room.
+              <div className="absolute inset-0 flex flex-col sm:flex-row">
+                <div className="flex-1 relative min-w-0 min-h-0 border-b sm:border-b-0 sm:border-r border-border">
+                  <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/70 text-white rounded text-xs">
+                    v{video.versionNumber} (hiện tại)
+                  </span>
+                  {streamUrl && <VideoPlayer src={streamUrl} fps={video.fps} />}
+                </div>
+                <div className="flex-1 relative min-w-0 min-h-0">
+                  <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/70 text-white rounded text-xs">
+                    v{compareVersion.versionNumber}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    aria-label="Thoát so sánh phiên bản"
+                    title="Thoát so sánh"
+                    className="absolute top-1 right-1 z-10 text-white hover:bg-white/20"
+                    onClick={() => setCompareVersionId(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  {compareStreamUrl ? (
+                    <VideoPlayer src={compareStreamUrl} fps={compareVersion.fps} />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : video.status === "ready" && streamUrl ? (
               <VideoPlayer
                 src={streamUrl}
                 fps={video.fps}
@@ -645,12 +723,16 @@ export default function VideoReviewPage() {
                 </div>
               </div>
             )}
-            <AnnotationCanvas
-              isActive={isAnnotating}
-              savedAnnotations={savedAnnotationsForCanvas}
-              onAnnotationComplete={handleAnnotationComplete}
-              onDeleteAnnotation={handleDeleteAnnotation}
-            />
+            {/* Annotations belong to a single video, so the canvas would sit
+                ambiguously across both panes in compare mode. */}
+            {!compareVersion && (
+              <AnnotationCanvas
+                isActive={isAnnotating}
+                savedAnnotations={savedAnnotationsForCanvas}
+                onAnnotationComplete={handleAnnotationComplete}
+                onDeleteAnnotation={handleDeleteAnnotation}
+              />
+            )}
           </div>
 
           {/* Timeline with comment markers */}
