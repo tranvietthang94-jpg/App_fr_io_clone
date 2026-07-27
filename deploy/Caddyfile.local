@@ -1,0 +1,24 @@
+# Local rehearsal Caddyfile — mirrors the production single-origin routing on
+# THIS machine (Docker Desktop), so you can test the full stack the way it will
+# actually run before touching the mini PC. Used by docker-compose.local.yml.
+#
+# `tls internal` issues a cert from Caddy's own CA. The browser will warn once
+# ("not secure") — that's expected for a local rehearsal; click through. Serving
+# over https (not http) is what lets the `secure` refresh cookie work.
+#
+# Caddy reaches the api/web containers by their compose service names.
+
+localhost {
+	tls internal
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle /socket.io/* {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

@@ -1,0 +1,33 @@
+# Local rehearsal overlay — run the production stack on this machine with a
+# Caddy in front (single origin, https://localhost), exactly like the mini PC
+# will run behind the VPS Caddy. Use TOGETHER with the prod compose:
+#
+#   docker compose --env-file deploy/.env.local \
+#     -f docker-compose.prod.yml -f docker-compose.local.yml up -d --build
+#
+# In deploy/.env.local set PUBLIC_URL=https://localhost (see deploy/env.prod.example).
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Named volume instead of the prod host bind-mount (Windows-friendly).
+  api:
+    volumes: !override
+      - api_uploads_local:/app/apps/api/uploads
+
+volumes:
+  caddy_data:
+  caddy_config:
+  api_uploads_local:

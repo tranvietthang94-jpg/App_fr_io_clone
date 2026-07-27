@@ -59,7 +59,38 @@ find /srv/frclone/backups -name 'pg-*.sql.gz' -mtime +14 -delete
 ```
 Cân nhắc rsync `/srv/frclone/uploads` ra ổ/đích khác.
 
+## Rehearsal cục bộ trên máy dev (làm TRƯỚC khi mang lên mini PC)
+Chạy đúng stack production ngay trên máy này (Docker Desktop) sau một Caddy, tại `https://localhost` — không cần VPS/Tailscale/DNS.
+```bash
+cp deploy/env.prod.example deploy/.env.local     # sửa PUBLIC_URL=https://localhost + secrets
+docker compose --env-file deploy/.env.local \
+  -f docker-compose.prod.yml -f docker-compose.local.yml up -d --build
+```
+- Mở `https://localhost` → chấp nhận cảnh báo cert **1 lần** (Caddy `tls internal`, self-signed). Test: login (cookie `Secure`), `/socket.io` WS 101, upload→transcode, export PDF.
+- Kiểm nhanh không cần browser:
+  ```bash
+  curl -k https://localhost/api/health                          # {"status":"ok"}
+  curl -k "https://localhost/socket.io/?EIO=4&transport=polling" # 0{"sid":...}
+  ```
+- Gỡ: thêm `down` (kèm `-v` để xoá luôn dữ liệu test) với đúng bộ `-f ... -f ...` như trên.
+- Khác mini PC: dùng **named volume** cho uploads (Windows-friendly) + Caddy **self-signed** thay Let's Encrypt. Còn lại giống hệt.
+
+## Cập nhật app sau khi đã deploy
+Mỗi lần đổi code (trên mini PC hoặc rehearsal):
+1. **Backup trước** (bắt buộc): chạy `pg_dump` như mục 6 — `synchronize:true` sẽ tự đổi schema theo entity mới khi api khởi động lại, không có migration để rollback.
+2. `git pull`
+3. Rebuild + restart **chỉ service đổi** (postgres/redis/uploads giữ nguyên nhờ volume):
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d --build api   # đổi code api
+   docker compose -f docker-compose.prod.yml up -d --build web   # đổi code web
+   ```
+   Đổi cả hai / đổi `packages/shared` / đổi `PUBLIC_URL` → build lại **cả hai**.
+4. **Đổi domain/PUBLIC_URL ⇒ PHẢI rebuild web** (NEXT_PUBLIC_* bake lúc build).
+5. Verify lại: `curl /api/health`, socket.io handshake, thử 1 luồng thật.
+- Rollback: `git checkout <commit-cũ> && ... up -d --build`; nếu schema đã đổi phá dữ liệu, restore từ `pg_dump`.
+
 ## Lưu ý
 - Đổi `PUBLIC_URL`/domain ⇒ **rebuild image web** (NEXT_PUBLIC_* bake lúc build).
 - Cả web và api PHẢI cùng origin (cookie sameSite=lax + CORS 1-origin).
 - Caddy route `/socket.io/*` (KHÔNG phải `/collaboration`).
+- `synchronize:true` + không migration ⇒ **backup `pg_dump` trước mỗi update** (thay đổi entity phá huỷ có thể mất dữ liệu khi restart).
