@@ -13,6 +13,7 @@ import { TranscodeModule } from './media/transcode.module';
 import { CollaborationModule } from './gateway/collaboration.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ShareLinksModule } from './share-links/share-links.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ShareLinksModule } from './share-links/share-links.module';
     CollaborationModule,
     NotificationsModule,
     ShareLinksModule,
+    HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -1,5 +1,14 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-contained build output for the production Docker image — bundles a
+  // minimal server + traced deps so the runtime stage doesn't ship the whole
+  // node_modules. outputFileTracingRoot points at the monorepo root so tracing
+  // picks up @fr-clone/shared and hoisted deps (server.js lands at
+  // apps/web/server.js in the standalone tree).
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: ['@fr-clone/shared'],
   images: {
     domains: ['localhost', '127.0.0.1'],

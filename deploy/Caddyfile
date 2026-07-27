@@ -1,0 +1,35 @@
+# Caddyfile — runs on the VPS. Terminates public HTTPS (auto Let's Encrypt via
+# the DNS A record app.tenmien.com -> VPS public IP) and reverse-proxies to the
+# mini PC over Tailscale. Single origin keeps the sameSite=lax cookie + CORS
+# happy.
+#
+# Replace:
+#   app.tenmien.com   -> your real subdomain
+#   100.x.y.z         -> the mini PC's Tailscale IP (`tailscale ip -4` on it),
+#                        or its MagicDNS name (e.g. minipc.tailXXXX.ts.net)
+
+app.tenmien.com {
+	encode zstd gzip
+
+	# REST API — keep the /api prefix (handle, NOT handle_path).
+	handle /api/* {
+		reverse_proxy 100.x.y.z:4000
+	}
+
+	# Realtime: socket.io's real transport endpoint is /socket.io/ (NOT the
+	# /collaboration namespace). Caddy upgrades WebSocket automatically.
+	handle /socket.io/* {
+		reverse_proxy 100.x.y.z:4000
+	}
+
+	# Everything else -> Next.js.
+	handle {
+		reverse_proxy 100.x.y.z:3000
+	}
+
+	# Chunked upload is ~5 MB/chunk so defaults are fine; uncomment if a large
+	# single request ever hits Caddy's body limit.
+	# request_body {
+	# 	max_size 0
+	# }
+}

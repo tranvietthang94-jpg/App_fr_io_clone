@@ -1,0 +1,23 @@
+# Keep the Docker build context small and avoid copying host-built artifacts
+# (which are Windows-built here and would break the Linux image).
+**/node_modules
+**/.next
+**/dist
+**/uploads
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+apps/web/tests
+DEMO
+design-system
+*.md
+!README.md
+.claude
+.vscode

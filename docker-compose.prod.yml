@@ -1,0 +1,104 @@
+# Production stack — runs on the mini PC. Secrets come from a `.env` file next
+# to this one (NOT committed). Build + run:
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# SECURITY: ports 3000/4000 below bind 0.0.0.0. The mini PC must firewall them
+# so only the Tailscale interface can reach them, e.g.:
+#   sudo ufw allow in on tailscale0 && sudo ufw enable
+# (The VPS Caddy reaches these over Tailscale; they must NOT be public.)
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production            # makes the refresh cookie `secure`
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}                     # required — API throws if missing
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      STREAM_TOKEN_SECRET: ${STREAM_TOKEN_SECRET}
+      STREAM_TOKEN_EXPIRES_IN: ${STREAM_TOKEN_EXPIRES_IN:-2h}
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL}            # CORS (REST+WS) origin + redirects
+      TRANSCODE_CONCURRENCY: ${TRANSCODE_CONCURRENCY:-2}
+      FFMPEG_PATH: ffmpeg
+      FFPROBE_PATH: ffprobe
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5368709120}
+      UPLOAD_CHUNK_SIZE: ${UPLOAD_CHUNK_SIZE:-5242880}
+      # Optional integrations — leave unset to disable:
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@frameclone.local}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-}
+    volumes:
+      # Persistent video storage on the mini PC's large disk.
+      - ${UPLOADS_HOST_DIR:-/srv/frclone/uploads}:/app/apps/api/uploads
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL}      # inlined at build time
+        NEXT_PUBLIC_APP_URL: ${PUBLIC_URL}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  redis_data:
