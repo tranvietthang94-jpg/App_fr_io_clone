@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CommentsService } from './comments.service';
 import { VideosService } from '../videos/videos.service';
 import { ProjectsService } from '../projects/projects.service';
+import { CreateCommentDto, UpdateCommentDto, SetResolvedDto } from './dto/create-comment.dto';
 
 @Controller()
 export class CommentsController {
@@ -33,14 +34,7 @@ export class CommentsController {
   @UseGuards(AuthGuard('jwt'))
   async create(
     @Param('videoId') videoId: string,
-    @Body() body: {
-      content: string;
-      timestamp: number;
-      frameNumber: number;
-      positionX?: number;
-      positionY?: number;
-      parentId?: string;
-    },
+    @Body() body: CreateCommentDto,
     @Request() req,
   ) {
     await this.videosService.findOwned(videoId, req.user.userId);
@@ -63,7 +57,7 @@ export class CommentsController {
   @UseGuards(AuthGuard('jwt'))
   async update(
     @Param('id') id: string,
-    @Body() body: { content?: string },
+    @Body() body: UpdateCommentDto,
     @Request() req,
   ) {
     const role = await this.getCallerRole(id, req.user.userId);
@@ -81,7 +75,7 @@ export class CommentsController {
   @UseGuards(AuthGuard('jwt'))
   async setResolved(
     @Param('id') id: string,
-    @Body() body: { resolved: boolean },
+    @Body() body: SetResolvedDto,
     @Request() req,
   ) {
     const role = await this.getCallerRole(id, req.user.userId);

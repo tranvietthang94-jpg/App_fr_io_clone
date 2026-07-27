@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FoldersService } from './folders.service';
+import { CreateFolderDto, RenameFolderDto } from './dto/folder.dto';
 
 @Controller('projects/:projectId/folders')
 @UseGuards(AuthGuard('jwt'))
@@ -19,14 +20,14 @@ export class FoldersController {
   @Post()
   async create(
     @Param('projectId') projectId: string,
-    @Body() body: { name: string; parentFolderId?: string },
+    @Body() body: CreateFolderDto,
     @Request() req,
   ) {
     return this.foldersService.create(projectId, req.user.userId, body);
   }
 
   @Patch(':id')
-  async rename(@Param('id') id: string, @Body() body: { name: string }, @Request() req) {
+  async rename(@Param('id') id: string, @Body() body: RenameFolderDto, @Request() req) {
     return this.foldersService.rename(id, body.name, req.user.userId);
   }
 

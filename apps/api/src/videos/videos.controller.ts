@@ -5,6 +5,7 @@ import { Response, Request } from 'express';
 import { VideosService } from './videos.service';
 import { ProjectsService } from '../projects/projects.service';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
+import { RenameVideoDto, MoveVideoDto } from './dto/update-video.dto';
 import { resolveStreamFilePath, streamVideoFile } from './stream-file.util';
 import { getStreamTokenSecret, STREAM_TOKEN_EXPIRES_IN } from '../config/jwt.config';
 
@@ -108,7 +109,7 @@ export class VideosController {
 
   @Patch('videos/:id')
   @UseGuards(AuthGuard('jwt'))
-  async rename(@Param('id') id: string, @Body() body: { title: string }, @Req() req: any) {
+  async rename(@Param('id') id: string, @Body() body: RenameVideoDto, @Req() req: any) {
     return this.videosService.rename(id, body.title, req.user.userId);
   }
 
@@ -120,7 +121,7 @@ export class VideosController {
 
   @Patch('videos/:id/move')
   @UseGuards(AuthGuard('jwt'))
-  async move(@Param('id') id: string, @Body() body: { folderId: string | null }, @Req() req: any) {
+  async move(@Param('id') id: string, @Body() body: MoveVideoDto, @Req() req: any) {
     return this.videosService.move(id, body.folderId, req.user.userId);
   }
 

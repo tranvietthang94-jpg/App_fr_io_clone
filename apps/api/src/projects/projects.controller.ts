@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Re
 import { AuthGuard } from '@nestjs/passport';
 import { ProjectsService } from './projects.service';
 import { InviteMemberDto, UpdateMemberRoleDto } from './dto/invite-member.dto';
+import { CreateProjectDto, UpdateProjectDto } from './dto/upsert-project.dto';
 import { ActivityLogService } from '../activity/activity-log.service';
 
 @Controller('projects')
@@ -23,14 +24,14 @@ export class ProjectsController {
   }
 
   @Post()
-  async create(@Body() body: { name: string; description?: string }, @Request() req) {
+  async create(@Body() body: CreateProjectDto, @Request() req) {
     return this.projectsService.create(body, req.user.userId);
   }
 
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string },
+    @Body() body: UpdateProjectDto,
     @Request() req,
   ) {
     return this.projectsService.update(id, body, req.user.userId);

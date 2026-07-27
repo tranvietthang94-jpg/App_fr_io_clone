@@ -12,6 +12,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { UploadService } from './upload.service';
+import { InitUploadDto } from './dto/init-upload.dto';
 
 @Controller('upload')
 @UseGuards(AuthGuard('jwt'))
@@ -20,14 +21,7 @@ export class UploadController {
 
   @Post('init')
   async initUpload(
-    @Body() body: {
-      projectId: string;
-      filename: string;
-      fileSize: number;
-      mimeType: string;
-      assetGroupId?: string;
-      folderId?: string;
-    },
+    @Body() body: InitUploadDto,
     @Request() req,
   ) {
     return this.uploadService.initUpload(
