@@ -71,6 +71,8 @@ export function NotificationBell() {
       } catch (err) {
         console.error("Failed to navigate to video:", err);
       }
+    } else if (n.payload.inviteToken) {
+      router.push(`/invite/${n.payload.inviteToken}`);
     }
   };
 

@@ -8,6 +8,7 @@ import { User } from '../auth/user.entity';
 import { MailerService } from '../mailer/mailer.service';
 import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
+import { Notification, NotificationType } from '../notifications/notification.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -18,6 +19,8 @@ export class ProjectsService {
     private membersRepository: Repository<ProjectMember>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Notification)
+    private notificationsRepository: Repository<Notification>,
     private mailerService: MailerService,
     private activityLogService: ActivityLogService,
   ) {}
@@ -168,6 +171,31 @@ export class ProjectsService {
       `<p>Bạn được mời tham gia dự án <strong>${project.name}</strong> trên FrameClone.</p><p><a href="${acceptUrl}">Chấp nhận lời mời</a></p>`,
       acceptUrl,
     );
+
+    // Already-registered invitees get an in-app bell notification too (email
+    // alone is easy to miss). Guests without an account have no userId to
+    // notify — they only get the email invite.
+    // ponytail: persisted only, not pushed over the socket — going through
+    // NotificationsService (which emits via CollaborationGateway) would create
+    // a ProjectsModule <-> CollaborationModule <-> VideosModule cycle. The
+    // invitee sees it on their next notifications load, which is fine since an
+    // invite isn't time-critical and also arrives by email.
+    if (existingUser) {
+      await this.notificationsRepository.save(
+        this.notificationsRepository.create({
+          userId: existingUser.id,
+          type: NotificationType.PROJECT_INVITE,
+          payload: {
+            actorId: userId,
+            actorName,
+            projectId,
+            projectName: project.name,
+            inviteToken: saved.inviteToken,
+            role: data.role,
+          },
+        }),
+      );
+    }
 
     await this.activityLogService.record(
       projectId,

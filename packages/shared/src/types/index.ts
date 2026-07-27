@@ -169,6 +169,9 @@ export interface Notification {
     parentCommentId?: string;
     videoId?: string;
     projectId?: string;
+    projectName?: string;
+    inviteToken?: string;
+    role?: string;
     content?: string;
   };
   read: boolean;
