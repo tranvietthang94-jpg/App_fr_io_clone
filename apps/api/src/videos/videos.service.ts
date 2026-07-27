@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { Video, VideoReviewStatus } from './video.entity';
 import { Folder } from './folder.entity';
 import { ProjectsService } from '../projects/projects.service';
@@ -13,6 +15,8 @@ const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 
 
 @Injectable()
 export class VideosService {
+  private readonly logger = new Logger(VideosService.name);
+
   constructor(
     @InjectRepository(Video)
     private videosRepository: Repository<Video>,
@@ -79,7 +83,37 @@ export class VideosService {
       .andWhere('video.deletedAt < :cutoff', { cutoff })
       .getMany();
     if (expired.length > 0) {
+      // Free the disk BEFORE dropping the DB rows — if we removed rows first
+      // and the process died, the file paths would be lost and the mp4s would
+      // leak forever.
+      for (const video of expired) {
+        await this.removeFilesFromDisk(video);
+      }
       await this.videosRepository.remove(expired);
+    }
+  }
+
+  /**
+   * Best-effort removal of every on-disk artifact tied to a single video
+   * version: the uploaded original, its transcoded-quality directory, and its
+   * thumbnail. Layout must match how MediaService/UploadService write them.
+   * A missing file is not an error (idempotent re-runs, partial transcodes) —
+   * we log and continue so a stray file never blocks the DB cleanup.
+   */
+  private async removeFilesFromDisk(video: Video): Promise<void> {
+    const uploadsRoot = path.join(process.cwd(), 'uploads');
+    const targets = [
+      video.filePath,
+      path.join(uploadsRoot, 'transcoded', video.id),
+      path.join(uploadsRoot, 'thumbnails', `${video.id}.jpg`),
+    ];
+    for (const target of targets) {
+      if (!target) continue;
+      try {
+        await fs.rm(target, { recursive: true, force: true });
+      } catch (err) {
+        this.logger.warn(`Failed to remove ${target} for video ${video.id}: ${err}`);
+      }
     }
   }
 
@@ -257,6 +291,7 @@ export class VideosService {
   /** Permanent delete — used only for legacy hard-delete call sites (e.g. project cascade already handles bulk cleanup). */
   async delete(id: string) {
     const video = await this.findOne(id);
+    await this.removeFilesFromDisk(video);
     await this.videosRepository.remove(video);
     return { success: true };
   }
