@@ -1,3 +1,6 @@
+import type { JwtModuleOptions } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
+
 export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -8,11 +11,11 @@ export function getJwtSecret(): string {
   return secret;
 }
 
-export const jwtModuleOptions = {
+export const jwtModuleOptions: JwtModuleOptions = {
   secret: getJwtSecret(),
   // Short-lived on purpose — the refresh-token flow (httpOnly cookie) renews
   // this silently, so it doesn't need the old 7d lifetime to avoid annoying logouts.
-  signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '15m' },
+  signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as StringValue },
 };
 
 /**
@@ -29,4 +32,4 @@ export function getStreamTokenSecret(): string {
 
 // Long enough to cover a viewing session without mid-playback re-auth, but
 // still bounded. Overridable via env.
-export const STREAM_TOKEN_EXPIRES_IN = process.env.STREAM_TOKEN_EXPIRES_IN || '2h';
+export const STREAM_TOKEN_EXPIRES_IN = (process.env.STREAM_TOKEN_EXPIRES_IN || '2h') as StringValue;

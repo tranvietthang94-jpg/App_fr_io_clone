@@ -2,7 +2,7 @@
 
 ## Yêu cầu hệ thống
 
-- **Node.js**: 18.0.0 hoặc cao hơn
+- **Node.js**: 22.12.0 hoặc cao hơn
 - **Docker Desktop**: Để chạy PostgreSQL, Redis, MinIO
 - **FFmpeg**: Để xử lý video (transcode, generate thumbnail)
 

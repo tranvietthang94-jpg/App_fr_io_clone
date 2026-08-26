@@ -457,7 +457,7 @@ ${markersXml}
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'load' });
 
       const headerTemplate = `
         <div style="font-size:9px; width:100%; padding:0 15mm; display:flex; justify-content:space-between; color:#5f6368; font-family:sans-serif;">
