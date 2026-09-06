@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { spawn } from 'child_process';
+import { armProcessKillTimer } from '../common/process-timeout.util';
 
 @Injectable()
 export class ExportService {
@@ -279,12 +280,19 @@ ${markersXml}
 
       const ffmpeg = spawn(this.ffmpegPath, args);
       let stderr = '';
+      const disarm = armProcessKillTimer(ffmpeg, 120_000);
 
       ffmpeg.stderr.on('data', (data) => {
         stderr += data.toString();
       });
 
+      ffmpeg.on('error', (err) => {
+        disarm();
+        reject(err);
+      });
+
       ffmpeg.on('close', (code) => {
+        disarm();
         if (code !== 0) {
           this.logger.error(`Screenshot capture failed: ${stderr}`);
           reject(new Error(`ffmpeg exited with code ${code}`));
@@ -540,7 +548,19 @@ ${markersXml}
           return `<text x="${data.x}" y="${data.y}" fill="${color}" font-size="0.035" font-family="sans-serif">${this.escapeHtml(data.text)}</text>`;
         }
 
-        const points = Array.isArray(data?.points) ? data.points : [];
+        // Annotation data is user-submitted free-form JSON — only finite
+        // numbers may reach the SVG markup, or a crafted point value could
+        // break out of the attribute and inject HTML into the headless render.
+        const points = (Array.isArray(data?.points) ? data.points : [])
+          .filter(
+            (p: any) =>
+              p &&
+              typeof p.x === 'number' &&
+              typeof p.y === 'number' &&
+              Number.isFinite(p.x) &&
+              Number.isFinite(p.y),
+          )
+          .map((p: { x: number; y: number }) => p as { x: number; y: number });
         if (points.length < 2) {
           return '';
         }

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: frclone123
       POSTGRES_DB: frclone
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # loopback only — dev DB must not face the LAN
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +24,7 @@ services:
     container_name: fr-clone-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"   # loopback only — dev Redis has no password
     volumes:
       - redis_data:/data
     healthcheck:
@@ -41,8 +41,8 @@ services:
       MINIO_ROOT_USER: frclone
       MINIO_ROOT_PASSWORD: frclone123
     ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Console
+      - "127.0.0.1:9000:9000"   # API — loopback only (default dev creds)
+      - "127.0.0.1:9001:9001"   # Console
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

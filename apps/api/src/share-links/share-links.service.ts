@@ -35,7 +35,7 @@ export class ShareLinksService {
       token: randomBytes(24).toString('hex'),
       permission: data.permission ?? SharePermission.CAN_COMMENT,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-      passwordHash: data.password ? await bcrypt.hash(data.password, 10) : null,
+      passwordHash: data.password ? await bcrypt.hash(data.password, 12) : null,
     });
     const saved = await this.shareLinksRepository.save(link);
 

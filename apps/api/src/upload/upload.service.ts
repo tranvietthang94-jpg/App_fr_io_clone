@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,6 +13,38 @@ function parseEnvInt(value: string | undefined, fallback: number): number {
   if (value === undefined || value === '') return fallback;
   const n = parseInt(value, 10);
   return Number.isNaN(n) ? fallback : n;
+}
+
+// Mirrors the client-side allowlist in apps/web/lib/uploadManager.ts.
+const ALLOWED_MIME_TYPES = [
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/webm',
+  'video/mpeg',
+  'video/x-matroska',
+];
+const ALLOWED_EXTENSIONS = ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'mpeg', 'mpg'];
+
+/**
+ * Client-supplied filenames reach filesystem paths, so they must never carry
+ * directory segments or separators (path traversal → arbitrary file write).
+ * Everything the server stores/uses for path building goes through this.
+ */
+function sanitizeFilename(filename: string): string {
+  const base = path.basename(filename.replace(/\\/g, '/')).replace(/[/:*?"<>|\x00-\x1f]/g, '_').trim();
+  return base || 'video';
+}
+
+interface UploadMetadata {
+  userId: string;
+  projectId: string;
+  filename: string;
+  fileSize: number;
+  totalChunks: number;
+  chunkSize: number;
+  assetGroupId?: string | null;
+  folderId?: string | null;
 }
 
 @Injectable()
@@ -53,6 +85,15 @@ export class UploadService {
       throw new BadRequestException(`File vượt quá giới hạn ${maxFileSize} bytes`);
     }
 
+    // Server-side type gate — the client allowlist is advisory only.
+    const safeName = sanitizeFilename(filename);
+    const ext = path.extname(safeName).slice(1).toLowerCase();
+    const mimeOk = !mimeType || mimeType.startsWith('video/') || ALLOWED_MIME_TYPES.includes(mimeType);
+    const extOk = !ext || ALLOWED_EXTENSIONS.includes(ext);
+    if (!mimeOk || !extOk) {
+      throw new BadRequestException('Chỉ hỗ trợ file video (mp4, m4v, mov, mkv, webm, avi, mpeg)');
+    }
+
     const uploadId = uuidv4();
     const chunkSize = parseEnvInt(process.env.UPLOAD_CHUNK_SIZE, 5 * 1024 * 1024);
     const totalChunks = Math.ceil(fileSize / chunkSize);
@@ -66,7 +107,7 @@ export class UploadService {
     const metadata = {
       uploadId,
       projectId,
-      filename,
+      filename: safeName,
       fileSize,
       mimeType,
       totalChunks,
@@ -88,13 +129,12 @@ export class UploadService {
   }
 
   /** Which chunk indices already made it to disk — lets a client resume after a page refresh instead of restarting. */
-  async getUploadStatus(uploadId: string) {
-    const uploadChunkDir = path.join(this.chunkDir, uploadId);
-    const metadataPath = path.join(uploadChunkDir, 'metadata.json');
-    if (!fs.existsSync(metadataPath)) {
-      throw new NotFoundException('Upload not found');
+  async getUploadStatus(uploadId: string, userId: string) {
+    const { metadata } = this.readUploadMetadata(uploadId);
+    if (metadata.userId !== userId) {
+      throw new ForbiddenException('Bạn không phải người tạo upload này');
     }
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+    const uploadChunkDir = path.join(this.chunkDir, uploadId);
     const uploadedChunks: number[] = [];
     for (let i = 0; i < metadata.totalChunks; i++) {
       if (fs.existsSync(path.join(uploadChunkDir, `chunk_${i}`))) {
@@ -104,39 +144,54 @@ export class UploadService {
     return { uploadId, totalChunks: metadata.totalChunks, chunkSize: metadata.chunkSize, uploadedChunks };
   }
 
-  async uploadChunk(uploadId: string, chunkIndex: number, chunk: Buffer) {
-    const uploadChunkDir = path.join(this.chunkDir, uploadId);
-    
-    // Verify upload exists
-    const metadataPath = path.join(uploadChunkDir, 'metadata.json');
-    if (!fs.existsSync(metadataPath)) {
-      throw new NotFoundException('Upload not found');
+  async uploadChunk(uploadId: string, chunkIndex: number, chunk: Buffer, userId: string) {
+    const { metadata } = this.readUploadMetadata(uploadId);
+    if (metadata.userId !== userId) {
+      throw new ForbiddenException('Bạn không phải người tạo upload này');
+    }
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= metadata.totalChunks) {
+      throw new BadRequestException(`chunkIndex phải trong khoảng 0..${metadata.totalChunks - 1}`);
     }
 
-    // Save chunk
+    const uploadChunkDir = path.join(this.chunkDir, uploadId);
     const chunkPath = path.join(uploadChunkDir, `chunk_${chunkIndex}`);
     fs.writeFileSync(chunkPath, chunk);
 
     return { success: true, chunkIndex };
   }
 
-  async completeUpload(uploadId: string, userId: string, actorName: string) {
-    const uploadChunkDir = path.join(this.chunkDir, uploadId);
-    const metadataPath = path.join(uploadChunkDir, 'metadata.json');
-
+  /** Loads metadata.json for a (UUID-validated) uploadId, or 404s when unknown. */
+  private readUploadMetadata(uploadId: string): { metadata: UploadMetadata } {
+    const metadataPath = path.join(this.chunkDir, uploadId, 'metadata.json');
     if (!fs.existsSync(metadataPath)) {
       throw new NotFoundException('Upload not found');
     }
+    return { metadata: JSON.parse(fs.readFileSync(metadataPath, 'utf-8')) };
+  }
 
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-    const { projectId, filename, fileSize, totalChunks, assetGroupId, folderId } = metadata;
+  async completeUpload(uploadId: string, userId: string, actorName: string) {
+    const uploadChunkDir = path.join(this.chunkDir, uploadId);
+    const { metadata } = this.readUploadMetadata(uploadId);
+    const { projectId, fileSize, totalChunks, assetGroupId, folderId } = metadata;
 
     // Re-check role in case access changed since initUpload (e.g. removed from the project).
     await this.projectsService.assertRole(projectId, userId, MemberRole.EDITOR);
 
-    // Combine chunks
+    // Defense in depth: metadata was written by initUpload which already
+    // sanitized, but metadata.json is the path input here — never trust it.
+    const filename = sanitizeFilename(metadata.filename);
     const finalPath = path.join(this.uploadDir, `${uploadId}_${filename}`);
     const writeStream = fs.createWriteStream(finalPath);
+
+    // Pre-check so a missing chunk fails before a half-written file exists.
+    const missing = [] as number[];
+    for (let i = 0; i < totalChunks; i++) {
+      if (!fs.existsSync(path.join(uploadChunkDir, `chunk_${i}`))) missing.push(i);
+    }
+    if (missing.length > 0) {
+      writeStream.destroy();
+      throw new BadRequestException(`Thiếu các chunk: ${missing.join(', ')}`);
+    }
 
     for (let i = 0; i < totalChunks; i++) {
       const chunkPath = path.join(uploadChunkDir, `chunk_${i}`);
@@ -147,7 +202,10 @@ export class UploadService {
     writeStream.end();
 
     // Wait for write to complete
-    await new Promise<void>((resolve) => writeStream.on('finish', resolve));
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
 
     // Create video record — a version upload (assetGroupId provided by the
     // client, e.g. "upload new version of this asset") gets the next

@@ -22,10 +22,18 @@ export class MailerService {
   /**
    * Sends an email, or logs it (with the dev-relevant link) if no SMTP_HOST
    * is configured — keeps local dev working without real mail credentials.
+   * In production the link is NEVER logged: reset/invite links printed to
+   * server logs would let anyone with log access take over an account.
    */
   async send(to: string, subject: string, html: string, devLogLink?: string): Promise<void> {
     if (!this.transporter) {
-      this.logger.log(`[DEV MAIL] To: ${to} | Subject: ${subject}${devLogLink ? ` | Link: ${devLogLink}` : ''}`);
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.warn(
+          `SMTP chưa cấu hình — KHÔNG gửi được mail tới ${to} (subject: ${subject}). Cấu hình SMTP_HOST để bật email.`,
+        );
+      } else {
+        this.logger.log(`[DEV MAIL] To: ${to} | Subject: ${subject}${devLogLink ? ` | Link: ${devLogLink}` : ''}`);
+      }
       return;
     }
     try {

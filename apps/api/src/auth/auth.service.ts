@@ -12,6 +12,7 @@ import type { GoogleProfile } from './google.strategy';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const BCRYPT_COST = 12;
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,17 @@ export class AuthService {
     return createHash('sha256').update(raw).digest('hex');
   }
 
+  /**
+   * passwordHash is `select: false` on the entity, so it must be re-selected
+   * explicitly for the two flows that compare against it.
+   */
+  private findUserWithPasswordHash(where: { email?: string; id?: string }) {
+    const qb = this.usersRepository.createQueryBuilder('user').addSelect('user.passwordHash');
+    if (where.email) qb.where('user.email = :email', { email: where.email });
+    if (where.id) qb.where('user.id = :id', { id: where.id });
+    return qb.getOne();
+  }
+
   private async issueRefreshToken(userId: string): Promise<string> {
     const raw = randomBytes(32).toString('hex');
     const refreshToken = this.refreshTokensRepository.create({
@@ -62,7 +74,7 @@ export class AuthService {
       throw new ConflictException('Email đã được sử dụng');
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     const user = this.usersRepository.create({ email, passwordHash, name });
     await this.usersRepository.save(user);
 
@@ -72,7 +84,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.usersRepository.findOne({ where: { email } });
+    const user = await this.findUserWithPasswordHash({ email });
     if (!user) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
@@ -148,7 +160,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await this.findUserWithPasswordHash({ id: userId });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -156,7 +168,7 @@ export class AuthService {
     if (!isCurrentValid) {
       throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
     }
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
     await this.usersRepository.save(user);
 
     // Same "invalidate every session" behavior as resetPassword.
@@ -201,7 +213,7 @@ export class AuthService {
       throw new BadRequestException('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn');
     }
 
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
     await this.usersRepository.save(user);
 
     resetToken.usedAt = new Date();
@@ -227,7 +239,7 @@ export class AuthService {
         }
         await this.usersRepository.save(user);
       } else {
-        const passwordHash = await bcrypt.hash(randomUUID(), 10); // unusable — Google-only account
+        const passwordHash = await bcrypt.hash(randomUUID(), BCRYPT_COST); // unusable — Google-only account
         user = this.usersRepository.create({
           email: profile.email,
           name: profile.name,

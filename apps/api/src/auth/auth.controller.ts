@@ -1,6 +1,7 @@
-import { Controller, Post, Get, Patch, Body, UseGuards, Request, Response as Res, UnauthorizedException, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, UseFilters, Request, Response as Res, UnauthorizedException, HttpCode } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
+import { randomBytes } from 'crypto';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -10,6 +11,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { GoogleOAuthConfiguredGuard } from './google-oauth-configured.guard';
+import { GoogleStateGuard, GOOGLE_STATE_COOKIE, GOOGLE_STATE_COOKIE_MAX_AGE_MS } from './google-state.guard';
+import { GoogleCallbackExceptionFilter } from './google-callback-exception.filter';
+import { googleOAuthOptions } from '../config/google.config';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_COOKIE_PATH = '/api/auth';
@@ -106,20 +110,46 @@ export class AuthController {
     return { success: true };
   }
 
+  /**
+   * Builds the Google authorization redirect manually instead of via
+   * passport: passport-oauth2 without a session-backed store cannot carry a
+   * `state` value, and OAuth without state is vulnerable to login CSRF. The
+   * state lives in a short-lived httpOnly cookie and is verified by
+   * GoogleStateGuard on the callback before the code exchange runs.
+   */
   @Get('google')
-  @UseGuards(GoogleOAuthConfiguredGuard, AuthGuard('google'))
-  async googleAuth() {
-    // Passport handles the redirect to Google; this body never runs.
+  @UseGuards(GoogleOAuthConfiguredGuard)
+  googleAuth(@Res() res: ExpressResponse) {
+    const state = randomBytes(16).toString('hex');
+    res.cookie(GOOGLE_STATE_COOKIE, state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: REFRESH_COOKIE_PATH,
+      maxAge: GOOGLE_STATE_COOKIE_MAX_AGE_MS,
+    });
+    const params = new URLSearchParams({
+      client_id: googleOAuthOptions.clientID,
+      redirect_uri: googleOAuthOptions.callbackURL,
+      response_type: 'code',
+      scope: 'email profile',
+      state,
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
   }
 
   @Get('google/callback')
-  @UseGuards(GoogleOAuthConfiguredGuard, AuthGuard('google'))
+  @UseGuards(GoogleOAuthConfiguredGuard, GoogleStateGuard, AuthGuard('google'))
+  @UseFilters(GoogleCallbackExceptionFilter)
   async googleCallback(@Request() req, @Res() res: ExpressResponse) {
     const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    res.clearCookie(GOOGLE_STATE_COOKIE, { path: REFRESH_COOKIE_PATH });
     try {
       const result = await this.authService.loginWithGoogle(req.user);
       this.setRefreshCookie(res, result.refreshToken);
-      res.redirect(`${frontendUrl}/auth/google-callback?accessToken=${encodeURIComponent(result.accessToken)}`);
+      // Token goes in the URL fragment, not the query string — fragments are
+      // not sent to servers (proxy/access logs) nor included in Referer.
+      res.redirect(`${frontendUrl}/auth/google-callback#accessToken=${encodeURIComponent(result.accessToken)}`);
     } catch {
       res.redirect(`${frontendUrl}/login?error=google_failed`);
     }

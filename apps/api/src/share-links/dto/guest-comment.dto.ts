@@ -1,8 +1,9 @@
-import { IsEmail, IsNumber, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsNumber, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class GuestCommentDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   guestName: string;
 
   @IsOptional()
@@ -11,6 +12,7 @@ export class GuestCommentDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(5000)
   content: string;
 
   @IsNumber()
@@ -39,6 +41,7 @@ export class GuestCommentEditDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(5000)
   content?: string;
 }
 

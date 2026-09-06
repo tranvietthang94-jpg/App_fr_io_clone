@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -185,7 +185,7 @@ export class VideosService {
 
   async getVersions(assetGroupId: string, userId: string) {
     const versions = await this.videosRepository.find({
-      where: { assetGroupId },
+      where: { assetGroupId, deletedAt: IsNull() },
       order: { versionNumber: 'ASC' },
     });
     if (versions.length > 0) {

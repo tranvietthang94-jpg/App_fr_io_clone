@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { VideosService } from '../videos/videos.service';
+import { armProcessKillTimer } from '../common/process-timeout.util';
 
 @Injectable()
 export class MediaService {
@@ -10,6 +11,10 @@ export class MediaService {
   private readonly ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
   private readonly ffprobePath = process.env.FFPROBE_PATH || 'ffprobe';
   private readonly outputDir = path.join(process.cwd(), 'uploads', 'transcoded');
+  // Input is user-supplied media — a hung/crafted file must not occupy a
+  // worker slot forever. Generous because legit 4K files transcode slowly.
+  private readonly transcodeTimeoutMs =
+    (parseInt(process.env.TRANSCODE_TIMEOUT_SECONDS || '7200', 10) || 7200) * 1000;
 
   constructor(private videosService: VideosService) {
     // Create output directory if it doesn't exist
@@ -40,6 +45,7 @@ export class MediaService {
       const ffprobe = spawn(this.ffprobePath, args);
       let stdout = '';
       let stderr = '';
+      const disarm = armProcessKillTimer(ffprobe, 60_000);
 
       ffprobe.stdout.on('data', (data) => {
         stdout += data.toString();
@@ -49,7 +55,13 @@ export class MediaService {
         stderr += data.toString();
       });
 
+      ffprobe.on('error', (err) => {
+        disarm();
+        reject(err);
+      });
+
       ffprobe.on('close', (code) => {
+        disarm();
         if (code !== 0) {
           this.logger.error(`ffprobe error: ${stderr}`);
           reject(new Error(`ffprobe exited with code ${code}`));
@@ -196,12 +208,19 @@ export class MediaService {
 
       const ffmpeg = spawn(this.ffmpegPath, args);
       let stderr = '';
+      const disarm = armProcessKillTimer(ffmpeg, this.transcodeTimeoutMs);
 
       ffmpeg.stderr.on('data', (data) => {
         stderr += data.toString();
       });
 
+      ffmpeg.on('error', (err) => {
+        disarm();
+        reject(err);
+      });
+
       ffmpeg.on('close', (code) => {
+        disarm();
         if (code !== 0) {
           this.logger.error(`ffmpeg error: ${stderr}`);
           reject(new Error(`ffmpeg exited with code ${code}`));
@@ -235,12 +254,19 @@ export class MediaService {
 
       const ffmpeg = spawn(this.ffmpegPath, args);
       let stderr = '';
+      const disarm = armProcessKillTimer(ffmpeg, 120_000);
 
       ffmpeg.stderr.on('data', (data) => {
         stderr += data.toString();
       });
 
+      ffmpeg.on('error', (err) => {
+        disarm();
+        reject(err);
+      });
+
       ffmpeg.on('close', (code) => {
+        disarm();
         if (code !== 0) {
           this.logger.error(`Thumbnail generation error: ${stderr}`);
           reject(new Error(`ffmpeg exited with code ${code}`));

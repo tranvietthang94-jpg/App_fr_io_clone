@@ -10,8 +10,10 @@ export default function GoogleCallbackPage() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get("accessToken");
+    // The API delivers the token in the URL fragment (#accessToken=…) —
+    // fragments never reach server/proxy logs or the Referer header.
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hash.get("accessToken");
     if (!accessToken) {
       router.push("/login?error=google_failed");
       return;

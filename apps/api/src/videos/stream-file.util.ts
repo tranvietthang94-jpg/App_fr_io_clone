@@ -2,8 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Request, Response } from 'express';
 
+/** Rendition names produced by MediaService.getQualitiesForVideo — anything else in the URL is rejected, never joined into a path. */
+const ALLOWED_QUALITIES = new Set(['original', '360p', '720p', '1080p', '4k']);
+
 /** Resolves the on-disk path for a quality, falling back to the original file if a transcoded rendition is missing. */
 export function resolveStreamFilePath(video: { id: string; filePath: string }, quality: string): string | null {
+  if (!ALLOWED_QUALITIES.has(quality)) {
+    return null;
+  }
   let filePath: string;
   if (quality === 'original') {
     filePath = video.filePath;
@@ -24,9 +30,9 @@ export function streamVideoFile(filePath: string, req: Request, res: Response): 
 
   if (range) {
     const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunksize = end - start + 1;
+    const start = Math.max(0, Math.min(parseInt(parts[0], 10) || 0, fileSize - 1));
+    const end = parts[1] ? Math.min(parseInt(parts[1], 10) || fileSize - 1, fileSize - 1) : fileSize - 1;
+    const chunksize = Math.max(1, end - start + 1);
     const file = fs.createReadStream(filePath, { start, end });
     res.writeHead(206, {
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,

@@ -8,7 +8,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  // select: false — never loaded by default, so `relations: { user: true }`
+  // (comments, members, …) can't leak the bcrypt hash to clients. Queries that
+  // need it (login, change-password) re-select it explicitly.
+  @Column({ select: false })
   passwordHash: string;
 
   @Column()

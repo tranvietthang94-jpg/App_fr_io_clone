@@ -36,9 +36,12 @@ uploads/
 # Docker
 docker/volumes/
 
-# Cloudflare Tunnel secrets (credentials.json do `tunnel create` sinh ra)
+# Cloudflare Tunnel secrets (credentials.json do `tunnel create` sinh ra;
+# cert.pem do `cloudflared login` sinh ra — origin cert, không commit)
 deploy/cloudflared/credentials.json
 deploy/cloudflared/config.yml
+deploy/cloudflared/cert.pem
+deploy/cloudflared/.cloudflared/
 
 # Turbo
 .turbo/

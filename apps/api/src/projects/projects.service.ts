@@ -218,6 +218,11 @@ export class ProjectsService {
     if (member.invitedEmail && member.invitedEmail !== userEmail) {
       throw new ForbiddenException('Lời mời này được gửi cho một email khác');
     }
+    // Existing-user invites carry the invitee's userId — the token must not be
+    // redeemable by a different account that happens to obtain it.
+    if (member.userId && member.userId !== userId) {
+      throw new ForbiddenException('Lời mời này được gửi cho một tài khoản khác');
+    }
 
     member.userId = userId;
     member.invitedEmail = null;

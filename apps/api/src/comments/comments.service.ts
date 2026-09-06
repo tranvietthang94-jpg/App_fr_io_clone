@@ -28,6 +28,26 @@ export class CommentsService {
   ) {}
 
   /**
+   * Comment responses go out to anonymous share-link viewers too, so the
+   * attached user must never carry the member's email (or hash — excluded at
+   * the entity level via select:false).
+   */
+  private toPublicComment(comment: Comment): Comment {
+    if (comment.user) {
+      const u = comment.user;
+      // Serialize only the public subset — email/hash/googleId never leave the API.
+      comment.user = {
+        id: u.id,
+        name: u.name,
+        avatarUrl: u.avatarUrl,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      } as unknown as Comment['user'];
+    }
+    return comment;
+  }
+
+  /**
    * Top-level comments for a video (replies are attached, not returned as
    * separate rows), with #N sequence numbers, replies, and reactions embedded.
    * No `limit` = every comment (backward compatible for callers like the PDF
@@ -86,9 +106,9 @@ export class CommentsService {
     }
 
     const items = pageItems.map((c) => ({
-      ...c,
+      ...this.toPublicComment(c),
       sequenceNumber: sequenceMap.get(c.id) ?? null,
-      replies: repliesByParent.get(c.id) || [],
+      replies: (repliesByParent.get(c.id) || []).map((r) => this.toPublicComment(r)),
       reactions: reactionsByComment.get(c.id) || [],
     }));
 
@@ -122,7 +142,7 @@ export class CommentsService {
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
-    return comment;
+    return this.toPublicComment(comment);
   }
 
   async create(data: {

@@ -81,3 +81,36 @@
 - **Reboot máy:** Docker Desktop tự bật (đã set) → containers `restart: unless-stopped` tự sống; job transcode dở BullMQ tự nhặt lại. (Chưa test chu kỳ reboot lần nào — nên test 1 lần.)
 - **Docker trên Git Bash (Windows):** mount path cần `MSYS_NO_PATHCONV=1` + `"$(pwd -W)/...:/container/path"`; image distroless không có shell — dùng alpine khi cần exec test.
 - **Đang chờ làm:** backup ổ đĩa cho `F:\frclone-uploads`; test reboot; (tùy chọn) SMTP cho quên mật khẩu.
+
+## 5. Rà soát & gia cố bảo mật — 2026-09-07
+
+**Audit:** 2 luồng review sâu (phân quyền/IDOR + injection/file-handling), quét secret trong tree & toàn bộ git history (sạch — chỉ placeholder trong `.env.example`), `npm audit`, kiểm `docker ps` thật.
+
+### Đã sửa (deploy + verify qua tunnel cùng ngày)
+- **CRITICAL — leak bcrypt hash + email:** `User.passwordHash` giờ `select: false`; login/change-password dùng `findUserWithPasswordHash` (addSelect). Response comment (cả public share-link lẫn member) chỉ còn `{id,name,avatarUrl,createdAt,updatedAt}`.
+- **CRITICAL — path traversal `filename` upload:** `sanitizeFilename()` (basename + strip ký tự nguy hiểm) chạy ở init lẫn complete; metadata.json là input của complete nên phải re-sanitize.
+- **CRITICAL (hạ tầng):** dev stack `fr-clone-postgres/redis/minio` bind `0.0.0.0` phơi DB ra LAN → đã đổi `docker/docker-compose.yml` sang `127.0.0.1:*` và dựng lại container.
+- Traversal `uploadId` → `ParseUUIDPipe` trên mọi route upload; traversal `quality` stream → allowlist `{original,360p,720p,1080p,4k}` (web chỉ dùng `original`).
+- Ownership upload: `getUploadStatus`/`uploadChunk` so `metadata.userId` (trước đây user khác ghi đè chunk được); giới hạn chunk qua multer `limits.fileSize` = UPLOAD_CHUNK_SIZE+1MB; complete pre-check chunk thiếu + xử lý error stream.
+- MIME/extension allowlist server-side (mirror `uploadManager.ts` client).
+- Google OAuth: tự sinh `state` + cookie `g_state` (HttpOnly/Secure/Lax, 10 phút), `GoogleStateGuard` verify ở callback TRƯỚC khi passport exchange; access token chuyển sang URL fragment `#accessToken=` (web đọc hash); `GoogleCallbackExceptionFilter` đưa mọi lỗi callback về `/login?error=google_failed` (trước đây code giả → 500).
+- SVG annotation trong PDF: chỉ nhận số finite cho `points` (chặn HTML injection vào headless Chrome).
+- helmet() trên API (CORP=cross-origin để dev cross-port xem được video).
+- FFmpeg/ffprobe: kill timer (ffprobe 60s, thumbnail/screenshot 120s, transcode `TRANSCODE_TIMEOUT_SECONDS` mặc định 2h) + handler `error` event.
+- Mailer: ở production KHÔNG còn log link reset/invite khi thiếu SMTP (chỉ warn).
+- Nhỏ: bcrypt 10→12; guest comment `@MaxLength`; `getVersions` lọc `deletedAt IS NULL`; accept-invite chặn token rơi vào tay account khác (`member.userId` check); `.gitignore` thêm `cert.pem` + `.cloudflared/`; `npm audit fix` (qs DoS).
+
+### Đã verify trên production (dữ liệu test có nhãn, dọn bằng ID cụ thể)
+- Helmet headers 200; OAuth: initiate 302 → google với `state`+cookie, sai state/du state+code giả đều 302 `login?error=google_failed`.
+- Upload: `../../poc.mp4` ghi ra `uploads/<uuid>_poc.mp4` (KHÔNG ra ngoài); mime text/plain → 400; uploadId lạ → 400/404.
+- Stream: 360p 200, `..%2F..%2F` → 404, không token → 401, Range → 206 (REST + public route).
+- Leak: 0 `passwordHash`, 0 `"email"` trong response comments (public + member). Guest post comment OK (48-hex token).
+- Export XML well-formed (xmeml v4) + PDF `%PDF` 71KB — luồng thật qua tunnel.
+- Smoke test xong xoá sạch theo ID (users/projects/videos/comments/... = 0, files xoá đúng tên).
+
+### Còn lại — đã biết, chấp nhận/chờ quyết định
+- Chuỗi `minio` deps (4 moderate DoS) — fix cần upgrade breaking; package không dùng runtime.
+- Socket: guest view-only vẫn broadcast được event `comment:new` giả vào room (không lưu DB).
+- Annotation: mọi member sửa/xoá được annotation của người khác (chưa check owner).
+- SMTP chưa cấu hình ⇒ mail reset/invite không gửi được ở prod (trước đây bị log link — giờ đã chặn log).
+- `db:seed` tạo admin/admin123 — chỉ chạy thủ công, đừng chạy trên prod.
