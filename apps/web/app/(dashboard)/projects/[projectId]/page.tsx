@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { projectsApi, videosApi, foldersApi } from "@/lib/api";
-import { uploadFileWithResume, validateVideoFile } from "@/lib/uploadManager";
+import { validateVideoFile } from "@/lib/uploadManager";
+import { useUploadStore } from "@/lib/stores/uploadStore";
 import { socketService } from "@/lib/socket";
 import { VideoCard } from "@/components/dashboard/VideoCard";
 import { MembersPanel } from "@/components/project/MembersPanel";
@@ -30,13 +31,6 @@ import { VideoReviewStatus, type Project, type Video, type Folder } from "@r-fra
 
 type DeleteTarget = { type: "folder" | "video"; id: string };
 
-interface UploadItem {
-  id: string;
-  name: string;
-  progress: number;
-  status: "uploading" | "done" | "error";
-}
-
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -54,7 +48,6 @@ export default function ProjectDetailPage() {
   const [showTrash, setShowTrash] = useState(false);
   const [trashVideos, setTrashVideos] = useState<Video[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -147,25 +140,21 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const uploadOneFile = async (file: File, assetGroupId?: string) => {
-    const queueId = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
-    setUploadQueue((prev) => [...prev, { id: queueId, name: file.name, progress: 0, status: "uploading" }]);
-    try {
-      await uploadFileWithResume(
-        file,
-        projectId,
-        { folderId: currentFolderId ?? undefined, assetGroupId },
-        (percent) => {
-          setUploadQueue((prev) => prev.map((u) => (u.id === queueId ? { ...u, progress: percent } : u)));
-        }
-      );
-      setUploadQueue((prev) => prev.map((u) => (u.id === queueId ? { ...u, status: "done", progress: 100 } : u)));
-      await loadVideos();
-      setTimeout(() => setUploadQueue((prev) => prev.filter((u) => u.id !== queueId)), 3000);
-    } catch (err) {
-      console.error("Upload failed:", err);
-      setUploadQueue((prev) => prev.map((u) => (u.id === queueId ? { ...u, status: "error" } : u)));
-    }
+  // Uploads run in the global store: navigating to another video/page (or the
+  // whole project page unmounting) never touches them, and progress stays
+  // visible in the floating panel mounted on the dashboard layout.
+  const enqueueUpload = useUploadStore((s) => s.enqueue);
+
+  const uploadOneFile = (file: File, assetGroupId?: string) => {
+    enqueueUpload({
+      file,
+      projectId,
+      assetGroupId,
+      folderId: currentFolderId ?? undefined,
+      onDone: () => {
+        void loadVideos();
+      },
+    });
   };
 
   const handleFilesSelected = (fileList: FileList | File[]) => {
@@ -417,28 +406,6 @@ export default function ProjectDetailPage() {
             <X className="w-4 h-4" />
           </Button>
         </form>
-      )}
-
-      {/* Upload queue */}
-      {uploadQueue.length > 0 && (
-        <div className="mb-6 space-y-2">
-          {uploadQueue.map((u) => (
-            <div key={u.id} className="bg-bg-secondary border border-border rounded-md p-3">
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="truncate">{u.name}</span>
-                <span className="text-text-secondary">
-                  {u.status === "error" ? "Lỗi" : u.status === "done" ? "Xong" : `${u.progress}%`}
-                </span>
-              </div>
-              <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${u.status === "error" ? "bg-accent-red" : "bg-primary"}`}
-                  style={{ width: `${u.progress}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
       )}
 
       {showTrash ? (

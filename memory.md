@@ -114,3 +114,12 @@
 - Annotation: mọi member sửa/xoá được annotation của người khác (chưa check owner).
 - SMTP chưa cấu hình ⇒ mail reset/invite không gửi được ở prod (trước đây bị log link — giờ đã chặn log).
 - `db:seed` tạo admin/admin123 — chỉ chạy thủ công, đừng chạy trên prod.
+
+## 6. Xử lý feedback người dùng — 2026-09-07 (đợt R.Frame)
+
+- **Bấm comment không nhảy video:** trước đây chỉ nút timecode nhỏ mới seek. Giờ click vào anywhere trên thẻ comment là video nhảy tới timestamp (guard bỏ qua nút bấm/input và khi đang bôi đen text). Verify bằng trình duyệt thật trên prod: click card → currentTime 0 → đúng 1.2s; click nút "Trả lời" → không seek.
+- **Upload chết khi rời tab/thao tác video khác — 3 nguyên nhân gốc:**
+  1. Queue upload là state của trang project → điều hướng là mất progress UI (ngỡ "ngừng tải"). Đã chuyển sang **global Zustand store** + panel nổi góc phải mounted ở dashboard layout — hiện trên mọi trang, có nút Thử lại (server-side resume nên không tải lại chunk đã xong).
+  2. **Refresh token fail vì mất mạng tạm thời → forceLogout → hard navigation hủy mọi request** (đây là "không giữ tab là nó lỗi"). Giờ chỉ logout khi server chắc chắn từ chối 401; lỗi mạng chỉ reject để retry.
+  3. Chunk không có timeout + chỉ retry 4 lần → connection stall treo vĩnh viễn. Giờ: timeout 180s/chunk, retry 8 lần backoff tới 30s; complete timeout 300s.
+- Bài học: request interceptor `forceLogout()` vô điều kiện là bẫy kinh điển phá background upload; tách "session hết hạn thật" khỏi "mạng lỗi".

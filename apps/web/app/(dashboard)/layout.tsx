@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { authApi } from "@/lib/api";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { UploadQueuePanel } from "@/components/upload/UploadQueuePanel";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import {
@@ -134,6 +135,8 @@ export default function DashboardLayout({
         </div>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+      {/* Global upload progress — survives navigation between pages. */}
+      <UploadQueuePanel />
     </div>
   );
 }

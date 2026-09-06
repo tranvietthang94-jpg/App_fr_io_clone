@@ -35,14 +35,22 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function uploadChunkWithRetry(uploadId: string, index: number, chunk: Blob, maxRetries = 4): Promise<void> {
+// A single 5MB chunk can be slow on weak home upstream — give it room, but
+// never let a stalled connection hang the upload forever.
+const CHUNK_TIMEOUT_MS = 180_000;
+// Tolerate minutes of network trouble (laptop sleep, Wi-Fi switch, browser
+// background throttling stalls) before giving up and marking the upload
+// "Lỗi" — the server-side resume means retries never redo finished chunks.
+const MAX_CHUNK_RETRIES = 8;
+
+async function uploadChunkWithRetry(uploadId: string, index: number, chunk: Blob): Promise<void> {
   for (let attempt = 0; ; attempt++) {
     try {
-      await uploadApi.uploadChunk(uploadId, index, chunk);
+      await uploadApi.uploadChunk(uploadId, index, chunk, { timeout: CHUNK_TIMEOUT_MS });
       return;
     } catch (err) {
-      if (attempt >= maxRetries) throw err;
-      await sleep(Math.min(1000 * 2 ** attempt, 10000));
+      if (attempt >= MAX_CHUNK_RETRIES) throw err;
+      await sleep(Math.min(2000 * 2 ** attempt, 30000));
     }
   }
 }

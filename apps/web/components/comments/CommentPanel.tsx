@@ -204,10 +204,22 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               <div
                 key={comment.id}
                 className={cn(
-                  'group relative bg-bg-primary rounded-lg p-3 transition-all',
+                  'group relative bg-bg-primary rounded-lg p-3 transition-all cursor-pointer',
                   comment.resolved && 'opacity-60',
                   !comment.resolved && isCommentActive(comment.timestamp, currentTime) && 'ring-2 ring-accent-blue bg-accent-blue/5'
                 )}
+                onClick={(e) => {
+                  // Click anywhere on the card jumps the video to this
+                  // comment — except on interactive children (reply/edit/
+                  // delete/reaction buttons, mentions, the timecode button,
+                  // which handle their own clicks) or when the user is
+                  // selecting text to copy.
+                  if (window.getSelection()?.toString()) return;
+                  const target = e.target as HTMLElement;
+                  if (target.closest('button, a, input, textarea, select, form, [role="menu"]')) return;
+                  onSeekToComment(comment.timestamp);
+                }}
+                title="Bấm để nhảy đến vị trí này trong video"
               >
                 {/* Comment Header */}
                 <div className="flex items-start gap-2 mb-2">

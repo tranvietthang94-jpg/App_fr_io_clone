@@ -89,7 +89,16 @@ api.interceptors.response.use(
       .catch((refreshError) => {
         isRefreshing = false;
         onRefreshed(null);
-        forceLogout();
+        // Only log out when the server DEFINITIVELY rejected the session (401
+        // response from /auth/refresh). A network-level failure — laptop
+        // sleep, Wi-Fi blip, stalled connection while the tab is in the
+        // background — must NOT log the user out: it used to hard-navigate to
+        // /login, which cancelled every in-flight request and killed running
+        // uploads ("không giữ tab là nó lỗi"). The chunk retry loop re-fires
+        // and re-authenticates once the connection returns.
+        if (refreshError?.response) {
+          forceLogout();
+        }
         return Promise.reject(refreshError);
       });
   }
@@ -220,14 +229,17 @@ export const uploadApi = {
     opts?: { assetGroupId?: string; folderId?: string },
   ) => api.post('/api/upload/init', { projectId, filename, fileSize, mimeType, ...opts }),
   getStatus: (uploadId: string) => api.get(`/api/upload/${uploadId}/status`),
-  uploadChunk: (uploadId: string, chunkIndex: number, chunk: Blob) => {
+  uploadChunk: (uploadId: string, chunkIndex: number, chunk: Blob, config?: Parameters<typeof api.post>[2]) => {
     const formData = new FormData();
     formData.append('chunk', chunk);
     return api.post(`/api/upload/chunk/${uploadId}/${chunkIndex}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      ...config,
     });
   },
-  complete: (uploadId: string) => api.post(`/api/upload/complete/${uploadId}`),
+  // Long timeout: complete concatenates all chunks server-side, which takes a
+  // while for multi-GB files.
+  complete: (uploadId: string) => api.post(`/api/upload/complete/${uploadId}`, undefined, { timeout: 300_000 }),
 };
 
 // Annotations API
