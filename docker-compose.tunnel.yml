@@ -1,0 +1,34 @@
+# Cloudflare Tunnel overlay — máy nhà làm host, không cần mở port hay IP public.
+# Dùng CÙNG với docker-compose.prod.yml:
+#
+#   docker compose --env-file .env \
+#     -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build
+#
+# Yêu cầu (làm 1 lần, xem deploy/README.md mục "Phương án B"):
+#   deploy/cloudflared/config.yml        — tunnel ID + ingress (điền domain thật)
+#   deploy/cloudflared/credentials.json  — do `cloudflared tunnel create` sinh ra
+#
+# TLS kết thúc ở biên Cloudflare; cloudflared nói HTTP nội bộ nên KHÔNG cần
+# Caddy ở giai đoạn này. Port api/web chỉ bind 127.0.0.1 để debug nội bộ,
+# không phơi ra LAN.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./deploy/cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./deploy/cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+    depends_on:
+      - web
+      - api
+
+  # Thu hẹp thành localhost-only (chống truy cập trực tiếp từ LAN).
+  api:
+    ports: !override
+      - "127.0.0.1:4000:4000"
+
+  web:
+    ports: !override
+      - "127.0.0.1:3000:3000"

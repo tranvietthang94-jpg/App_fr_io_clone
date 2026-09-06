@@ -36,6 +36,10 @@ uploads/
 # Docker
 docker/volumes/
 
+# Cloudflare Tunnel secrets (credentials.json do `tunnel create` sinh ra)
+deploy/cloudflared/credentials.json
+deploy/cloudflared/config.yml
+
 # Turbo
 .turbo/
 

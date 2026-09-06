@@ -1,0 +1,23 @@
+# Cloudflared ingress — bản mẫu. Copy thành config.yml rồi điền domain thật:
+#   cp deploy/cloudflared/config.yml.example deploy/cloudflared/config.yml
+#
+# Định tuyến theo path GIỐNG HỆT deploy/Caddyfile (phương án VPS cũ):
+#   /api/* và /socket.io/* -> api:4000; phần còn lại -> web:3000.
+# Single origin giữ cho cookie SameSite=Lax + CORS hoạt động đúng.
+#
+# <TUNNEL-ID> lấy từ lệnh `cloudflared tunnel create frclone`
+# (cũng nằm trong credentials.json field "TunnelID").
+
+tunnel: <TUNNEL-ID>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: app.tenmiencuaban.com
+    path: ^/api/.*
+    service: http://api:4000
+  - hostname: app.tenmiencuaban.com
+    path: ^/socket.io/.*
+    service: http://api:4000
+  - hostname: app.tenmiencuaban.com
+    service: http://web:3000
+  - service: http_status:404

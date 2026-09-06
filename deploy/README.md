@@ -1,4 +1,71 @@
-# Deploy runbook — Phương án A (mini PC + VPS + Tailscale)
+# Deploy runbook
+
+## Phương án B (HIỆN TẠI) — Cloudflare Tunnel, máy nhà làm host
+
+Người xem → **Cloudflare Edge** (HTTPS, cert tự động) → **cloudflared** (container chạy
+trên máy host, kết nối RA NGOÀI nên không cần mở port, không sợ CGNAT của FPT) →
+`docker-compose.prod.yml` (web/api/postgres/redis). Video lưu ổ đĩa máy host (bind mount).
+
+Chi phí 0đ (Cloudflare Free). Không VPS, không Tailscale, không IP public, không static IP.
+
+Giới hạn Cloudflare Free đã đối chiếu với thiết kế app: body tối đa 100MB/request
+(upload là chunk 5MB ✓), timeout 100s (transcode async qua BullMQ ✓), WebSocket ✓.
+
+### 0. Chuẩn bị máy host (Windows)
+- Docker Desktop: bật "Start Docker Desktop when you sign in"; Windows tự đăng nhập sau boot.
+- Power: không sleep khi cắm điện; BIOS bật "Restore on AC Power Loss" (mất điện tự boot).
+- Thư mục lưu video, vd `F:\frclone-uploads` (tạo sẵn, còn nhiều dung lượng).
+
+### 1. Domain về Cloudflare (1 lần — chờ DNS 15–45')
+1. Tạo tài khoản Cloudflare Free → Add site → lấy 2 nameserver Cloudflare cấp.
+2. Ở nhà đăng ký tên miền (Mắt Bão): đổi nameserver của domain sang 2 NS đó.
+
+### 2. Tạo tunnel (1 lần — chạy ở repo root, PowerShell/cmd)
+```powershell
+# login: lệnh in ra URL — mở trên browser, đăng nhập Cloudflare, chọn domain
+docker run -it --rm -v "${PWD}\deploy\cloudflared:/etc/cloudflared" cloudflare/cloudflared:latest tunnel login
+# tạo tunnel — sinh file deploy\cloudflared\<TUNNEL-ID>.json
+docker run -it --rm -v "${PWD}\deploy\cloudflared:/etc/cloudflared" cloudflare/cloudflared:latest tunnel create frclone
+# đổi tên file <TUNNEL-ID>.json thành credentials.json
+```
+(Git Bash: thêm prefix `MSYS_NO_PATHCONV=1` vào từng lệnh để không bị đổi path.)
+
+### 3. Cấu hình + trỏ DNS
+```powershell
+Copy-Item deploy\cloudflared\config.yml.example deploy\cloudflared\config.yml
+# Mở config.yml: điền <TUNNEL-ID> (field TunnelID trong credentials.json) + domain thật vào 3 dòng hostname
+docker run --rm -v "${PWD}\deploy\cloudflared:/etc/cloudflared" cloudflare/cloudflared:latest tunnel route dns frclone app.tenmiencuaban.com
+```
+
+### 4. Chạy stack
+```powershell
+Copy-Item deploy\env.prod.example .env   # điền: PUBLIC_URL=https://app.tenmiencuaban.com,
+                                         # UPLOADS_HOST_DIR=F:/frclone-uploads, secrets (openssl rand -hex 32)
+docker compose --env-file .env -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build
+```
+- `docker-compose.tunnel.yml` thêm service cloudflared + ép api/web chỉ bind `127.0.0.1` (debug nội bộ, không phơi LAN).
+- Video stream qua Cloudflare: playback bình thường dùng Range request; nếu sau này cần tải file gốc dung lượng lớn, cân nhắc route tải trực tiếp LAN.
+
+### 5. Verify end-to-end (https://app.tenmiencuaban.com)
+1. Web load, cert hợp lệ (Cloudflare edge cert).
+2. Login → DevTools: cookie `refreshToken` có cờ **Secure**.
+3. Network: **`/socket.io/` WebSocket = 101**.
+4. Upload video → transcode `ready` + progress realtime; file nằm trong thư mục uploads máy host.
+5. Export PDF (puppeteer) + XML (validate well-formed); guest share-link ở tab ẩn danh 4G.
+6. `docker exec <api> ffmpeg -encoders | grep libx264` đủ codec.
+7. Reboot máy → stack tự sống lại (`restart: unless-stopped`), job dở BullMQ nhặt lại.
+
+### 6. Backup (bắt buộc — thay cho migration)
+Task Scheduler hằng ngày:
+```powershell
+docker exec app_frio_01-postgres-1 pg_dumpall -U frclone | gzip > F:\frclone-backups\pg-$(Get-Date -F yyyy-MM-dd).sql.gz
+# xoá bản > 14 ngày: forfiles /P F:\frclone-backups /M pg-*.sql.gz /D -14 /C "cmd /c del @path"
+```
+Cân nhắc copy thêm `F:\frclone-uploads` ra ổ/đích khác định kỳ.
+
+---
+
+## Phương án A (dự phòng) — mini PC + VPS + Tailscale
 
 Người xem → **VPS** (Caddy, HTTPS công khai) → hầm **Tailscale** → **mini PC** (docker-compose: web/api/postgres/redis). Một domain duy nhất, Caddy định tuyến theo path.
 
@@ -79,10 +146,10 @@ docker compose --env-file deploy/.env.local \
 Mỗi lần đổi code (trên mini PC hoặc rehearsal):
 1. **Backup trước** (bắt buộc): chạy `pg_dump` như mục 6 — `synchronize:true` sẽ tự đổi schema theo entity mới khi api khởi động lại, không có migration để rollback.
 2. `git pull`
-3. Rebuild + restart **chỉ service đổi** (postgres/redis/uploads giữ nguyên nhờ volume):
+3. Rebuild + restart **chỉ service đổi** (postgres/redis/uploads giữ nguyên nhờ volume). Phương án B thêm 2 flag `-f`/`--env-file .env` như mục B.4:
    ```bash
-   docker compose -f docker-compose.prod.yml up -d --build api   # đổi code api
-   docker compose -f docker-compose.prod.yml up -d --build web   # đổi code web
+   docker compose --env-file .env -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build api   # đổi code api
+   docker compose --env-file .env -f docker-compose.prod.yml -f docker-compose.tunnel.yml up -d --build web   # đổi code web
    ```
    Đổi cả hai / đổi `packages/shared` / đổi `PUBLIC_URL` → build lại **cả hai**.
 4. **Đổi domain/PUBLIC_URL ⇒ PHẢI rebuild web** (NEXT_PUBLIC_* bake lúc build).
@@ -91,6 +158,6 @@ Mỗi lần đổi code (trên mini PC hoặc rehearsal):
 
 ## Lưu ý
 - Đổi `PUBLIC_URL`/domain ⇒ **rebuild image web** (NEXT_PUBLIC_* bake lúc build).
-- Cả web và api PHẢI cùng origin (cookie sameSite=lax + CORS 1-origin).
-- Caddy route `/socket.io/*` (KHÔNG phải `/collaboration`).
+- Cả web và api PHẢI cùng origin (cookie sameSite=lax + CORS 1-origin). Tunnel đảm bảo điều này nhờ ingress định tuyến theo path trên MỘT hostname.
+- Route realtime là `/socket.io/*` (KHÔNG phải `/collaboration`) — xem `deploy/cloudflared/config.yml.example` (B) hoặc `deploy/Caddyfile` (A).
 - `synchronize:true` + không migration ⇒ **backup `pg_dump` trước mỗi update** (thay đổi entity phá huỷ có thể mất dữ liệu khi restart).
