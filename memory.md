@@ -123,3 +123,10 @@
   2. **Refresh token fail vì mất mạng tạm thời → forceLogout → hard navigation hủy mọi request** (đây là "không giữ tab là nó lỗi"). Giờ chỉ logout khi server chắc chắn từ chối 401; lỗi mạng chỉ reject để retry.
   3. Chunk không có timeout + chỉ retry 4 lần → connection stall treo vĩnh viễn. Giờ: timeout 180s/chunk, retry 8 lần backoff tới 30s; complete timeout 300s.
 - Bài học: request interceptor `forceLogout()` vô điều kiện là bẫy kinh điển phá background upload; tách "session hết hạn thật" khỏi "mạng lỗi".
+
+## 7. Đổi tên sản phẩm thành R.Frame — 2026-09-07 (ff19dec)
+
+- Bỏ hoàn toàn brand "FrameClone"/"Frame.io Clone" khỏi UI (sidebar, login/register/forgot/reset, metadata title), email (subject reset, thư mời, `no-reply@rframe.local`), PDF export (`<file> - R.Frame`), package nội bộ `@fr-clone/shared` → `@r-frame/shared` (+ mọi import + lockfile), tên root package `r-frame`, tài liệu (README/SETUP/TEST_PLAN/memory/design-system).
+- **Cố ý KHÔNG đổi** định danh hạ tầng đang chạy: DB `frclone`, container `fr-clone-*`, `F:\frclone-uploads`, tunnel `frclone` — người dùng không bao giờ thấy, đổi là gãy stack.
+- Còn lại thuộc về user: **App name trên Google consent screen** sửa trong Google Cloud Console → Auth Platform → Branding (ngoài repo).
+- Deploy: rebuild api+web; verify live `<title>R.Frame - Video Review & Collaboration</title>` + logo chữ trên login.
