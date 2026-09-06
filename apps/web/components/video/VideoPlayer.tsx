@@ -48,6 +48,8 @@ interface VideoPlayerProps {
   src: string;
   fps?: number;
   className?: string;
+  /** Preview frame URL (stream-tokened thumbnail) shown before playback starts. */
+  poster?: string;
   onTimeUpdate?: (time: number) => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
   seekTo?: number;
@@ -61,6 +63,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   src,
   fps = 30,
   className,
+  poster,
   onTimeUpdate,
   onPlayStateChange,
   seekTo,
@@ -263,7 +266,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
-        className="absolute inset-0 w-full h-full object-contain"
+        poster={poster}
+        className="w-full h-full object-contain"
         onClick={togglePlay}
       />
 

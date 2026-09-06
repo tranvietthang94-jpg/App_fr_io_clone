@@ -54,6 +54,8 @@ export default function ProjectDetailPage() {
   const [search, setSearch] = useState("");
   const [reviewStatusFilter, setReviewStatusFilter] = useState("");
   const [transcodeProgress, setTranscodeProgress] = useState<Record<string, number>>({});
+  // Stream token per video — powers the thumbnail <img> on each card.
+  const [thumbTokens, setThumbTokens] = useState<Record<string, string>>({});
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
   const isSearching = search.trim().length > 0;
@@ -124,6 +126,16 @@ export default function ProjectDetailPage() {
         reviewStatus: reviewStatusFilter || undefined,
       });
       setVideos(res.data);
+      // Thumbnails are served with per-video stream tokens; mint them in one
+      // request. Failure just means cards keep the film-icon fallback.
+      if (res.data.some((v: Video) => v.status === "ready")) {
+        try {
+          const tokens = await videosApi.getStreamTokens(projectId);
+          setThumbTokens(tokens.data);
+        } catch (err) {
+          console.error("Failed to load stream tokens:", err);
+        }
+      }
     } catch (err) {
       console.error("Failed to load videos:", err);
     } finally {
@@ -532,6 +544,7 @@ export default function ProjectDetailPage() {
                   video={video}
                   folders={folders}
                   progress={transcodeProgress[video.id] ?? null}
+                  thumbnailUrl={videosApi.getThumbnailUrl(video.id, thumbTokens[video.id])}
                   onClick={() => router.push(`/projects/${projectId}/videos/${video.id}`)}
                   onDelete={() => setDeleteTarget({ type: "video", id: video.id })}
                   onRename={(title) => handleRenameVideo(video.id, title)}

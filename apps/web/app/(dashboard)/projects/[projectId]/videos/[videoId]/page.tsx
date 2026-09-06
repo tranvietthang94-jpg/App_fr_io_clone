@@ -52,6 +52,7 @@ export default function VideoReviewPage() {
 
   const [video, setVideo] = useState<Video | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [posterUrl, setPosterUrl] = useState<string | undefined>(undefined);
   const [transcodeProgress, setTranscodeProgress] = useState<number | null>(null);
   const [versions, setVersions] = useState<Video[]>([]);
   const [showVersions, setShowVersions] = useState(false);
@@ -197,6 +198,7 @@ export default function VideoReviewPage() {
   useEffect(() => {
     if (video?.status !== "ready") {
       setStreamUrl(null);
+      setPosterUrl(undefined);
       return;
     }
     let cancelled = false;
@@ -205,6 +207,7 @@ export default function VideoReviewPage() {
       .then((res) => {
         if (!cancelled) {
           setStreamUrl(videosApi.getStreamUrl(videoId, "original", res.data.token));
+          setPosterUrl(videosApi.getThumbnailUrl(videoId, res.data.token));
         }
       })
       .catch((err) => console.error("Failed to get stream token:", err));
@@ -655,7 +658,7 @@ export default function VideoReviewPage() {
                   <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/70 text-white rounded text-xs">
                     v{video.versionNumber} (hiện tại)
                   </span>
-                  {streamUrl && <VideoPlayer src={streamUrl} fps={video.fps} />}
+                  {streamUrl && <VideoPlayer src={streamUrl} fps={video.fps} poster={posterUrl} />}
                 </div>
                 <div className="flex-1 relative min-w-0 min-h-0">
                   <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/70 text-white rounded text-xs">

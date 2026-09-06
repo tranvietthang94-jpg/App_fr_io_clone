@@ -19,6 +19,8 @@ interface VideoCardProps {
   folders?: Folder[];
   /** Live transcode percent (0-100) pushed over the socket; null when unknown. */
   progress?: number | null;
+  /** Signed thumbnail URL (stream-tokened); absent/failed → film icon fallback. */
+  thumbnailUrl?: string;
   onClick?: () => void;
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
@@ -26,9 +28,10 @@ interface VideoCardProps {
   onUploadVersion?: (file: File) => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, onClick, onDelete, onRename, onMove, onUploadVersion }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, thumbnailUrl, onClick, onDelete, onRename, onMove, onUploadVersion }) => {
   const [renaming, setRenaming] = useState(false);
   const [titleInput, setTitleInput] = useState(video.title);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const versionInputRef = useRef<HTMLInputElement>(null);
 
   const getStatusBadge = () => {
@@ -113,6 +116,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
               </div>
             )}
           </div>
+        ) : video.status === 'ready' && thumbnailUrl && !thumbFailed ? (
+          <img
+            src={thumbnailUrl}
+            alt={video.title}
+            className="absolute inset-0 w-full h-full object-contain bg-black"
+            draggable={false}
+            onError={() => setThumbFailed(true)}
+          />
         ) : (
           <Film className="w-12 h-12 text-text-muted" />
         )}

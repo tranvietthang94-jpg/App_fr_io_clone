@@ -2,6 +2,8 @@ import { Controller, Get, Delete, Post, Patch, Body, Param, Query, UseGuards, Re
 import { AuthGuard } from '@nestjs/passport';
 import { JwtService } from '@nestjs/jwt';
 import { Response, Request } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { VideosService } from './videos.service';
 import { ProjectsService } from '../projects/projects.service';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
@@ -35,6 +37,26 @@ export class VideosController {
   async findTrash(@Param('projectId') projectId: string, @Req() req: any) {
     await this.projectsService.findOne(projectId, req.user.userId);
     return this.videosService.findTrash(projectId);
+  }
+
+  /**
+   * Stream tokens for every video in the project in one round-trip — the grid
+   * needs one token per thumbnail <img> (images can't send auth headers, same
+   * reason the player uses per-video stream tokens).
+   */
+  @Get('projects/:projectId/stream-tokens')
+  @UseGuards(AuthGuard('jwt'))
+  async streamTokens(@Param('projectId') projectId: string, @Req() req: any) {
+    await this.projectsService.findOne(projectId, req.user.userId);
+    const videos = await this.videosService.findByProject(projectId, null, {});
+    const tokens: Record<string, string> = {};
+    for (const video of videos) {
+      tokens[video.id] = this.jwtService.sign(
+        { sub: req.user.userId, videoId: video.id, purpose: 'stream' },
+        { secret: getStreamTokenSecret(), expiresIn: STREAM_TOKEN_EXPIRES_IN },
+      );
+    }
+    return tokens;
   }
 
   @Get('videos/:id')
@@ -105,6 +127,45 @@ export class VideosController {
       return res.status(404).json({ error: 'Video file not found' });
     }
     streamVideoFile(filePath, req, res);
+  }
+
+  /**
+   * Same stream-token auth as the stream route — <img> can't send headers.
+   * The thumbnail is the first-second preview frame written by the transcoder.
+   */
+  @Get('videos/:id/thumbnail')
+  async thumbnail(
+    @Param('id') id: string,
+    @Query('token') token: string,
+    @Res() res: Response,
+  ) {
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    let userId: string;
+    try {
+      const payload = this.jwtService.verify(token, { secret: getStreamTokenSecret() });
+      if (payload.purpose !== 'stream' || payload.videoId !== id || !payload.sub) {
+        throw new Error('Invalid stream token');
+      }
+      userId = payload.sub;
+    } catch {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      await this.videosService.findOwned(id, userId);
+    } catch {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const thumbPath = path.join(process.cwd(), 'uploads', 'thumbnails', `${id}.jpg`);
+    if (!fs.existsSync(thumbPath)) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    fs.createReadStream(thumbPath).pipe(res);
   }
 
   @Patch('videos/:id')

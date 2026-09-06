@@ -130,3 +130,13 @@
 - **Cố ý KHÔNG đổi** định danh hạ tầng đang chạy: DB `frclone`, container `fr-clone-*`, `F:\frclone-uploads`, tunnel `frclone` — người dùng không bao giờ thấy, đổi là gãy stack.
 - Còn lại thuộc về user: **App name trên Google consent screen** sửa trong Google Cloud Console → Auth Platform → Branding (ngoài repo).
 - Deploy: rebuild api+web; verify live `<title>R.Frame - Video Review & Collaboration</title>` + logo chữ trên login.
+
+## 8. Feedback đợt 3 — thumbnail & link preview — 2026-09-07
+
+- **Clip không hiện thumbnail:** FFmpeg ĐÃ sinh sẵn `uploads/thumbnails/{videoId}.jpg` khi transcode nhưng không bao giờ có route HTTP serve nó + VideoCard không có URL → chỉ hiện icon. Đã thêm:
+  - `GET /api/videos/:id/thumbnail?token=<stream-token>` (cùng cơ chế token với stream: purpose='stream', bind videoId, sai là 401) — dùng cho card grid + poster player.
+  - `GET /api/projects/:projectId/stream-tokens` — mint token cho toàn bộ video của project trong 1 request (tránh N+1).
+  - `GET /api/public/review/:token/thumbnail` (ShareLinkGuard) — cho guest + og:image.
+  - Web: VideoCard nhận `thumbnailUrl` (fallback icon nếu 404/lỗi), player có `poster`.
+- **Link share không hiện tên clip:** Messenger/Zalo đọc meta tag từ HTML tĩnh, trang review là client component → chỉ ra tiêu đề site. Đã thêm `apps/web/app/review/[token]/layout.tsx` (server) với `generateMetadata`: fetch `/api/public/review/:token` → `og:title`/`<title>` = tên clip, `og:image` = thumbnail public. Next 16: `params` là Promise (phải await). `NEXT_PUBLIC_API_URL` có cả ở runtime (Dockerfile ARG→ENV) nên server fetch được.
+- Verify: thumbnail 200 JPEG/token sai 401/không token 401; review page HTML có `<title>FX-demo.mp4</title>` + og:title + og:image 200 JPEG; screenshot trình duyệt xác nhận card hiện khung hình thật; hồi quy stream/export/socket/OAuth xanh; dọn test data theo ID.

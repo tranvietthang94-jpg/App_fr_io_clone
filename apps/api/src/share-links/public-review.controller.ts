@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req, Res, ForbiddenException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { Request, Response } from 'express';
 import { ShareLinkGuard } from './guards/share-link.guard';
 import { SharePermission } from './share-link.entity';
@@ -58,6 +60,23 @@ export class PublicReviewController {
       return res.status(404).json({ error: 'Video file not found' });
     }
     streamVideoFile(filePath, req, res);
+  }
+
+  /**
+   * Preview frame for the share link — no extra token needed because the
+   * share token in the path IS the credential (same as the stream route).
+   * Also used as the og:image so messengers show the clip when the link is
+   * pasted into a chat.
+   */
+  @Get('thumbnail')
+  async thumbnail(@Req() req: ShareLinkRequest, @Res() res: Response) {
+    const thumbPath = path.join(process.cwd(), 'uploads', 'thumbnails', `${req.shareLink.videoId}.jpg`);
+    if (!fs.existsSync(thumbPath)) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    fs.createReadStream(thumbPath).pipe(res);
   }
 
   @Get('comments')
