@@ -246,7 +246,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className={cn(
-        'relative w-full h-full bg-black rounded-lg overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue',
+        // absolute inset-0 — sized by the nearest positioned ancestor (each
+        // usage wraps the player in a `relative` pane with flex-definite
+        // height). The old `relative w-full h-full` let the <video>'s intrinsic
+        // height drive layout, so portrait (9:16) files overflowed the pane
+        // and were clipped instead of letterboxing.
+        'absolute inset-0 bg-black rounded-lg overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue',
         className
       )}
       onMouseEnter={() => setShowControls(true)}
@@ -258,7 +263,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
-        className="w-full h-full object-contain"
+        className="absolute inset-0 w-full h-full object-contain"
         onClick={togglePlay}
       />
 
