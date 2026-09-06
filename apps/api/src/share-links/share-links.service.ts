@@ -74,7 +74,7 @@ export class ShareLinksService {
    * codebase's "don't leak existence" convention (forgotPassword/acceptInvite).
    */
   async resolveForAccess(token: string, password?: string): Promise<ShareLink> {
-    const link = await this.shareLinksRepository.findOne({ where: { token }, relations: ['video'] });
+    const link = await this.shareLinksRepository.findOne({ where: { token }, relations: { video: true } });
     if (!link || link.revokedAt || link.video.deletedAt) {
       throw new NotFoundException('Link not found');
     }

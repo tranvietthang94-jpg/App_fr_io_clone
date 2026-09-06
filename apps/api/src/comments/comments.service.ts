@@ -65,7 +65,7 @@ export class CommentsService {
     const [replies, reactions, sequenceMap] = await Promise.all([
       this.commentsRepository.find({
         where: { parentId: In(topLevelIds) },
-        relations: ['user'],
+        relations: { user: true },
         order: { createdAt: 'ASC' },
       }),
       this.reactionsRepository.find({ where: { commentId: In(topLevelIds) } }),
@@ -110,7 +110,7 @@ export class CommentsService {
     const topLevel = await this.commentsRepository.find({
       where: { videoId, parentId: IsNull() },
       order: { createdAt: 'ASC' },
-      select: ['id'],
+      select: { id: true },
     });
     const map = new Map<string, number>();
     topLevel.forEach((c, i) => map.set(c.id, i + 1));
@@ -118,7 +118,7 @@ export class CommentsService {
   }
 
   async findOne(id: string) {
-    const comment = await this.commentsRepository.findOne({ where: { id }, relations: ['user'] });
+    const comment = await this.commentsRepository.findOne({ where: { id }, relations: { user: true } });
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -189,7 +189,7 @@ export class CommentsService {
   private async assertGuestOwnership(id: string, editToken: string): Promise<void> {
     const comment = await this.commentsRepository.findOne({
       where: { id },
-      select: ['id', 'guestEditToken'],
+      select: { id: true, guestEditToken: true },
     });
     if (!comment || !comment.guestEditToken || comment.guestEditToken !== editToken) {
       throw new ForbiddenException('Not allowed to modify this comment');

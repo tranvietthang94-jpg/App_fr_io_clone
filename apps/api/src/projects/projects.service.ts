@@ -136,7 +136,7 @@ export class ProjectsService {
     await this.findOne(projectId, userId);
     return this.membersRepository.find({
       where: { projectId },
-      relations: ['user'],
+      relations: { user: true },
       order: { invitedAt: 'ASC' },
     });
   }
@@ -242,7 +242,7 @@ export class ProjectsService {
 
   async removeMember(projectId: string, memberId: string, userId: string, actorName: string) {
     await this.assertRole(projectId, userId, MemberRole.ADMIN);
-    const member = await this.membersRepository.findOne({ where: { id: memberId, projectId }, relations: ['user'] });
+    const member = await this.membersRepository.findOne({ where: { id: memberId, projectId }, relations: { user: true } });
     if (!member) {
       throw new NotFoundException('Member not found');
     }

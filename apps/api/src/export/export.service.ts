@@ -13,6 +13,7 @@ import { spawn } from 'child_process';
 @Injectable()
 export class ExportService {
   private readonly logger = new Logger(ExportService.name);
+  private readonly ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 
   // Reverse-engineered from the reference export in DEMO/HXM_EPISODE 10_HGE_01.xml:
   // MZ.WorkOutPoint there is exactly (254016000000 / 25) * 454 — Premiere's
@@ -42,13 +43,16 @@ export class ExportService {
     const video = await this.videosService.findOne(videoId);
     const { items: comments } = await this.commentsService.findByVideo(videoId);
 
+    const fps = video.fps || 30;
+    const timebase = Math.max(1, Math.round(fps));
+    const ntsc = Math.abs(fps - timebase) > 0.001 ? 'TRUE' : 'FALSE';
     const sequenceUuid = uuidv4();
-    const totalFrames = Math.floor(video.duration * video.fps);
+    const totalFrames = Math.round(video.duration * fps);
     const dateStr = this.formatXmlDateStr(new Date());
 
     // Build markers XML
     const markersXml = comments.map(c => {
-      const frame = Math.floor(c.timestamp * video.fps);
+      const frame = Math.round(c.timestamp * fps);
       const commentText = this.escapeXml(c.content);
       const userName = this.escapeXml(c.user?.name || 'Unknown');
       return `  <marker>
@@ -68,8 +72,8 @@ export class ExportService {
     <uuid>${sequenceUuid}</uuid>
     <duration>${totalFrames}</duration>
     <rate>
-      <timebase>${Math.floor(video.fps)}</timebase>
-      <ntsc>FALSE</ntsc>
+      <timebase>${timebase}</timebase>
+      <ntsc>${ntsc}</ntsc>
     </rate>
     <name>${this.escapeXml(video.originalFilename)} ${dateStr}</name>
     <media>
@@ -77,8 +81,8 @@ export class ExportService {
         <format>
           <samplecharacteristics>
             <rate>
-              <timebase>${Math.floor(video.fps)}</timebase>
-              <ntsc>FALSE</ntsc>
+              <timebase>${timebase}</timebase>
+              <ntsc>${ntsc}</ntsc>
             </rate>
             <codec>
               <name>Apple ProRes 422</name>
@@ -117,8 +121,8 @@ export class ExportService {
             <enabled>TRUE</enabled>
             <duration>${totalFrames}</duration>
             <rate>
-              <timebase>${Math.floor(video.fps)}</timebase>
-              <ntsc>FALSE</ntsc>
+              <timebase>${timebase}</timebase>
+              <ntsc>${ntsc}</ntsc>
             </rate>
             <start>0</start>
             <end>${totalFrames}</end>
@@ -233,8 +237,8 @@ ${markersXml}
     </media>
     <timecode>
       <rate>
-        <timebase>${Math.floor(video.fps)}</timebase>
-        <ntsc>FALSE</ntsc>
+        <timebase>${timebase}</timebase>
+        <ntsc>${ntsc}</ntsc>
       </rate>
       <string>00:00:00:00</string>
       <frame>0</frame>
@@ -273,7 +277,7 @@ ${markersXml}
         outputPath,
       ];
 
-      const ffmpeg = spawn('ffmpeg', args);
+      const ffmpeg = spawn(this.ffmpegPath, args);
       let stderr = '';
 
       ffmpeg.stderr.on('data', (data) => {

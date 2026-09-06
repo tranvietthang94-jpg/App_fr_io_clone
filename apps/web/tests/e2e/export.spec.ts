@@ -47,6 +47,18 @@ test.describe.serial('Export', () => {
     const content = fs.readFileSync(filePath!, 'utf8');
     expect(content.trim().startsWith('<')).toBe(true);
     expect(content.length).toBeGreaterThan(50);
+    // Real well-formedness check: for 'application/xml', DOMParser reports any
+    // parse problem (unclosed tag, mismatched tag, ...) in a <parsererror>
+    // node instead of throwing. A missing </sequence> used to slip past the
+    // startsWith('<') check above.
+    const parseError = await page.evaluate(
+      (xml: string) => {
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        return doc.querySelector('parsererror')?.textContent ?? null;
+      },
+      content,
+    );
+    expect(parseError).toBeNull();
   });
 
   test('7.2.1 + 7.2.2 export PDF downloads a valid PDF', async () => {
