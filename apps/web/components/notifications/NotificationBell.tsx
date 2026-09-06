@@ -12,7 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/DropdownMenu";
-import type { Notification } from "@fr-clone/shared";
+import type { Notification } from "@r-frame/shared";
 
 function describe(n: Notification): string {
   const actor = n.payload.actorName || "Ai đó";

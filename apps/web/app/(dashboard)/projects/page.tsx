@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/Dialog";
 import { AlertDialog } from "@/components/ui/AlertDialog";
 import { Plus, Folder, Search } from "lucide-react";
-import type { Project } from "@fr-clone/shared";
+import type { Project } from "@r-frame/shared";
 
 const SEARCH_DEBOUNCE_MS = 300;
 

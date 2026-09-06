@@ -1,4 +1,4 @@
-# Frame.io Clone - Video Review & Collaboration Platform
+# R.Frame - Video Review & Collaboration Platform
 
 Một bản clone của Frame.io - nền tảng review và cộng tác video, được thiết kế cho cá nhân và team nhỏ (< 5 người) tại Việt Nam.
 
@@ -34,7 +34,7 @@ Một bản clone của Frame.io - nền tảng review và cộng tác video, đ
 ## 📁 Cấu trúc project
 
 ```
-app-fr-io-clone/
+r-frame/
 ├── apps/
 │   ├── web/          # Next.js Frontend
 │   └── api/          # NestJS Backend

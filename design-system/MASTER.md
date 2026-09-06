@@ -13,7 +13,7 @@
 
 ---
 
-**Project:** FrameReview (Frame.io clone — video review & collaboration)
+**Project:** R.Frame (Frame.io clone — video review & collaboration)
 **Category:** Remote Work/Collaboration Tool (chức năng khớp nhất) + Dark Mode OLED (style bắt buộc theo quyết định giữ dark-only)
 **Theme:** Dark-only, không có light mode / theme toggle (quyết định đã chốt 2026-07-14)
 **Generated/curated:** 2026-07-14, từ 3 lần chạy `--design-system` + 3 lần tra `--domain color` của `.claude/skills/ui-ux-pro-max/scripts/search.py`

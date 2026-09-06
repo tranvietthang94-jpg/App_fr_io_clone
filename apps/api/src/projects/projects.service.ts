@@ -168,7 +168,7 @@ export class ProjectsService {
     await this.mailerService.send(
       data.email,
       `Lời mời tham gia dự án "${project.name}"`,
-      `<p>Bạn được mời tham gia dự án <strong>${project.name}</strong> trên FrameClone.</p><p><a href="${acceptUrl}">Chấp nhận lời mời</a></p>`,
+      `<p>Bạn được mời tham gia dự án <strong>${project.name}</strong> trên R.Frame.</p><p><a href="${acceptUrl}">Chấp nhận lời mời</a></p>`,
       acceptUrl,
     );
 

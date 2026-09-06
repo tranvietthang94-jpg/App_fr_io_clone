@@ -60,7 +60,7 @@ export default function LoginPage() {
       </Suspense>
 
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">Frame.io Clone</h1>
+        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
         <p className="mt-2 text-text-secondary">Đăng nhập để tiếp tục</p>
       </div>
 

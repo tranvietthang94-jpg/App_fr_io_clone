@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { cn, formatTimecode } from '@/lib/utils';
-import type { Comment } from '@fr-clone/shared';
+import type { Comment } from '@r-frame/shared';
 
 // Comments whose timeline position lands within this fraction of the total
 // duration get grouped into one marker instead of overlapping dots.

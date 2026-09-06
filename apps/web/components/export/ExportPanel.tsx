@@ -3,7 +3,7 @@
 import { FileText, FileCode, Download } from "lucide-react";
 import { formatTimecode } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
-import type { Video, Comment } from "@fr-clone/shared";
+import type { Video, Comment } from "@r-frame/shared";
 
 interface ExportPanelProps {
   video: Video;

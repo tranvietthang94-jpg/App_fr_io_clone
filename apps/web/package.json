@@ -10,7 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@fr-clone/shared": "*",
+    "@r-frame/shared": "*",
     "@radix-ui/react-alert-dialog": "^1.1.19",
     "@radix-ui/react-dialog": "^1.1.19",
     "@radix-ui/react-dropdown-menu": "^2.1.20",

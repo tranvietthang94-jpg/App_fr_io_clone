@@ -94,6 +94,6 @@ Quy tắc đi kèm:
 Monorepo Turborepo (`apps/*`, `packages/*`):
 - `apps/web`: Next.js 14 + React 18 + Zustand + `socket.io-client` + `video.js` + `fabric` (canvas annotation) + Tailwind.
 - `apps/api`: NestJS 10 + TypeORM + PostgreSQL + Redis/BullMQ (job queue) + Socket.io (WebSocket gateway, xem `collaboration.gateway.ts`) + MinIO (object storage) + Passport/JWT (auth) + `xmlbuilder2`/`puppeteer` (export XML/PDF).
-- `packages/*`: code dùng chung giữa web và api (vd `@fr-clone/shared`).
+- `packages/*`: code dùng chung giữa web và api (vd `@r-frame/shared`).
 Đây là clone Frame.io — nền tảng review & cộng tác video real-time. Khi sửa tính năng real-time (comment, cursor, presence), luôn kiểm tra cả hai phía: gateway ở `apps/api` và client socket ở `apps/web/lib/socket.ts`.
 </project_context>

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/Tooltip";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
-  title: "Frame.io Clone - Video Review & Collaboration",
+  title: "R.Frame - Video Review & Collaboration",
   description: "A self-hosted video review and collaboration platform",
 };
 

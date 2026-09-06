@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/DropdownMenu';
 import { CheckCircle, AlertCircle, XCircle, Circle, ChevronDown } from 'lucide-react';
-import { VideoReviewStatus } from '@fr-clone/shared';
+import { VideoReviewStatus } from '@r-frame/shared';
 
 const STATUS_META: Record<VideoReviewStatus, { label: string; icon: React.ReactNode; className: string }> = {
   [VideoReviewStatus.IN_REVIEW]: {

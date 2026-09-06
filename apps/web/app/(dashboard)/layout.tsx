@@ -67,7 +67,7 @@ export default function DashboardLayout({
         <div className="p-6 flex items-center justify-between">
           <Link href="/projects" className="flex items-center gap-2">
             <FolderOpen className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold">FrameClone</span>
+            <span className="text-xl font-bold">R.Frame</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -129,7 +129,7 @@ export default function DashboardLayout({
           </button>
           <Link href="/projects" className="flex items-center gap-2">
             <FolderOpen className="w-5 h-5 text-primary" />
-            <span className="font-bold">FrameClone</span>
+            <span className="font-bold">R.Frame</span>
           </Link>
         </div>
         <main className="flex-1 overflow-auto">{children}</main>

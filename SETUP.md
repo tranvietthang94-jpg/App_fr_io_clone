@@ -1,4 +1,4 @@
-# Hướng dẫn cài đặt và chạy Frame.io Clone
+# Hướng dẫn cài đặt và chạy R.Frame
 
 ## Yêu cầu hệ thống
 
@@ -88,7 +88,7 @@ npm run dev:api   # Backend only (http://localhost:4000)
 ## Cấu trúc thư mục
 
 ```
-app-fr-io-clone/
+r-frame/
 ├── apps/
 │   ├── web/                    # Next.js Frontend
 │   │   ├── app/               # Pages (App Router)

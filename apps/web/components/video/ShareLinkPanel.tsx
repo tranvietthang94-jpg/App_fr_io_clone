@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { shareLinksApi } from "@/lib/api";
-import { SharePermission, type ShareLink } from "@fr-clone/shared";
+import { SharePermission, type ShareLink } from "@r-frame/shared";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 

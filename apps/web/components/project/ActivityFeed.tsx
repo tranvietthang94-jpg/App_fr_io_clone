@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { formatRelativeTime } from "@/lib/utils";
 import { UploadCloud, CheckCircle, MessageSquare, UserPlus, UserMinus, Link2 } from "lucide-react";
-import { ActivityType, type ActivityLogEntry } from "@fr-clone/shared";
+import { ActivityType, type ActivityLogEntry } from "@r-frame/shared";
 
 const ACTIVITY_ICON: Record<ActivityType, React.ElementType> = {
   [ActivityType.VIDEO_UPLOADED]: UploadCloud,

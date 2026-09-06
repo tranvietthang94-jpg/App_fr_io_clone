@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Lock, Film, Keyboard } from "lucide-react";
-import { SharePermission, VideoReviewStatus, type Comment, type Annotation } from "@fr-clone/shared";
+import { SharePermission, VideoReviewStatus, type Comment, type Annotation } from "@r-frame/shared";
 
 interface PendingAnnotation {
   type: string;

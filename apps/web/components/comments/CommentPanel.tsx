@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { MentionInput, MentionMember, serializeMentions } from './MentionInput';
 import { MessageSquare, Send, Edit2, Trash2, CheckCircle2, Circle, Smile, Reply, ArrowUpDown } from 'lucide-react';
-import type { Comment } from '@fr-clone/shared';
+import type { Comment } from '@r-frame/shared';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '👀'];
 const MENTION_TOKEN_RE = /@\[([0-9a-fA-F-]{36})\]/g;

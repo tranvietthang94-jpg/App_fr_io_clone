@@ -21,7 +21,7 @@ COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 RUN npm ci
 
-# Web transpiles @fr-clone/shared from source (no dist), so the shared package
+# Web transpiles @r-frame/shared from source (no dist), so the shared package
 # MUST be present in the build context.
 COPY apps/web/ apps/web/
 COPY packages/shared/ packages/shared/

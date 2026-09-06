@@ -25,7 +25,7 @@
       "@/*": [
         "./*"
       ],
-      "@fr-clone/shared": [
+      "@r-frame/shared": [
         "../../packages/shared/src"
       ]
     },

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/DropdownMenu';
 import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
-import { VideoReviewStatus, type Video, type Folder } from '@fr-clone/shared';
+import { VideoReviewStatus, type Video, type Folder } from '@r-frame/shared';
 
 interface VideoCardProps {
   video: Video;

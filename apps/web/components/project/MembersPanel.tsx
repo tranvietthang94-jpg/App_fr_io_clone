@@ -11,7 +11,7 @@ import { AlertDialog } from "@/components/ui/AlertDialog";
 import { useToast } from "@/components/ui/Toast";
 import { projectMembersApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/stores/authStore";
-import type { ProjectMember, MemberRole } from "@fr-clone/shared";
+import type { ProjectMember, MemberRole } from "@r-frame/shared";
 
 interface MembersPanelProps {
   projectId: string;

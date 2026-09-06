@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User } from '@fr-clone/shared';
+import type { User } from '@r-frame/shared';
 
 interface AuthState {
   user: User | null;

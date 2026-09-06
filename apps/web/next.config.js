@@ -5,11 +5,11 @@ const nextConfig = {
   // Self-contained build output for the production Docker image — bundles a
   // minimal server + traced deps so the runtime stage doesn't ship the whole
   // node_modules. outputFileTracingRoot points at the monorepo root so tracing
-  // picks up @fr-clone/shared and hoisted deps (server.js lands at
+  // picks up @r-frame/shared and hoisted deps (server.js lands at
   // apps/web/server.js in the standalone tree).
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
-  transpilePackages: ['@fr-clone/shared'],
+  transpilePackages: ['@r-frame/shared'],
   images: {
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },

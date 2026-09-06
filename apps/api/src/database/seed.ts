@@ -10,12 +10,12 @@ async function seed() {
   try {
     // Create admin user
     const result = await authService.register(
-      'admin@frameclone.local',
+      'admin@rframe.local',
       'admin123',
       'Admin User',
     );
     console.log('✅ Admin user created:');
-    console.log('   Email: admin@frameclone.local');
+    console.log('   Email: admin@rframe.local');
     console.log('   Password: admin123');
     console.log('   Name: Admin User');
   } catch (error: any) {

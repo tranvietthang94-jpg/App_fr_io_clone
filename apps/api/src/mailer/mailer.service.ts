@@ -38,7 +38,7 @@ export class MailerService {
     }
     try {
       await this.transporter.sendMail({
-        from: process.env.SMTP_FROM || 'no-reply@frameclone.local',
+        from: process.env.SMTP_FROM || 'no-reply@rframe.local',
         to,
         subject,
         html,

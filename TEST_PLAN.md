@@ -1,4 +1,4 @@
-# Kế hoạch kiểm thử MVP - Frame.io Clone
+# Kế hoạch kiểm thử MVP - R.Frame
 
 ## Phương pháp kiểm thử
 - Kiểm thử thủ công (manual testing)

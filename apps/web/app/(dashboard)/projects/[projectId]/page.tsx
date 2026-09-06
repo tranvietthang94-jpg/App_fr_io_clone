@@ -26,7 +26,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { VideoReviewStatus, type Project, type Video, type Folder } from "@fr-clone/shared";
+import { VideoReviewStatus, type Project, type Video, type Folder } from "@r-frame/shared";
 
 type DeleteTarget = { type: "folder" | "video"; id: string };
 

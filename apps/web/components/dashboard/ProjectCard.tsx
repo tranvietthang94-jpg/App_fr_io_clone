@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Folder, Trash2 } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
-import type { Project } from '@fr-clone/shared';
+import type { Project } from '@r-frame/shared';
 
 interface ProjectCardProps {
   project: Project;

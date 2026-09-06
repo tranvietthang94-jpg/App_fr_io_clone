@@ -1,4 +1,4 @@
-# MEMORY — Nhật ký triển khai & bài học (Frame.io Clone)
+# MEMORY — Nhật ký triển khai & bài học (R.Frame)
 
 > Cập nhật: 2026-09-07. File này ghi lại mọi việc đã làm, sự cố đã gặp và bài học
 > rút ra — **bao gồm cả thiếu sót** — để không ai (và không AI nào) lặp lại.

@@ -56,7 +56,7 @@ export default function RegisterPage() {
   return (
     <>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">Frame.io Clone</h1>
+        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
         <p className="mt-2 text-text-secondary">Tạo tài khoản mới</p>
       </div>
 

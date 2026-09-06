@@ -352,7 +352,7 @@ ${markersXml}
       ? `data:image/jpeg;base64,${fs.readFileSync(posterPath).toString('base64')}`
       : '';
     const exporterName = requestingUser.username || requestingUser.email || 'Unknown';
-    const pageTitle = `${video.originalFilename} - Frame.io`;
+    const pageTitle = `${video.originalFilename} - R.Frame`;
     const permalinkUrl = `https://next.frame.io/print/comments/${printUuid}`;
 
     const commentsHtml = screenshots.map((s, i) => {

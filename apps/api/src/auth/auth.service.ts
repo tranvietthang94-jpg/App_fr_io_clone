@@ -195,7 +195,7 @@ export class AuthService {
     const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password/${raw}`;
     await this.mailerService.send(
       user.email,
-      'Đặt lại mật khẩu FrameClone',
+      'Đặt lại mật khẩu R.Frame',
       `<p>Nhấn vào liên kết để đặt lại mật khẩu (hết hạn sau 1 giờ):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
       resetUrl,
     );

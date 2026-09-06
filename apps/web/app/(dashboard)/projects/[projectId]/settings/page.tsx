@@ -11,7 +11,7 @@ import { AlertDialog } from "@/components/ui/AlertDialog";
 import { MembersPanel } from "@/components/project/MembersPanel";
 import { ActivityFeed } from "@/components/project/ActivityFeed";
 import { ArrowLeft, Users } from "lucide-react";
-import type { Project } from "@fr-clone/shared";
+import type { Project } from "@r-frame/shared";
 
 export default function ProjectSettingsPage() {
   const params = useParams();

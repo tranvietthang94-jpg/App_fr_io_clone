@@ -27,7 +27,7 @@ import {
   Keyboard,
   X,
 } from "lucide-react";
-import type { Video, Comment, Annotation, VideoReviewStatus } from "@fr-clone/shared";
+import type { Video, Comment, Annotation, VideoReviewStatus } from "@r-frame/shared";
 import type { MentionMember } from "@/components/comments/MentionInput";
 
 interface PendingAnnotation {

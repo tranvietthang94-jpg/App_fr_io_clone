@@ -18,7 +18,7 @@ COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
 RUN npm ci
 
-# API source only (api does not import @fr-clone/shared).
+# API source only (api does not import @r-frame/shared).
 COPY apps/api/ apps/api/
 RUN npm run build -w api
 # npm hoists most deps to the root node_modules; guarantee the workspace-local

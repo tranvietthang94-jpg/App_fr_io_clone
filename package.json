@@ -1,8 +1,8 @@
 {
-  "name": "app-fr-io-clone",
+  "name": "r-frame",
   "version": "1.0.0",
   "private": true,
-  "description": "Frame.io clone - Video review & collaboration platform",
+  "description": "R.Frame - Video review & collaboration platform (Frame.io clone)",
   "workspaces": [
     "apps/*",
     "packages/*"
