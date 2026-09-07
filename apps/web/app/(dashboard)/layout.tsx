@@ -38,6 +38,8 @@ export default function DashboardLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  const isVideoWorkspace = /\/projects\/[^/]+\/videos\//.test(pathname);
+
   const handleLogout = () => {
     authApi.logout().catch(() => {});
     logout();
@@ -62,13 +64,14 @@ export default function DashboardLayout({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-bg-secondary transition-transform duration-200 lg:relative lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          isVideoWorkspace && "lg:hidden"
         )}
       >
         <div className="p-6 flex items-center justify-between">
           <Link href="/projects" className="flex items-center gap-2">
-            <FolderOpen className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold">R.Frame</span>
+            <span className="inline-flex h-2 w-2 rounded-full bg-accent-green" aria-hidden />
+            <span className="text-xl font-bold tracking-tight">R.Frame</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -82,14 +85,24 @@ export default function DashboardLayout({
         <nav className="flex-1 px-4">
           <Link
             href="/projects"
-            className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-bg-tertiary transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
+              pathname === "/projects" || pathname.startsWith("/projects/")
+                ? "bg-accent-green/10 text-accent-green"
+                : "hover:bg-bg-tertiary"
+            )}
           >
             <FolderOpen className="w-5 h-5" />
             <span>Dự án</span>
           </Link>
           <Link
             href="/settings/profile"
-            className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-bg-tertiary transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
+              pathname.startsWith("/settings")
+                ? "bg-accent-green/10 text-accent-green"
+                : "hover:bg-bg-tertiary"
+            )}
           >
             <Settings className="w-5 h-5" />
             <span>Cài đặt</span>
@@ -98,8 +111,8 @@ export default function DashboardLayout({
 
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 px-4 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-full bg-accent-green/20 flex items-center justify-center">
+              <User className="w-4 h-4 text-accent-green" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
@@ -129,7 +142,7 @@ export default function DashboardLayout({
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/projects" className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-primary" />
+            <FolderOpen className="w-5 h-5 text-accent-green" />
             <span className="font-bold">R.Frame</span>
           </Link>
         </div>

@@ -17,7 +17,18 @@ const nextConfig = {
     ],
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+    NEXT_PUBLIC_API_URL:
+      process.env.NEXT_DEV_API_PROXY === '1'
+        ? ''
+        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+  },
+  async rewrites() {
+    if (process.env.NEXT_DEV_API_PROXY !== '1') return [];
+    const backend = (process.env.API_BACKEND_URL || 'http://127.0.0.1:4000').replace(/\/$/, '');
+    return [
+      { source: '/api/:path*', destination: `${backend}/api/:path*` },
+      { source: '/socket.io/:path*', destination: `${backend}/socket.io/:path*` },
+    ];
   },
 };
 

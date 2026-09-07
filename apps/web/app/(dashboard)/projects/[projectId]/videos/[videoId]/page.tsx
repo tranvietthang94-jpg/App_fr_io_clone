@@ -12,6 +12,7 @@ import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
 import { UserPresence } from "@/components/presence/UserPresence";
 import { ReviewStatusControl } from "@/components/video/ReviewStatusControl";
+import { WorkspaceRail } from "@/components/workspace/WorkspaceRail";
 import { ShareLinkPanel } from "@/components/video/ShareLinkPanel";
 import { Button } from "@/components/ui/Button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
@@ -517,7 +518,9 @@ export default function VideoReviewPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex min-h-0">
+      <WorkspaceRail projectId={projectId} />
+      <div className="flex-1 min-w-0 flex flex-col">
       {/* Header — wraps onto a second line rather than pushing buttons off
           the right edge; the left title block was pinned to its content
           width, plus 5 icon buttons + presence, which never fit under ~600px. */}
@@ -607,10 +610,10 @@ export default function VideoReviewPage() {
               variant="ghost"
               active={showRightPanel && rightPanelTab === 'export'}
               icon={<Download className="w-5 h-5" />}
-              aria-label="Xuất"
+              aria-label="Xuất XML"
               onClick={() => openRightPanelTab('export')}
             >
-              <span className="hidden sm:inline">Xuất</span>
+              <span className="hidden sm:inline">Xuất XML</span>
             </Button>
             <Button
               variant="ghost"
@@ -824,6 +827,7 @@ export default function VideoReviewPage() {
           </dl>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

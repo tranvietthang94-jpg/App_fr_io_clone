@@ -52,7 +52,7 @@ function renderContent(content: string, members: MentionMember[]) {
     }
     const name = nameById.get(match[1]) || 'user';
     parts.push(
-      <span key={`mention-${key++}`} className="text-accent-blue font-medium">
+      <span key={`mention-${key++}`} className="text-accent-green font-medium">
         @{name}
       </span>
     );
@@ -170,7 +170,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-accent-blue" />
+          <MessageSquare className="w-5 h-5 text-accent-green" />
           <h3 className="font-semibold text-text-primary">Bình luận</h3>
           <span className="text-sm text-text-secondary">({comments.length})</span>
         </div>
@@ -206,7 +206,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 className={cn(
                   'group relative bg-bg-primary rounded-lg p-3 transition-all cursor-pointer',
                   comment.resolved && 'opacity-60',
-                  !comment.resolved && isCommentActive(comment.timestamp, currentTime) && 'ring-2 ring-accent-blue bg-accent-blue/5'
+                  !comment.resolved && isCommentActive(comment.timestamp, currentTime) && 'ring-1 ring-accent-green/60 bg-accent-green/5'
                 )}
                 onClick={(e) => {
                   // Click anywhere on the card jumps the video to this
@@ -231,13 +231,23 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                       </span>
                       <button
                         onClick={() => onSeekToComment(comment.timestamp)}
-                        className="text-xs text-accent-blue hover:text-blue-400 font-mono"
+                        className="text-xs text-accent-green hover:text-emerald-300 font-mono"
                       >
                         {formatTimecode(comment.timestamp, fps)}
                       </button>
                       {comment.sequenceNumber != null && (
                         <span className="text-xs text-text-muted">#{comment.sequenceNumber}</span>
                       )}
+                      <span
+                        className={cn(
+                          'ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                          comment.resolved
+                            ? 'bg-accent-green/10 text-accent-green'
+                            : 'bg-accent-red/10 text-accent-red'
+                        )}
+                      >
+                        {comment.resolved ? 'Đã duyệt' : 'Cần sửa'}
+                      </span>
                     </div>
                     <p className="text-xs text-text-muted mt-0.5">
                       Frame {comment.frameNumber}
@@ -346,7 +356,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                         disabled={!onReactToComment}
                         className={cn(
                           'text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1',
-                          g.reactedByMe ? 'border-accent-blue bg-accent-blue/10' : 'border-border bg-bg-tertiary'
+                          g.reactedByMe ? 'border-accent-green bg-accent-green/10' : 'border-border bg-bg-tertiary'
                         )}
                       >
                         <span>{g.emoji}</span>
@@ -407,7 +417,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
         {hasMore && (
           <button
             onClick={onLoadMore}
-            className="w-full py-2 text-sm text-accent-blue hover:underline"
+            className="w-full py-2 text-sm text-accent-green hover:underline"
           >
             Tải thêm bình luận
           </button>
@@ -417,30 +427,31 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       {/* Add Comment Form */}
       {onAddComment && (
         <div className="border-t border-border p-4">
-          <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <MentionInput
-              value={newComment}
-              onChange={handleInputChange}
-              onMentionAdded={(name, userId) => mentionMapRef.current.set(name, userId)}
-              members={members}
-              placeholder="Thêm bình luận..."
-              onEnter={submitNewComment}
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={!newComment.trim()}
-              className="px-3"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
-          {isTyping && (
-            <p className="text-xs text-text-muted mt-2">
-              Bình luận sẽ được thêm vào lúc {formatTimecode(currentTime, fps)}
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <p className="flex items-center gap-2 text-xs text-text-secondary">
+              <span className="inline-block h-3.5 w-3.5 rounded border border-accent-green bg-accent-green/30" aria-hidden />
+              Ghim {formatTimecode(currentTime, fps)}
             </p>
-          )}
+            <div className="flex items-center gap-2">
+              <MentionInput
+                value={newComment}
+                onChange={handleInputChange}
+                onMentionAdded={(name, userId) => mentionMapRef.current.set(name, userId)}
+                members={members}
+                placeholder="Viết nhận xét..."
+                onEnter={submitNewComment}
+              />
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={!newComment.trim()}
+                className="px-3"
+              >
+                Gửi
+              </Button>
+            </div>
+          </form>
         </div>
       )}
     </div>

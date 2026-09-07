@@ -43,7 +43,7 @@ export function UploadQueuePanel() {
     <div className="fixed bottom-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-bg-secondary shadow-xl overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Upload className="w-4 h-4 text-primary" />
+          <Upload className="w-4 h-4 text-accent-green" />
           Tải lên ({tasks.length})
         </div>
         <button
@@ -77,7 +77,7 @@ export function UploadQueuePanel() {
                 <span className="text-xs text-accent-red">{t.errorMessage || "Lỗi"}</span>
                 <button
                   onClick={() => retry(t.id)}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  className="flex items-center gap-1 text-xs text-accent-green hover:underline"
                 >
                   <RotateCcw className="w-3 h-3" /> Thử lại
                 </button>
@@ -86,7 +86,7 @@ export function UploadQueuePanel() {
             {t.status !== "error" && (
               <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
-                  className={cn("h-full transition-all duration-300", t.status === "done" ? "bg-accent-green" : "bg-primary")}
+                  className="h-full bg-accent-green transition-all duration-300"
                   style={{ width: `${t.progress}%` }}
                 />
               </div>

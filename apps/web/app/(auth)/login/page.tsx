@@ -59,12 +59,14 @@ export default function LoginPage() {
         <OAuthErrorFromQuery onError={setError} />
       </Suspense>
 
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
-        <p className="mt-2 text-text-secondary">Đăng nhập để tiếp tục</p>
+      <div>
+        <h1 className="text-3xl font-bold text-text-primary">
+          R<span className="text-accent-green">.</span>Frame
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">Đăng nhập để tiếp tục</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
             {error}
@@ -76,17 +78,18 @@ export default function LoginPage() {
           type="email"
           label="Email"
           required
+          autoComplete="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          placeholder="your@email.com"
+          placeholder="nhap@email.com"
         />
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label htmlFor="password" className="block text-sm font-medium">
+            <label htmlFor="password" className="block text-sm font-medium text-text-primary">
               Mật khẩu
             </label>
-            <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+            <Link href="/forgot-password" className="text-xs text-accent-green hover:underline">
               Quên mật khẩu?
             </Link>
           </div>
@@ -94,13 +97,14 @@ export default function LoginPage() {
             id="password"
             type="password"
             required
+            autoComplete="current-password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             placeholder="••••••••"
           />
         </div>
 
-        <Button type="submit" size="lg" className="w-full" loading={loading}>
+        <Button type="submit" variant="danger" size="lg" className="w-full" loading={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
 
@@ -114,7 +118,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-text-secondary">
           Chưa có tài khoản?{" "}
-          <Link href="/register" className="text-primary hover:underline">
+          <Link href="/register" className="text-accent-green font-medium hover:underline">
             Đăng ký
           </Link>
         </p>

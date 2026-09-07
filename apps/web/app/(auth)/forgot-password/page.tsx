@@ -25,12 +25,14 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
-        <p className="mt-2 text-text-secondary">Quên mật khẩu</p>
+      <div>
+        <h1 className="text-3xl font-bold text-text-primary">
+          R<span className="text-accent-green">.</span>Frame
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">Quên mật khẩu</p>
       </div>
 
-      <div className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
+      <div className="space-y-6">
         {sent ? (
           <p className="text-sm text-text-secondary text-center">
             Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu.
@@ -53,7 +55,7 @@ export default function ForgotPasswordPage() {
           </form>
         )}
         <p className="text-center text-sm text-text-secondary">
-          <Link href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="text-accent-green font-medium hover:underline">
             Quay lại đăng nhập
           </Link>
         </p>

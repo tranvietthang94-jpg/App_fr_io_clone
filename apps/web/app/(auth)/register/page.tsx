@@ -55,12 +55,14 @@ export default function RegisterPage() {
 
   return (
     <>
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
-        <p className="mt-2 text-text-secondary">Tạo tài khoản mới</p>
+      <div>
+        <h1 className="text-3xl font-bold text-text-primary">
+          R<span className="text-accent-green">.</span>Frame
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">Tạo tài khoản mới</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
             {error}
@@ -121,7 +123,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-text-secondary">
           Đã có tài khoản?{" "}
-          <Link href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="text-accent-green font-medium hover:underline">
             Đăng nhập
           </Link>
         </p>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 // Deliberately a plain axios instance, not the shared `api` client in api.ts —
 // that one attaches an authenticated Bearer token and a 401->refresh->login

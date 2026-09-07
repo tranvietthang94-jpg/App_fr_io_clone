@@ -75,14 +75,14 @@ test.describe.serial('Guest review page — responsive layout', () => {
     await guestPage.setViewportSize({ width: 1024, height: 800 });
     await guestPage.waitForTimeout(200);
     const video = guestPage.locator('video').first();
-    const panel = guestPage.locator('[placeholder="Thêm bình luận..."]');
+    const panel = guestPage.locator('[placeholder="Viết nhận xét..."]');
     const videoBox = await video.boundingBox();
     const panelBox = await panel.boundingBox();
     expect(panelBox!.x).toBeGreaterThanOrEqual(videoBox!.x + videoBox!.width - 5);
   });
 
   test('an unauthenticated guest can still comment (identity prompt still works)', async () => {
-    await guestPage.locator('[placeholder="Thêm bình luận..."]').fill('Guest responsive test comment');
+    await guestPage.locator('[placeholder="Viết nhận xét..."]').fill('Guest responsive test comment');
     await guestPage.locator('button[type=submit]').last().click();
     await expect(guestPage.locator('text=Giới thiệu bản thân')).toBeVisible({ timeout: 5000 });
   });

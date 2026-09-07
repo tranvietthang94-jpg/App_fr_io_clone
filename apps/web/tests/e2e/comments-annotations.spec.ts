@@ -39,7 +39,7 @@ test.describe.serial('Comments and annotations', () => {
   });
 
   test('5.1.2 empty comment is blocked (submit disabled)', async () => {
-    const input = page.locator('[placeholder="Thêm bình luận..."]');
+    const input = page.locator('[placeholder="Viết nhận xét..."]');
     await input.waitFor({ timeout: 8000 });
     const form = input.locator('xpath=ancestor::form[1]');
     await expect(form.locator('button[type=submit]')).toBeDisabled();
@@ -48,7 +48,7 @@ test.describe.serial('Comments and annotations', () => {
   const commentText = `E2E comment ${Date.now()}`;
 
   test('5.1.1 add comment at current timestamp shows in the panel', async () => {
-    const input = page.locator('[placeholder="Thêm bình luận..."]');
+    const input = page.locator('[placeholder="Viết nhận xét..."]');
     await input.click();
     await input.fill(commentText);
     const form = input.locator('xpath=ancestor::form[1]');
@@ -82,7 +82,7 @@ test.describe.serial('Comments and annotations', () => {
     // silently wiped CommentPanel's local state (including any unsent
     // draft) on every tab switch. Fixed via `forceMount` + CSS-hidden
     // inactive content (see Tabs.tsx) so the panel just stays mounted.
-    const input = page.locator('[placeholder="Thêm bình luận..."]');
+    const input = page.locator('[placeholder="Viết nhận xét..."]');
     await input.waitFor({ timeout: 8000 });
     const draft = `unsent draft ${Date.now()}`;
     await input.fill(draft);

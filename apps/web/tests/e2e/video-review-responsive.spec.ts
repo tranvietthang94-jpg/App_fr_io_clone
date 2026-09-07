@@ -57,22 +57,22 @@ test.describe.serial('Video review page — responsive layout', () => {
   });
 
   test('the right panel is a single Tabs region — switching tabs hides the other', async () => {
-    await expect(page.locator('[placeholder="Thêm bình luận..."]')).toBeVisible();
+    await expect(page.locator('[placeholder="Viết nhận xét..."]')).toBeVisible();
 
     await page.getByRole('tab', { name: /Xuất/ }).click();
     await expect(page.locator('text=Xuất báo cáo')).toBeVisible();
-    await expect(page.locator('[placeholder="Thêm bình luận..."]')).not.toBeVisible();
+    await expect(page.locator('[placeholder="Viết nhận xét..."]')).not.toBeVisible();
 
     // header's comment-count button switches back to the comments tab
     await page.getByRole('button', { name: /^\d+$/ }).first().click();
-    await expect(page.locator('[placeholder="Thêm bình luận..."]')).toBeVisible();
+    await expect(page.locator('[placeholder="Viết nhận xét..."]')).toBeVisible();
   });
 
   test('side-by-side layout returns at the lg breakpoint (1024px)', async () => {
     await page.setViewportSize({ width: 1024, height: 800 });
     await page.waitForTimeout(200);
     const video = page.locator('video').first();
-    const panel = page.locator('[placeholder="Thêm bình luận..."]');
+    const panel = page.locator('[placeholder="Viết nhận xét..."]');
     const videoBox = await video.boundingBox();
     const panelBox = await panel.boundingBox();
     // side-by-side means the panel sits to the right of the video, not below it

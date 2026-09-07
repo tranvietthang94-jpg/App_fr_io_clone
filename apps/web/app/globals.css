@@ -5,15 +5,15 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #0B0F1A;
-  --bg-secondary: #1B2336;
-  --bg-tertiary: #272F42;
+  --bg-primary: #0B0C10;
+  --bg-secondary: #13151B;
+  --bg-tertiary: #1A1D24;
   --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
-  --accent-blue: #2563EB;
-  --accent-green: #22C55E;
-  --accent-red: #DC2626;
-  --border-color: #334155;
+  --accent-blue: #10B981;
+  --accent-green: #10B981;
+  --accent-red: #EF4444;
+  --border-color: #282D37;
 }
 
 * {

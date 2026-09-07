@@ -10,10 +10,10 @@ const config: Config = {
       colors: {
         // FrameReview Color Palette — see design-system/MASTER.md for provenance
         bg: {
-          primary: '#0B0F1A',
-          secondary: '#1B2336',
-          tertiary: '#272F42',
-          hover: '#334155',
+          primary: '#0B0C10',
+          secondary: '#13151B',
+          tertiary: '#1A1D24',
+          hover: '#22262F',
         },
         text: {
           primary: '#F8FAFC',
@@ -21,21 +21,21 @@ const config: Config = {
           muted: '#64748B',
         },
         accent: {
-          blue: '#2563EB',
-          green: '#22C55E',
-          red: '#DC2626',
+          blue: '#10B981',
+          green: '#10B981',
+          red: '#EF4444',
           yellow: '#F59E0B',
           purple: '#a855f7',
         },
         border: {
-          DEFAULT: '#334155',
-          light: '#475569',
-          dark: '#1B2336',
+          DEFAULT: '#282D37',
+          light: '#3A404C',
+          dark: '#13151B',
         },
         primary: {
-          DEFAULT: '#2563EB',
-          hover: '#1D4ED8',
-          active: '#1E40AF',
+          DEFAULT: '#10B981',
+          hover: '#059669',
+          active: '#047857',
         },
       },
       fontFamily: {

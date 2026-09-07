@@ -38,7 +38,7 @@ test.describe.serial('Export', () => {
   });
 
   test('7.1.1 + 7.1.2 export XML downloads a well-formed file', async () => {
-    await page.getByRole('button', { name: 'Xuất', exact: true }).click();
+    await page.getByRole('button', { name: 'Xuất XML' }).click();
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 15000 }),
       page.getByRole('button', { name: 'Tải xuống XML', exact: true }).click(),

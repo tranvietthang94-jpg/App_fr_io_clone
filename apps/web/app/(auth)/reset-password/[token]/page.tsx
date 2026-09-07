@@ -45,12 +45,14 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">R.Frame</h1>
-        <p className="mt-2 text-text-secondary">Đặt lại mật khẩu</p>
+      <div>
+        <h1 className="text-3xl font-bold text-text-primary">
+          R<span className="text-accent-green">.</span>Frame
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">Đặt lại mật khẩu</p>
       </div>
 
-      <div className="space-y-6 bg-bg-secondary p-8 rounded-lg border border-border">
+      <div className="space-y-6">
         {done ? (
           <p className="text-sm text-text-secondary text-center">
             Đặt lại mật khẩu thành công. Đang chuyển tới trang đăng nhập...
@@ -86,7 +88,7 @@ export default function ResetPasswordPage() {
           </form>
         )}
         <p className="text-center text-sm text-text-secondary">
-          <Link href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="text-accent-green font-medium hover:underline">
             Quay lại đăng nhập
           </Link>
         </p>

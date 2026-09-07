@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { projectsApi, videosApi, foldersApi } from "@/lib/api";
 import { validateVideoFile } from "@/lib/uploadManager";
 import { useUploadStore } from "@/lib/stores/uploadStore";
@@ -34,6 +34,7 @@ type DeleteTarget = { type: "folder" | "video"; id: string };
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const projectId = params.projectId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,13 +53,19 @@ export default function ProjectDetailPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [search, setSearch] = useState("");
-  const [reviewStatusFilter, setReviewStatusFilter] = useState("");
+  const [reviewStatusFilter, setReviewStatusFilter] = useState(
+    () => searchParams.get("reviewStatus") || ""
+  );
   const [transcodeProgress, setTranscodeProgress] = useState<Record<string, number>>({});
   // Stream token per video — powers the thumbnail <img> on each card.
   const [thumbTokens, setThumbTokens] = useState<Record<string, string>>({});
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
   const isSearching = search.trim().length > 0;
+
+  useEffect(() => {
+    setReviewStatusFilter(searchParams.get("reviewStatus") || "");
+  }, [searchParams]);
 
   useEffect(() => {
     loadProject();
@@ -483,7 +490,15 @@ export default function ProjectDetailPage() {
             </div>
             <select
               value={reviewStatusFilter}
-              onChange={(e) => setReviewStatusFilter(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setReviewStatusFilter(value);
+                const next = new URLSearchParams(searchParams.toString());
+                if (value) next.set("reviewStatus", value);
+                else next.delete("reviewStatus");
+                const qs = next.toString();
+                router.replace(qs ? `/projects/${projectId}?${qs}` : `/projects/${projectId}`);
+              }}
               className="text-sm bg-bg-tertiary border border-border rounded-md px-2 py-2"
             >
               <option value="">Mọi trạng thái duyệt</option>

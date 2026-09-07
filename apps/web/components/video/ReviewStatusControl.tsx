@@ -53,7 +53,7 @@ export const ReviewStatusControl: React.FC<ReviewStatusControlProps> = ({ status
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-blue ${meta.className}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-green ${meta.className}`}
         >
           {meta.icon}
           <span>{meta.label}</span>
