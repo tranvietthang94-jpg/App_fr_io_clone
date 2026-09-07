@@ -7,6 +7,7 @@ import { validateVideoFile } from "@/lib/uploadManager";
 import { useUploadStore } from "@/lib/stores/uploadStore";
 import { socketService } from "@/lib/socket";
 import { VideoCard } from "@/components/dashboard/VideoCard";
+import { ShareLinkPanel } from "@/components/video/ShareLinkPanel";
 import { MembersPanel } from "@/components/project/MembersPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AlertDialog } from "@/components/ui/AlertDialog";
@@ -52,6 +53,7 @@ export default function ProjectDetailPage() {
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [shareVideoId, setShareVideoId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [reviewStatusFilter, setReviewStatusFilter] = useState(
     () => searchParams.get("reviewStatus") || ""
@@ -565,11 +567,16 @@ export default function ProjectDetailPage() {
                   onRename={(title) => handleRenameVideo(video.id, title)}
                   onMove={(folderId) => handleMoveVideo(video.id, folderId)}
                   onUploadVersion={(file) => handleUploadVersion(video, file)}
+                  onShare={() => setShareVideoId(video.id)}
                 />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {shareVideoId && (
+        <ShareLinkPanel videoId={shareVideoId} onClose={() => setShareVideoId(null)} />
       )}
 
       <AlertDialog

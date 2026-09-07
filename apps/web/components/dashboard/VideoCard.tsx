@@ -10,7 +10,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/DropdownMenu';
-import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput } from 'lucide-react';
+import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput, Share2 } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
 import { VideoReviewStatus, type Video, type Folder } from '@r-frame/shared';
 
@@ -26,9 +26,10 @@ interface VideoCardProps {
   onRename?: (newTitle: string) => void;
   onMove?: (folderId: string | null) => void;
   onUploadVersion?: (file: File) => void;
+  onShare?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, thumbnailUrl, onClick, onDelete, onRename, onMove, onUploadVersion }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, thumbnailUrl, onClick, onDelete, onRename, onMove, onUploadVersion, onShare }) => {
   const [renaming, setRenaming] = useState(false);
   const [titleInput, setTitleInput] = useState(video.title);
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -135,7 +136,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
           )}
         </div>
 
-        {(onRename || onDelete || onMove || onUploadVersion) && (
+        {(onRename || onDelete || onMove || onUploadVersion || onShare) && (
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -148,6 +149,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {onShare && (
+                  <DropdownMenuItem onSelect={onShare}>
+                    <Share2 className="w-3.5 h-3.5" /> Chia sẻ
+                  </DropdownMenuItem>
+                )}
                 {onRename && (
                   <DropdownMenuItem onSelect={() => setRenaming(true)}>
                     <Edit2 className="w-3.5 h-3.5" /> Đổi tên
