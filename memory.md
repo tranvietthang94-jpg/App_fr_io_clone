@@ -27,6 +27,7 @@
 7. **Google OAuth live:** thêm env + restart api; publish consent screen; sửa Client ID bị chép sai.
 8. **Fix video dọc tràn khung player** (`02c4f3f`) — xem sự cố #3.
 9. **Backup tự động** — script `deploy/backup-pgdump.cmd` + Task Scheduler (`78af5f1`).
+10. **UI restyle login + workspace rail** (`4636ea9`, 2026-09-07): split login + `login-suite.png`, emerald/crimson, `WorkspaceRail` (dự án thật + `?reviewStatus=`). Rebuild **chỉ web** — api/postgres/redis không recreate. Smoke: health `ok`, `/login-suite.png` 1931572 bytes, HTML có `login-suite.png` + R.Frame, client chunks chứa `warehousevn.cloud` (0 `localhost:4000`). Push `origin/master`. Dev proxy `NEXT_DEV_API_PROXY=1` không bake vào image.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
