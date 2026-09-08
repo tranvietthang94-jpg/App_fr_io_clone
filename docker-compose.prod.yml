@@ -61,6 +61,8 @@ services:
       NEXT_PUBLIC_APP_URL: ${PUBLIC_URL}            # CORS (REST+WS) origin + redirects
       TRANSCODE_CONCURRENCY: ${TRANSCODE_CONCURRENCY:-2}
       TRANSCODE_VIDEO_ENCODER: ${TRANSCODE_VIDEO_ENCODER:-h264_nvenc}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
