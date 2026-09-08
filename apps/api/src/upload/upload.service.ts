@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
+import { pipeline } from 'stream/promises';
 import * as path from 'path';
 import { VideosService } from '../videos/videos.service';
 import { TranscodeQueue } from '../media/transcode.queue';
@@ -181,7 +182,6 @@ export class UploadService {
     // sanitized, but metadata.json is the path input here — never trust it.
     const filename = sanitizeFilename(metadata.filename);
     const finalPath = path.join(this.uploadDir, `${uploadId}_${filename}`);
-    const writeStream = fs.createWriteStream(finalPath);
 
     // Pre-check so a missing chunk fails before a half-written file exists.
     const missing = [] as number[];
@@ -189,23 +189,12 @@ export class UploadService {
       if (!fs.existsSync(path.join(uploadChunkDir, `chunk_${i}`))) missing.push(i);
     }
     if (missing.length > 0) {
-      writeStream.destroy();
       throw new BadRequestException(`Thiếu các chunk: ${missing.join(', ')}`);
     }
 
-    for (let i = 0; i < totalChunks; i++) {
-      const chunkPath = path.join(uploadChunkDir, `chunk_${i}`);
-      const chunkData = fs.readFileSync(chunkPath);
-      writeStream.write(chunkData);
-    }
-
-    writeStream.end();
-
-    // Wait for write to complete
-    await new Promise<void>((resolve, reject) => {
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-    });
+    // Stream each chunk onto disk. readFileSync + write() buffers the whole
+    // file in RAM and Node Buffer.concat dies above 4 GiB (ERR_OUT_OF_RANGE).
+    await concatChunkFiles(uploadChunkDir, totalChunks, finalPath);
 
     // Create video record — a version upload (assetGroupId provided by the
     // client, e.g. "upload new version of this asset") gets the next
@@ -245,5 +234,26 @@ export class UploadService {
     await this.transcodeQueue.enqueue(video.id, finalPath, userId);
 
     return video;
+  }
+}
+
+/** Pipe chunk_0..chunk_{n-1} into dest without loading the file into RAM. */
+export async function concatChunkFiles(
+  chunkDir: string,
+  totalChunks: number,
+  dest: string,
+): Promise<void> {
+  const out = fs.createWriteStream(dest);
+  try {
+    for (let i = 0; i < totalChunks; i++) {
+      await pipeline(fs.createReadStream(path.join(chunkDir, `chunk_${i}`)), out, { end: false });
+    }
+    await new Promise<void>((resolve, reject) => {
+      out.end((err) => (err ? reject(err) : resolve()));
+    });
+  } catch (err) {
+    out.destroy();
+    fs.unlink(dest, () => undefined);
+    throw err;
   }
 }

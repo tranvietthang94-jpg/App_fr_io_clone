@@ -60,6 +60,7 @@ services:
       STREAM_TOKEN_EXPIRES_IN: ${STREAM_TOKEN_EXPIRES_IN:-2h}
       NEXT_PUBLIC_APP_URL: ${PUBLIC_URL}            # CORS (REST+WS) origin + redirects
       TRANSCODE_CONCURRENCY: ${TRANSCODE_CONCURRENCY:-2}
+      TRANSCODE_VIDEO_ENCODER: ${TRANSCODE_VIDEO_ENCODER:-h264_nvenc}
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
@@ -80,6 +81,7 @@ services:
       - ${UPLOADS_HOST_DIR:-/srv/frclone/uploads}:/app/apps/api/uploads
     ports:
       - "4000:4000"
+    gpus: all
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 15s

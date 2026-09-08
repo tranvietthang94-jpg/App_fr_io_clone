@@ -15,6 +15,8 @@ export class MediaService {
   // worker slot forever. Generous because legit 4K files transcode slowly.
   private readonly transcodeTimeoutMs =
     (parseInt(process.env.TRANSCODE_TIMEOUT_SECONDS || '7200', 10) || 7200) * 1000;
+  /** Sticky: one NVENC failure on this process → stay on libx264. */
+  private nvencUnavailable = (process.env.TRANSCODE_VIDEO_ENCODER || 'h264_nvenc') === 'libx264';
 
   constructor(private videosService: VideosService) {
     // Create output directory if it doesn't exist
@@ -193,51 +195,72 @@ export class MediaService {
   /**
    * Transcode video to specific quality
    */
-  private transcodeToQuality(
+  private async transcodeToQuality(
     inputPath: string,
     videoId: string,
     quality: { name: string; height: number; bitrate: string; audioBitrate: string },
   ): Promise<void> {
+    const outputPath = path.join(this.outputDir, videoId, `${quality.name}.mp4`);
+    const outputDir = path.dirname(outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    const args = this.buildTranscodeArgs(inputPath, outputPath, quality, this.nvencUnavailable);
+    this.logger.log(`Transcoding to ${quality.name}: ffmpeg ${args.join(' ')}`);
+
+    try {
+      await this.runFfmpeg(args);
+      return;
+    } catch (err) {
+      if (this.nvencUnavailable) throw err;
+      this.logger.warn(
+        `h264_nvenc failed for ${quality.name} (${(err as Error).message}) — falling back to libx264`,
+      );
+      this.nvencUnavailable = true;
+      const cpuArgs = this.buildTranscodeArgs(inputPath, outputPath, quality, true);
+      this.logger.log(`Transcoding to ${quality.name}: ffmpeg ${cpuArgs.join(' ')}`);
+      await this.runFfmpeg(cpuArgs);
+    }
+  }
+
+  private buildTranscodeArgs(
+    inputPath: string,
+    outputPath: string,
+    quality: { height: number; bitrate: string; audioBitrate: string },
+    cpu: boolean,
+  ): string[] {
+    const video = cpu
+      ? (['-c:v', 'libx264', '-b:v', quality.bitrate] as string[])
+      : (['-c:v', 'h264_nvenc', '-preset', 'p4', '-b:v', quality.bitrate] as string[]);
+    return [
+      '-i', inputPath,
+      '-vf', `scale=-2:${quality.height}`,
+      ...video,
+      '-c:a', 'aac',
+      '-b:a', quality.audioBitrate,
+      '-movflags', '+faststart',
+      '-y',
+      outputPath,
+    ];
+  }
+
+  private runFfmpeg(args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
-      const outputPath = path.join(this.outputDir, videoId, `${quality.name}.mp4`);
-      
-      // Create output directory
-      const outputDir = path.dirname(outputPath);
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-
-      const args = [
-        '-i', inputPath,
-        '-vf', `scale=-2:${quality.height}`,
-        '-c:v', 'libx264',
-        '-b:v', quality.bitrate,
-        '-c:a', 'aac',
-        '-b:a', quality.audioBitrate,
-        '-movflags', '+faststart', // Enable streaming
-        '-y', // Overwrite output
-        outputPath,
-      ];
-
-      this.logger.log(`Transcoding to ${quality.name}: ffmpeg ${args.join(' ')}`);
-
       const ffmpeg = spawn(this.ffmpegPath, args);
       let stderr = '';
       const disarm = armProcessKillTimer(ffmpeg, this.transcodeTimeoutMs);
-
       ffmpeg.stderr.on('data', (data) => {
         stderr += data.toString();
       });
-
       ffmpeg.on('error', (err) => {
         disarm();
         reject(err);
       });
-
       ffmpeg.on('close', (code) => {
         disarm();
         if (code !== 0) {
-          this.logger.error(`ffmpeg error: ${stderr}`);
+          this.logger.error(`ffmpeg error: ${stderr.slice(-2000)}`);
           reject(new Error(`ffmpeg exited with code ${code}`));
           return;
         }
