@@ -106,19 +106,19 @@ export class MediaService {
    * attempts are exhausted. Callers must go through the transcode queue.
    *
    * @param onProgress optional 0..100 progress reporter (queue → socket).
+   *   Second arg `ready` fires once the playback proxy (720p, or 360p if the
+   *   source is shorter than 720) exists so the player can open before 1080/4k.
    */
   async transcodeVideo(
     videoId: string,
     inputPath: string,
-    onProgress?: (percent: number) => void,
+    onProgress?: (percent: number, status?: 'ready') => void,
   ): Promise<void> {
     this.logger.log(`Starting transcode for video ${videoId}`);
 
-    // Get video metadata first
     const metadata = await this.getVideoMetadata(inputPath);
     this.logger.log(`Video metadata: ${JSON.stringify(metadata)}`);
 
-    // Update video with metadata
     await this.videosService.updateStatus(videoId, 'processing', {
       duration: metadata.duration,
       width: metadata.width,
@@ -126,26 +126,46 @@ export class MediaService {
       fps: metadata.fps,
     });
 
-    // Generate thumbnail
     await this.generateThumbnail(inputPath, videoId);
     onProgress?.(5);
 
-    // Transcode to different qualities
+    // 720p first so review can start; 360p is the fallback proxy for <720 sources.
     const qualities = this.getQualitiesForVideo(metadata.height);
+    let markedReady = false;
 
     for (let i = 0; i < qualities.length; i++) {
-      await this.transcodeToQuality(inputPath, videoId, qualities[i]);
-      // Reserve the first 5% for thumbnail, spread the rest across qualities.
+      const quality = qualities[i];
+      try {
+        await this.transcodeToQuality(inputPath, videoId, quality);
+      } catch (err) {
+        if (markedReady) {
+          this.logger.error(
+            `Background ${quality.name} failed after playback was ready: ${(err as Error).message}`,
+          );
+          continue;
+        }
+        throw err;
+      }
+
       onProgress?.(Math.round(5 + ((i + 1) / qualities.length) * 95));
+
+      if (!markedReady && (quality.name === '720p' || quality.name === '360p')) {
+        await this.videosService.updateStatus(videoId, 'ready');
+        markedReady = true;
+        onProgress?.(Math.round(5 + ((i + 1) / qualities.length) * 95), 'ready');
+        this.logger.log(`Playback ready for video ${videoId} after ${quality.name}`);
+      }
     }
 
-    // Mark as ready
-    await this.videosService.updateStatus(videoId, 'ready');
+    if (!markedReady) {
+      await this.videosService.updateStatus(videoId, 'ready');
+      onProgress?.(100, 'ready');
+    }
     this.logger.log(`Transcode completed for video ${videoId}`);
   }
 
   /**
-   * Determine which qualities to generate based on source video height
+   * Playback proxy first (720p, else 360p), then higher ladders in the background.
    */
   private getQualitiesForVideo(sourceHeight: number): Array<{
     name: string;
@@ -153,26 +173,21 @@ export class MediaService {
     bitrate: string;
     audioBitrate: string;
   }> {
-    const qualities: Array<{
+    const all: Array<{
       name: string;
       height: number;
       bitrate: string;
       audioBitrate: string;
-    }> = [];
-
-    if (sourceHeight >= 2160) {
-      qualities.push({ name: '4k', height: 2160, bitrate: '15000k', audioBitrate: '192k' });
-    }
-    if (sourceHeight >= 1080) {
-      qualities.push({ name: '1080p', height: 1080, bitrate: '5000k', audioBitrate: '128k' });
-    }
-    if (sourceHeight >= 720) {
-      qualities.push({ name: '720p', height: 720, bitrate: '2500k', audioBitrate: '128k' });
-    }
-    // Always generate 360p
-    qualities.push({ name: '360p', height: 360, bitrate: '1000k', audioBitrate: '96k' });
-
-    return qualities;
+      minHeight: number;
+    }> = [
+      { name: '720p', height: 720, bitrate: '2500k', audioBitrate: '128k', minHeight: 720 },
+      { name: '360p', height: 360, bitrate: '1000k', audioBitrate: '96k', minHeight: 0 },
+      { name: '1080p', height: 1080, bitrate: '5000k', audioBitrate: '128k', minHeight: 1080 },
+      { name: '4k', height: 2160, bitrate: '15000k', audioBitrate: '192k', minHeight: 2160 },
+    ];
+    return all
+      .filter((q) => sourceHeight >= q.minHeight || q.name === '360p')
+      .map(({ minHeight: _min, ...q }) => q);
   }
 
   /**

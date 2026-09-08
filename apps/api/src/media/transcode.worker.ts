@@ -31,8 +31,8 @@ export class TranscodeWorker implements OnModuleInit, OnModuleDestroy {
       async (job: Job<TranscodeJobData>) => {
         const { videoId, filePath, uploaderId } = job.data;
         this.logger.log(`Processing transcode job ${job.id} (video ${videoId})`);
-        await this.mediaService.transcodeVideo(videoId, filePath, (percent) => {
-          this.emitProgress(videoId, uploaderId, { videoId, percent });
+        await this.mediaService.transcodeVideo(videoId, filePath, (percent, status) => {
+          this.emitProgress(videoId, uploaderId, { videoId, percent, ...(status ? { status } : {}) });
         });
         this.emitProgress(videoId, uploaderId, { videoId, percent: 100, status: 'ready' });
       },
@@ -50,6 +50,13 @@ export class TranscodeWorker implements OnModuleInit, OnModuleDestroy {
       // hiccup shouldn't flip the video to a dead state that a later attempt
       // would silently contradict.
       if (job.attemptsMade >= attemptsAllowed) {
+        const video = await this.videosService.findOne(videoId).catch(() => null);
+        if (video?.status === 'ready') {
+          this.logger.error(
+            `Transcode job ${job.id} failed after playback was already ready — leaving status=ready`,
+          );
+          return;
+        }
         await this.videosService.updateStatus(videoId, 'failed').catch((e) =>
           this.logger.error(`Could not mark video ${videoId} failed: ${e.message}`),
         );
