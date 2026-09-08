@@ -11,6 +11,8 @@ export interface UploadTask {
   id: string;
   name: string;
   progress: number;
+  /** Epoch ms when the current attempt started — used for ETA. */
+  startedAt?: number;
   status: 'uploading' | 'done' | 'error';
   errorMessage?: string;
   file: File;
@@ -34,7 +36,7 @@ interface UploadState {
 }
 
 async function runTask(task: UploadTask, update: (patch: Partial<UploadTask>) => void) {
-  update({ status: 'uploading', progress: 0, errorMessage: undefined });
+  update({ status: 'uploading', progress: 0, startedAt: Date.now(), errorMessage: undefined });
   try {
     await uploadFileWithResume(
       task.file,

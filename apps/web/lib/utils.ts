@@ -44,6 +44,21 @@ export function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+/** Remaining-time label for the upload panel. `null` until enough progress to estimate. */
+export function formatEta(startedAt: number | undefined, progress: number, now = Date.now()): string | null {
+  if (!startedAt || progress < 3) return null;
+  const remainingMs = ((now - startedAt) * (100 - progress)) / progress;
+  if (!Number.isFinite(remainingMs) || remainingMs < 0) return null;
+  const sec = Math.round(remainingMs / 1000);
+  if (sec < 15) return 'sắp xong';
+  if (sec < 60) return `còn ~${sec}s`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `còn ~${min} phút`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `còn ~${h} giờ ${m} phút` : `còn ~${h} giờ`;
+}
+
 // Shared "is this comment near the playhead" window, used to highlight the
 // active comment and to decide which comment's annotations to show.
 const ACTIVE_COMMENT_WINDOW_SEC = 0.5;
