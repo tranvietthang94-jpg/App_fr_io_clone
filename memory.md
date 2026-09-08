@@ -32,6 +32,7 @@
 12. **Live comment + range In/Out** (`30c4863`, 2026-09-08): dump `F:\frclone-backups\pg-pre-endTimestamp-20260907-2229.sql` trước entity. `CommentsService.create/setResolved` → `emitToVideo` (payload `{commentId,parentId,videoId}` — không `guestEditToken`). Web bỏ `sendComment`/`sendCommentResolved`. Cột `endTimestamp` nullable; 12 comment cũ vẫn điểm. Composer Đặt In/Đặt Out; XML `<out>` thật nếu có range. Rebuild **api+web**, postgres không recreate. Nest boot OK, health `ok`, socket.io 200, schema `endTimestamp` YES. Push `origin/master`.
 13. **Nút vẽ sát ô comment** (`cd778d3`, 2026-09-08): toolbar annotation portal vào `#comment-annotate-toolbar` ngay trên `Viết nhận xét` (share + member). Canvas vẫn vẽ trên pane video. Rebuild **chỉ web**. Aria `Vẽ chú thích trên video` giữ cho e2e.
 14. **Bỏ overlay play giữa khung khi pause** (`cb02c01`, 2026-09-08): xóa nút tròn `Phát video` + dim `bg-black/30`. Click video + thanh dưới vẫn play/pause. Chunk prod 0 lần `Phát video` / `w-20 h-20 rounded-full`. Rebuild **chỉ web**.
+15. **720p proxy playback + scrub** (`67e2014`, 2026-09-08): player mặc định `stream/720p` (picker 720p/1080p/Gốc; file thiếu → original server-side). Timeline rAF + pointer capture, không CSS transition lúc kéo, socket `video:seek` chỉ lúc thả. Rebuild **chỉ web**. Clip 4K prod có `720p.mp4` 23MB.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
