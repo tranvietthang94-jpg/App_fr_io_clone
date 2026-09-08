@@ -135,10 +135,12 @@ export class MediaService {
     const qualities = this.getQualitiesForVideo(metadata.height);
     let markedReady = false;
 
+    const proxyFps = this.playbackFps(metadata.fps);
+
     for (let i = 0; i < qualities.length; i++) {
       const quality = qualities[i];
       try {
-        await this.transcodeToQuality(inputPath, videoId, quality);
+        await this.transcodeToQuality(inputPath, videoId, quality, proxyFps);
       } catch (err) {
         if (markedReady) {
           this.logger.error(
@@ -192,6 +194,12 @@ export class MediaService {
       .map(({ minHeight: _min, ...q }) => q);
   }
 
+  /** Review proxy never exceeds 30 fps (Frame.io). GOP = 2s of that rate. */
+  private playbackFps(sourceFps: number): number {
+    if (!Number.isFinite(sourceFps) || sourceFps <= 0) return 30;
+    return Math.min(Math.round(sourceFps), 30);
+  }
+
   /**
    * Transcode video to specific quality
    */
@@ -199,6 +207,7 @@ export class MediaService {
     inputPath: string,
     videoId: string,
     quality: { name: string; height: number; bitrate: string; audioBitrate: string },
+    fps: number,
   ): Promise<void> {
     const outputPath = path.join(this.outputDir, videoId, `${quality.name}.mp4`);
     const outputDir = path.dirname(outputPath);
@@ -206,7 +215,7 @@ export class MediaService {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const args = this.buildTranscodeArgs(inputPath, outputPath, quality, this.nvencUnavailable);
+    const args = this.buildTranscodeArgs(inputPath, outputPath, quality, this.nvencUnavailable, fps);
     this.logger.log(`Transcoding to ${quality.name}: ffmpeg ${args.join(' ')}`);
 
     try {
@@ -218,7 +227,7 @@ export class MediaService {
         `h264_nvenc failed for ${quality.name} (${(err as Error).message}) — falling back to libx264`,
       );
       this.nvencUnavailable = true;
-      const cpuArgs = this.buildTranscodeArgs(inputPath, outputPath, quality, true);
+      const cpuArgs = this.buildTranscodeArgs(inputPath, outputPath, quality, true, fps);
       this.logger.log(`Transcoding to ${quality.name}: ffmpeg ${cpuArgs.join(' ')}`);
       await this.runFfmpeg(cpuArgs);
     }
@@ -229,13 +238,22 @@ export class MediaService {
     outputPath: string,
     quality: { height: number; bitrate: string; audioBitrate: string },
     cpu: boolean,
+    fps: number,
   ): string[] {
+    const gop = Math.max(24, Math.round(fps * 2));
     const video = cpu
-      ? (['-c:v', 'libx264', '-b:v', quality.bitrate] as string[])
-      : (['-c:v', 'h264_nvenc', '-preset', 'p4', '-b:v', quality.bitrate] as string[]);
+      ? ([
+          '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', quality.bitrate,
+          '-g', String(gop), '-keyint_min', String(gop), '-sc_threshold', '0', '-bf', '0',
+        ] as string[])
+      : ([
+          '-c:v', 'h264_nvenc', '-preset', 'p4', '-b:v', quality.bitrate,
+          '-g', String(gop), '-bf', '0',
+        ] as string[]);
     return [
       '-i', inputPath,
-      '-vf', `scale=-2:${quality.height}`,
+      '-vf', `fps=${fps},scale=-2:${quality.height}`,
+      '-pix_fmt', 'yuv420p',
       ...video,
       '-c:a', 'aac',
       '-b:a', quality.audioBitrate,
