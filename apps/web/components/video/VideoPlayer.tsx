@@ -271,19 +271,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onClick={togglePlay}
       />
 
-      {/* Play/Pause Overlay */}
-      {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <button
-            onClick={togglePlay}
-            aria-label="Phát video"
-            className="w-20 h-20 rounded-full bg-accent-blue/90 flex items-center justify-center hover:bg-accent-blue transition-colors"
-          >
-            <Play className="w-10 h-10 text-white ml-1" />
-          </button>
-        </div>
-      )}
-
       {/* Controls Overlay */}
       <div
         className={cn(
