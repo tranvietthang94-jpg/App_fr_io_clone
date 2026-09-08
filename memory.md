@@ -37,8 +37,9 @@
 17. **Trần upload 30 GiB** (`321ff1d`, 2026-09-08): `MAX_FILE_SIZE` / client `MAX_CLIENT_FILE_SIZE` 30×1024³ = 32212254720. Chunk vẫn 5MB (Cloudflare). Compose default + `.env` (gitignored) + examples. Rebuild **api + web**. Container env `32212254720`; chunk web `e.size>0x780000000` → `"30GB"`.
 18. **Upload 4 chunk song song** (`5b08aa0`, 2026-09-08): `UPLOAD_CONCURRENCY=4` trong `uploadManager` — server ghi `chunk_N` độc lập. Không tăng size part (Cloudflare). Rebuild **chỉ web**. Chunk prod `await a(p,4,…)`. Không nhảy lên 265 Mb/s speedtest — trần vẫn tunnel.
 19. **Panel upload % + ETA** (`a8f53b8`, 2026-09-08): hàng hiện `%` + dung lượng + `còn ~N phút` (ẩn tới 3%). Rebuild **chỉ web**.
-20. **Check 2026-09-08 — GPU transcode:** ffmpeg **CPU `libx264`**. Binary trong container *có* `h264_nvenc` nhưng **không gắn GPU** (`nvidia-smi` missing, compose không `device_requests`). Host RTX 3070 Ti + docker runtime `nvidia` sẵn. NVENC cần passthrough GPU vào `api` — chưa làm.
-21. **Check 2026-09-08 — file 6GB 99% lỗi:** không phải mất mạng. `completeUpload` `readFileSync` từng chunk rồi `writeStream.write` → Node ghép Buffer, crash `ERR_OUT_OF_RANGE size 5_932_459_902 > 4294967296` (max 4 GiB). API **chết và tự restart** (3 lần). UI hiện `Mất kết nối`. Chunk `017a99aa-…` **còn đủ 1132/1132** trên đĩa (`FNS_HGE__EQLVNTD_03.mp4` 5932459902). Retry sẽ crash lại cho tới khi sửa stream-copy. **Chưa sửa — Rin bảo mới làm.**
+20. **Check 2026-09-08 — GPU transcode:** ffmpeg **CPU `libx264`**. Binary trong container *có* `h264_nvenc` nhưng **không gắn GPU** (`nvidia-smi` missing, compose không `device_requests`). Host RTX 3070 Ti + docker runtime `nvidia` sẵn.
+21. **Check 2026-09-08 — file 6GB 99% lỗi:** `completeUpload` `readFileSync` → Node Buffer max 4 GiB. Crash `ERR_OUT_OF_RANGE 5_932_459_902`. Chunk `017a99aa` còn 1132/1132.
+22. **Stream-concat + NVENC** (`c7c879b` + `f47c54b`, 2026-09-08): `concatChunkFiles` pipeline từng chunk (không nhét RAM). `gpus: all` + `NVIDIA_DRIVER_CAPABILITIES=compute,utility,video` (thiếu `video` thì `libnvidia-encode.so.1` không inject — nvenc fail). Encoder `h264_nvenc` preset p4, fallback sticky `libx264`. Test lavfi nvenc exit 0. Rebuild **chỉ api**. Chunk 6GB **giữ** — Rin bấm Thử lại.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
