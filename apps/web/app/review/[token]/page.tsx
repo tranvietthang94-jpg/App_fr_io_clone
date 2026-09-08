@@ -427,18 +427,6 @@ export default function GuestReviewPage() {
         </div>
 
         <div className="border-t lg:border-t-0 lg:border-l border-border flex flex-col h-64 lg:h-full w-full lg:w-96 shrink-0 overflow-hidden">
-          {canComment && (
-            <div className="px-4 py-2 border-b border-border">
-              <Button
-                variant="ghost"
-                active={isAnnotating}
-                size="sm"
-                onClick={() => setIsAnnotating((v) => !v)}
-              >
-                Vẽ chú thích
-              </Button>
-            </div>
-          )}
           <CommentPanel
             comments={comments}
             currentTime={currentTime}
@@ -456,6 +444,8 @@ export default function GuestReviewPage() {
             onDeleteComment={canComment ? handleDeleteComment : undefined}
             onSeekToComment={handleUserSeek}
             canModifyComment={(comment) => !!editTokens[comment.id]}
+            annotating={isAnnotating}
+            onToggleAnnotate={canComment ? () => setIsAnnotating((v) => !v) : undefined}
           />
         </div>
       </div>

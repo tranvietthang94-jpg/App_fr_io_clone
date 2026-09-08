@@ -22,7 +22,6 @@ import {
   ArrowLeft,
   MessageSquare,
   Download,
-  Pencil,
   Share2,
   ChevronDown,
   Keyboard,
@@ -622,16 +621,6 @@ export default function VideoReviewPage() {
             </Button>
             <Button
               variant="ghost"
-              active={isAnnotating}
-              disabled={!!compareVersion}
-              aria-label="Vẽ chú thích trên video"
-              title={compareVersion ? "Không khả dụng khi đang so sánh phiên bản" : "Vẽ chú thích trên video"}
-              onClick={() => setIsAnnotating(!isAnnotating)}
-            >
-              <Pencil className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
               aria-label="Phím tắt"
               title="Phím tắt (?)"
               onClick={() => setShowShortcuts(true)}
@@ -783,6 +772,9 @@ export default function VideoReviewPage() {
                   onReactToComment={handleReactToComment}
                   onSeekToComment={handleUserSeek}
                   onTyping={handleTypingChange}
+                  annotating={isAnnotating}
+                  onToggleAnnotate={() => setIsAnnotating((v) => !v)}
+                  annotateDisabled={!!compareVersion}
                 />
               </TabsContent>
               <TabsContent value="export" className="overflow-y-auto min-h-0" forceMount>

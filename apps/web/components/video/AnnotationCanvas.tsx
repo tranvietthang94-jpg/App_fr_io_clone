@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Pencil, Highlighter, Type, Square, Eraser } from "lucide-react";
 
 export interface SavedAnnotation {
@@ -45,6 +46,7 @@ export function AnnotationCanvas({
   const [rectStart, setRectStart] = useState<Point | null>(null);
   const [textInputPos, setTextInputPos] = useState<Point | null>(null);
   const [textValue, setTextValue] = useState("");
+  const [toolbarHost, setToolbarHost] = useState<HTMLElement | null>(null);
   // Strokes drawn in the current session that haven't been attached to a
   // comment yet (no `id`, not in `savedAnnotations`). Tracked separately so
   // the eraser can undo them locally without an API call, and so they don't
@@ -133,6 +135,10 @@ export function AnnotationCanvas({
   // draw mode off without submitting a comment).
   useEffect(() => {
     setPendingStrokes([]);
+  }, [isActive]);
+
+  useEffect(() => {
+    setToolbarHost(document.getElementById("comment-annotate-toolbar"));
   }, [isActive]);
 
   const getCoords = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
@@ -256,46 +262,60 @@ export function AnnotationCanvas({
     { id: "rectangle" as Tool, icon: Square, label: "Hình chữ nhật" },
   ];
 
+  const portaled = !!toolbarHost;
+  const toolbar = isActive ? (
+    <div
+      className={
+        portaled
+          ? "flex flex-wrap items-center gap-1 rounded-md border border-border bg-bg-tertiary p-1"
+          : "absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-lg bg-black/80 p-2"
+      }
+    >
+      {tools.map((tool) => (
+        <button
+          key={tool.id}
+          type="button"
+          onClick={() => setCurrentTool(tool.id)}
+          aria-pressed={currentTool === tool.id}
+          aria-label={tool.label}
+          className={`p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue ${
+            currentTool === tool.id
+              ? "bg-primary text-white"
+              : portaled
+                ? "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                : "text-white/70 hover:bg-white/10"
+          }`}
+          title={tool.label}
+        >
+          <tool.icon className="w-5 h-5" />
+        </button>
+      ))}
+      <div className={`w-px h-6 ${portaled ? "bg-border" : "bg-white/20"}`} />
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        aria-label="Chọn màu chú thích"
+        className="w-8 h-8 rounded cursor-pointer"
+      />
+      <button
+        type="button"
+        onClick={eraseLast}
+        disabled={savedAnnotations.length === 0 && pendingStrokes.length === 0}
+        aria-label="Xóa nét gần nhất"
+        className={`p-2 rounded disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue ${
+          portaled ? "text-text-secondary hover:bg-bg-hover" : "text-white/70 hover:bg-white/10"
+        }`}
+        title="Xóa nét gần nhất"
+      >
+        <Eraser className="w-5 h-5" />
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div className={`absolute inset-0 z-20 ${isActive ? "" : "pointer-events-none"}`}>
-      {/* Toolbar */}
-      {isActive && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/80 rounded-lg p-2 z-30">
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => setCurrentTool(tool.id)}
-              aria-pressed={currentTool === tool.id}
-              aria-label={tool.label}
-              className={`p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue ${
-                currentTool === tool.id
-                  ? "bg-primary text-white"
-                  : "text-white/70 hover:bg-white/10"
-              }`}
-              title={tool.label}
-            >
-              <tool.icon className="w-5 h-5" />
-            </button>
-          ))}
-          <div className="w-px h-6 bg-white/20" />
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            aria-label="Chọn màu chú thích"
-            className="w-8 h-8 rounded cursor-pointer"
-          />
-          <button
-            onClick={eraseLast}
-            disabled={savedAnnotations.length === 0 && pendingStrokes.length === 0}
-            aria-label="Xóa nét gần nhất"
-            className="p-2 text-white/70 hover:bg-white/10 rounded disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue"
-            title="Xóa nét gần nhất"
-          >
-            <Eraser className="w-5 h-5" />
-          </button>
-        </div>
-      )}
+      {toolbar && (toolbarHost ? createPortal(toolbar, toolbarHost) : toolbar)}
 
       {/* Canvas */}
       <canvas

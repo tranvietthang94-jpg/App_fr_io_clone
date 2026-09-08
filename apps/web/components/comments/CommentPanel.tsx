@@ -4,7 +4,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { MentionInput, MentionMember, serializeMentions } from './MentionInput';
-import { MessageSquare, Send, Edit2, Trash2, CheckCircle2, Circle, Smile, Reply, ArrowUpDown } from 'lucide-react';
+import { MessageSquare, Send, Edit2, Trash2, CheckCircle2, Circle, Smile, Reply, ArrowUpDown, Pencil } from 'lucide-react';
 import type { Comment } from '@r-frame/shared';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '👀'];
@@ -33,11 +33,10 @@ interface CommentPanelProps {
   onReactToComment?: (commentId: string, emoji: string) => void;
   onSeekToComment: (timestamp: number) => void;
   onTyping?: (isTyping: boolean) => void;
-  // Overrides the default author-only edit gate and always-visible delete
-  // gate — used by the guest review page, where a comment's own author has
-  // no account to match against `currentUserId` and ownership is instead
-  // proven by a locally-held per-comment edit token.
   canModifyComment?: (comment: Comment) => boolean;
+  annotating?: boolean;
+  onToggleAnnotate?: () => void;
+  annotateDisabled?: boolean;
 }
 
 function renderContent(content: string, members: MentionMember[]) {
@@ -94,6 +93,9 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   onSeekToComment,
   onTyping,
   canModifyComment,
+  annotating,
+  onToggleAnnotate,
+  annotateDisabled,
 }) => {
   const [newComment, setNewComment] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -487,6 +489,25 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 </div>
               );
             })()}
+            {onToggleAnnotate && (
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  active={!!annotating}
+                  disabled={annotateDisabled}
+                  aria-label="Vẽ chú thích trên video"
+                  title={annotateDisabled ? "Không khả dụng khi đang so sánh phiên bản" : "Vẽ chú thích trên video"}
+                  className="w-fit"
+                  onClick={onToggleAnnotate}
+                >
+                  <Pencil className="w-4 h-4 mr-1.5" />
+                  Vẽ chú thích
+                </Button>
+                <div id="comment-annotate-toolbar" />
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <MentionInput
                 value={newComment}
