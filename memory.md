@@ -29,6 +29,7 @@
 9. **Backup tự động** — script `deploy/backup-pgdump.cmd` + Task Scheduler (`78af5f1`).
 10. **UI restyle login + workspace rail** (`4636ea9`, 2026-09-07): split login + `login-suite.png`, emerald/crimson, `WorkspaceRail` (dự án thật + `?reviewStatus=`). Rebuild **chỉ web** — api/postgres/redis không recreate. Smoke: health `ok`, `/login-suite.png` 1931572 bytes, HTML có `login-suite.png` + R.Frame, client chunks chứa `warehousevn.cloud` (0 `localhost:4000`). Push `origin/master`. Dev proxy `NEXT_DEV_API_PROXY=1` không bake vào image.
 11. **Share từ list clip** (`311cc83`, 2026-09-07): menu ⋮ trên `VideoCard` → `Chia sẻ` mở `ShareLinkPanel` (cùng API tạo/copy/thu hồi như trang player). Rebuild **chỉ web**. GitHub `origin/master` = `311cc83`. Không commit `apps/web/AGENTS.md` / `CLAUDE.md`.
+12. **Live comment + range In/Out** (`30c4863`, 2026-09-08): dump `F:\frclone-backups\pg-pre-endTimestamp-20260907-2229.sql` trước entity. `CommentsService.create/setResolved` → `emitToVideo` (payload `{commentId,parentId,videoId}` — không `guestEditToken`). Web bỏ `sendComment`/`sendCommentResolved`. Cột `endTimestamp` nullable; 12 comment cũ vẫn điểm. Composer Đặt In/Đặt Out; XML `<out>` thật nếu có range. Rebuild **api+web**, postgres không recreate. Nest boot OK, health `ok`, socket.io 200, schema `endTimestamp` YES. Push `origin/master`.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
