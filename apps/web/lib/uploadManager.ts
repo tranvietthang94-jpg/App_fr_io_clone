@@ -8,7 +8,7 @@ export const ALLOWED_VIDEO_TYPES = [
   "video/mpeg",
   "video/x-matroska",
 ];
-export const MAX_CLIENT_FILE_SIZE = 5 * 1024 * 1024 * 1024; // mirrors the server's default MAX_FILE_SIZE
+export const MAX_CLIENT_FILE_SIZE = 30 * 1024 * 1024 * 1024; // mirrors the server's default MAX_FILE_SIZE
 
 export function validateVideoFile(file: File): string | null {
   const looksLikeVideo = file.type.startsWith("video/") || ALLOWED_VIDEO_TYPES.includes(file.type);

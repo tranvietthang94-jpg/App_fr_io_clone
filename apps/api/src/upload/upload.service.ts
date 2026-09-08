@@ -80,7 +80,7 @@ export class UploadService {
     // project just by guessing/knowing its id.
     await this.projectsService.assertRole(projectId, userId, MemberRole.EDITOR);
 
-    const maxFileSize = parseEnvInt(process.env.MAX_FILE_SIZE, 5 * 1024 * 1024 * 1024);
+    const maxFileSize = parseEnvInt(process.env.MAX_FILE_SIZE, 30 * 1024 * 1024 * 1024);
     if (fileSize > maxFileSize) {
       throw new BadRequestException(`File vượt quá giới hạn ${maxFileSize} bytes`);
     }

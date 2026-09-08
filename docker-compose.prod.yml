@@ -63,7 +63,7 @@ services:
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
-      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-5368709120}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-32212254720}
       UPLOAD_CHUNK_SIZE: ${UPLOAD_CHUNK_SIZE:-5242880}
       # Optional integrations — leave unset to disable:
       SMTP_HOST: ${SMTP_HOST:-}
