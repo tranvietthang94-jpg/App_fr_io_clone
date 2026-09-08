@@ -40,6 +40,7 @@
 20. **Check 2026-09-08 — GPU transcode:** ffmpeg **CPU `libx264`**. Binary trong container *có* `h264_nvenc` nhưng **không gắn GPU** (`nvidia-smi` missing, compose không `device_requests`). Host RTX 3070 Ti + docker runtime `nvidia` sẵn.
 21. **Check 2026-09-08 — file 6GB 99% lỗi:** `completeUpload` `readFileSync` → Node Buffer max 4 GiB. Crash `ERR_OUT_OF_RANGE 5_932_459_902`. Chunk `017a99aa` còn 1132/1132.
 22. **Stream-concat + NVENC** (`c7c879b` + `f47c54b`, 2026-09-08): `concatChunkFiles` pipeline từng chunk (không nhét RAM). `gpus: all` + `NVIDIA_DRIVER_CAPABILITIES=compute,utility,video` (thiếu `video` thì `libnvidia-encode.so.1` không inject — nvenc fail). Encoder `h264_nvenc` preset p4, fallback sticky `libx264`. Test lavfi nvenc exit 0. Rebuild **chỉ api**. Chunk 6GB **giữ** — Rin bấm Thử lại.
+23. **Proxy 30 fps + GOP 2s** (`25eac8d`, 2026-09-08): clip 60fps (FNS 3840×2160) encode proxy vẫn 60fps + keyint ~4s → giật khi scrub/stream. `fps=min(source,30)`, `-g 2s`, `-bf 0`. FNS `0c5c6bd5` 720p/1080p/360p encode lại tay (30/1, has_b_frames=0, GOP 2s). Rebuild **chỉ api**. Picker 4k file cũ vẫn 60fps.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
