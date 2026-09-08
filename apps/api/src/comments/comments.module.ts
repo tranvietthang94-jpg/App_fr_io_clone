@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
@@ -13,6 +13,7 @@ import { VideosModule } from '../videos/videos.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ActivityModule } from '../activity/activity.module';
+import { CollaborationModule } from '../gateway/collaboration.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ActivityModule } from '../activity/activity.module';
     ProjectsModule,
     NotificationsModule,
     ActivityModule,
+    forwardRef(() => CollaborationModule),
   ],
   controllers: [CommentsController, AnnotationsController, ReactionsController],
   providers: [CommentsService, AnnotationsService, ReactionsService],

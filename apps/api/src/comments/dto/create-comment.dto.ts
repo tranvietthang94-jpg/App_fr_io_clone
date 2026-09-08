@@ -23,6 +23,11 @@ export class CreateCommentDto {
   @Min(0)
   frameNumber: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  endTimestamp?: number;
+
   // Normalized 0..1 canvas coordinates of the pin, when the comment is placed
   // on a specific point of the frame.
   @IsOptional()

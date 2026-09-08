@@ -105,6 +105,7 @@ export class PublicReviewController {
       content: body.content,
       timestamp: body.timestamp,
       frameNumber: body.frameNumber,
+      endTimestamp: body.endTimestamp,
       positionX: body.positionX,
       positionY: body.positionY,
       parentId: body.parentId,

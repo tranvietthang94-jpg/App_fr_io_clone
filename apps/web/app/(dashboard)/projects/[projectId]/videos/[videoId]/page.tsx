@@ -280,13 +280,11 @@ export default function VideoReviewPage() {
     content: string;
     timestamp: number;
     frameNumber: number;
+    endTimestamp?: number;
     parentId?: string;
   }) => {
     try {
       const res = await commentsApi.create(videoId, data);
-
-      // Broadcast to other users via socket
-      socketService.sendComment(videoId, data.content, data.timestamp, data.frameNumber);
 
       // Attach any in-progress annotation strokes to the new (top-level) comment
       if (!data.parentId && pendingAnnotations.length > 0) {
@@ -349,7 +347,6 @@ export default function VideoReviewPage() {
             : c
         )
       );
-      socketService.sendCommentResolved(videoId, commentId, resolved);
     } catch (err) {
       console.error("Failed to resolve comment:", err);
     }
@@ -475,7 +472,7 @@ export default function VideoReviewPage() {
   // redraws when the active comment actually changes, not on every
   // timeupdate tick during playback.
   const activeCommentId = useMemo(
-    () => comments.find((c) => isCommentActive(c.timestamp, currentTime))?.id,
+    () => comments.find((c) => isCommentActive(c.timestamp, currentTime, c.endTimestamp))?.id,
     [comments, currentTime]
   );
   const savedAnnotationsForCanvas = useMemo(

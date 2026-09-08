@@ -199,6 +199,7 @@ export const commentsApi = {
     content: string;
     timestamp: number;
     frameNumber: number;
+    endTimestamp?: number;
     positionX?: number;
     positionY?: number;
     parentId?: string;

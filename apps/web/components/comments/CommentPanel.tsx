@@ -24,6 +24,7 @@ interface CommentPanelProps {
     content: string;
     timestamp: number;
     frameNumber: number;
+    endTimestamp?: number;
     parentId?: string;
   }) => void;
   onDeleteComment?: (commentId: string) => void;
@@ -100,6 +101,8 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   const [editContent, setEditContent] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
+  const [rangeIn, setRangeIn] = useState<number | null>(null);
+  const [rangeOut, setRangeOut] = useState<number | null>(null);
   const mentionMapRef = React.useRef<Map<string, string>>(new Map());
   const replyMentionMapRef = React.useRef<Map<string, string>>(new Map());
 
@@ -131,13 +134,20 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
   const submitNewComment = () => {
     if (!newComment.trim()) return;
 
+    const timestamp = rangeIn ?? currentTime;
+    const endTimestamp =
+      rangeOut != null && rangeOut > timestamp ? rangeOut : undefined;
+
     onAddComment?.({
       content: serializeMentions(newComment, mentionMapRef.current),
-      timestamp: currentTime,
-      frameNumber: getFrameNumber(currentTime, fps),
+      timestamp,
+      frameNumber: getFrameNumber(timestamp, fps),
+      endTimestamp,
     });
 
     setNewComment('');
+    setRangeIn(null);
+    setRangeOut(null);
     mentionMapRef.current = new Map();
     setIsTyping(false);
   };
@@ -206,7 +216,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 className={cn(
                   'group relative bg-bg-primary rounded-lg p-3 transition-all cursor-pointer',
                   comment.resolved && 'opacity-60',
-                  !comment.resolved && isCommentActive(comment.timestamp, currentTime) && 'ring-1 ring-accent-green/60 bg-accent-green/5'
+                  !comment.resolved && isCommentActive(comment.timestamp, currentTime, comment.endTimestamp) && 'ring-1 ring-accent-green/60 bg-accent-green/5'
                 )}
                 onClick={(e) => {
                   // Click anywhere on the card jumps the video to this
@@ -234,6 +244,9 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                         className="text-xs text-accent-green hover:text-emerald-300 font-mono"
                       >
                         {formatTimecode(comment.timestamp, fps)}
+                        {comment.endTimestamp != null && comment.endTimestamp > comment.timestamp
+                          ? ` – ${formatTimecode(comment.endTimestamp, fps)}`
+                          : ''}
                       </button>
                       {comment.sequenceNumber != null && (
                         <span className="text-xs text-text-muted">#{comment.sequenceNumber}</span>
@@ -428,10 +441,52 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       {onAddComment && (
         <div className="border-t border-border p-4">
           <form onSubmit={handleSubmit} className="space-y-3">
-            <p className="flex items-center gap-2 text-xs text-text-secondary">
-              <span className="inline-block h-3.5 w-3.5 rounded border border-accent-green bg-accent-green/30" aria-hidden />
-              Ghim {formatTimecode(currentTime, fps)}
-            </p>
+            {(() => {
+              const inTime = rangeIn ?? currentTime;
+              const hasOut = rangeOut != null && rangeOut > inTime;
+              return (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                  <span className="inline-block h-3.5 w-3.5 rounded border border-accent-green bg-accent-green/30" aria-hidden />
+                  <span className="font-mono">
+                    Ghim {formatTimecode(inTime, fps)}
+                    {hasOut ? ` – ${formatTimecode(rangeOut, fps)}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded border border-border px-1.5 py-0.5 hover:text-text-primary"
+                    onClick={() => {
+                      setRangeIn(currentTime);
+                      if (rangeOut != null && rangeOut <= currentTime) setRangeOut(null);
+                    }}
+                  >
+                    Đặt In
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-border px-1.5 py-0.5 hover:text-text-primary disabled:opacity-40"
+                    disabled={rangeIn != null && currentTime <= rangeIn}
+                    onClick={() => {
+                      const start = rangeIn ?? currentTime;
+                      if (currentTime > start) {
+                        if (rangeIn == null) setRangeIn(start);
+                        setRangeOut(currentTime);
+                      }
+                    }}
+                  >
+                    Đặt Out
+                  </button>
+                  {hasOut && (
+                    <button
+                      type="button"
+                      className="text-text-muted hover:text-text-primary"
+                      onClick={() => setRangeOut(null)}
+                    >
+                      Xóa Out
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <div className="flex items-center gap-2">
               <MentionInput
                 value={newComment}

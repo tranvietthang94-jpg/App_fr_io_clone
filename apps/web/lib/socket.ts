@@ -116,10 +116,6 @@ class SocketService {
     this.emit('leave:video', {});
   }
 
-  sendComment(videoId: string, content: string, timestamp: number, frameNumber: number) {
-    this.emit('comment:new', { videoId, content, timestamp, frameNumber });
-  }
-
   sendTyping(videoId: string, isTyping: boolean) {
     this.emit('comment:typing', { videoId, isTyping });
   }
@@ -134,10 +130,6 @@ class SocketService {
 
   sendVideoPause(videoId: string, timestamp: number) {
     this.emit('video:pause', { videoId, timestamp });
-  }
-
-  sendCommentResolved(videoId: string, commentId: string, resolved: boolean) {
-    this.emit('comment:resolved', { videoId, commentId, resolved });
   }
 
   sendCommentReaction(videoId: string, commentId: string) {

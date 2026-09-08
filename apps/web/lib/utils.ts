@@ -48,7 +48,14 @@ export function formatFileSize(bytes: number): string {
 // active comment and to decide which comment's annotations to show.
 const ACTIVE_COMMENT_WINDOW_SEC = 0.5;
 
-export function isCommentActive(commentTimestamp: number, currentTime: number): boolean {
+export function isCommentActive(
+  commentTimestamp: number,
+  currentTime: number,
+  endTimestamp?: number | null,
+): boolean {
+  if (endTimestamp != null && endTimestamp > commentTimestamp) {
+    return currentTime >= commentTimestamp && currentTime <= endTimestamp;
+  }
   return Math.abs(commentTimestamp - currentTime) < ACTIVE_COMMENT_WINDOW_SEC;
 }
 

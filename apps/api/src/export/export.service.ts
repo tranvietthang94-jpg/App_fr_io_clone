@@ -53,14 +53,18 @@ export class ExportService {
 
     // Build markers XML
     const markersXml = comments.map(c => {
-      const frame = Math.round(c.timestamp * fps);
+      const inFrame = Math.round(c.timestamp * fps);
+      const outFrame =
+        c.endTimestamp != null && c.endTimestamp > c.timestamp
+          ? Math.round(c.endTimestamp * fps)
+          : -1;
       const commentText = this.escapeXml(c.content);
       const userName = this.escapeXml(c.user?.name || 'Unknown');
       return `  <marker>
     <comment>${commentText}</comment>
     <name>${userName}</name>
-    <in>${frame}</in>
-    <out>-1</out>
+    <in>${inFrame}</in>
+    <out>${outFrame}</out>
     <pproColor>4294741314</pproColor>
   </marker>`;
     }).join('\n');

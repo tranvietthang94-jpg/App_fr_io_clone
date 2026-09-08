@@ -213,7 +213,7 @@ export default function GuestReviewPage() {
     cb?.();
   };
 
-  const handleAddComment = (data: { content: string; timestamp: number; frameNumber: number; parentId?: string }) => {
+  const handleAddComment = (data: { content: string; timestamp: number; frameNumber: number; endTimestamp?: number; parentId?: string }) => {
     requireIdentity(async () => {
       try {
         const currentIdentity = loadIdentity();
@@ -226,6 +226,7 @@ export default function GuestReviewPage() {
             content: data.content,
             timestamp: data.timestamp,
             frameNumber: data.frameNumber,
+            endTimestamp: data.endTimestamp,
             parentId: data.parentId,
           },
           password,
@@ -313,7 +314,7 @@ export default function GuestReviewPage() {
   };
 
   const activeCommentId = useMemo(
-    () => comments.find((c) => isCommentActive(c.timestamp, currentTime))?.id,
+    () => comments.find((c) => isCommentActive(c.timestamp, currentTime, c.endTimestamp))?.id,
     [comments, currentTime]
   );
   const savedAnnotationsForCanvas = useMemo(

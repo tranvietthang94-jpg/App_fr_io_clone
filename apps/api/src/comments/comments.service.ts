@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -11,6 +11,7 @@ import { NotificationType } from '../notifications/notification.entity';
 import { MemberRole } from '../projects/project-member.entity';
 import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
+import { CollaborationGateway } from '../gateway/collaboration.gateway';
 
 const MENTION_REGEX = /@\[([0-9a-fA-F-]{36})\]/g;
 
@@ -25,6 +26,8 @@ export class CommentsService {
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
     private activityLogService: ActivityLogService,
+    @Inject(forwardRef(() => CollaborationGateway))
+    private collaborationGateway: CollaborationGateway,
   ) {}
 
   /**
@@ -155,11 +158,16 @@ export class CommentsService {
     content: string;
     timestamp: number;
     frameNumber: number;
+    endTimestamp?: number | null;
     positionX?: number;
     positionY?: number;
     parentId?: string;
   }) {
     const { actorName, ...commentData } = data;
+
+    if (commentData.endTimestamp != null && commentData.endTimestamp <= commentData.timestamp) {
+      throw new BadRequestException('endTimestamp must be greater than timestamp');
+    }
 
     let parent: Comment | null = null;
     if (commentData.parentId) {
@@ -201,6 +209,14 @@ export class CommentsService {
     }
 
     await this.notifyMentions(saved, actorName);
+
+    // Persist-then-broadcast: clients must not be the source of truth.
+    // Payload is ids only — never the in-memory `saved` row (guestEditToken).
+    this.collaborationGateway.emitToVideo(saved.videoId, 'comment:new', {
+      commentId: saved.id,
+      parentId: saved.parentId ?? null,
+      videoId: saved.videoId,
+    });
 
     return saved;
   }
@@ -305,6 +321,12 @@ export class CommentsService {
         videoId: comment.videoId,
       });
     }
+
+    this.collaborationGateway.emitToVideo(comment.videoId, 'comment:resolved', {
+      commentId: saved.id,
+      resolved: saved.resolved,
+      userId,
+    });
 
     return saved;
   }

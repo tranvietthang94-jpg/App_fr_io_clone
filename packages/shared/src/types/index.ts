@@ -128,6 +128,7 @@ export interface Comment {
   content: string;
   timestamp: number;
   frameNumber: number;
+  endTimestamp?: number | null;
   positionX?: number;
   positionY?: number;
   resolved: boolean;
@@ -182,6 +183,7 @@ export interface CreateCommentDto {
   content: string;
   timestamp: number;
   frameNumber: number;
+  endTimestamp?: number;
   positionX?: number;
   positionY?: number;
   parentId?: string;

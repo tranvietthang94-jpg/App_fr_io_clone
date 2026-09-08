@@ -23,6 +23,10 @@ export class GuestCommentDto {
 
   @IsOptional()
   @IsNumber()
+  endTimestamp?: number;
+
+  @IsOptional()
+  @IsNumber()
   positionX?: number;
 
   @IsOptional()

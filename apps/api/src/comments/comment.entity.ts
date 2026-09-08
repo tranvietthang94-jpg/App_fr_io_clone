@@ -41,6 +41,10 @@ export class Comment {
   @Column({ default: 0 })
   frameNumber: number;
 
+  // Inclusive range end in seconds. Null = point comment (Frame.io-style In only).
+  @Column({ type: 'float', nullable: true })
+  endTimestamp: number | null;
+
   @Column({ type: 'float', nullable: true })
   positionX: number;
 

@@ -141,6 +141,21 @@ export const Timeline: React.FC<TimelineProps> = ({
           />
         </div>
 
+        {duration > 0 &&
+          comments
+            .filter((c) => c.endTimestamp != null && c.endTimestamp > c.timestamp)
+            .map((c) => {
+              const left = (c.timestamp / duration) * 100;
+              const width = ((c.endTimestamp! - c.timestamp) / duration) * 100;
+              return (
+                <div
+                  key={`range-${c.id}`}
+                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-accent-yellow/40 pointer-events-none"
+                  style={{ left: `${left}%`, width: `${Math.max(width, 0.4)}%` }}
+                />
+              );
+            })}
+
         {/* Comment Markers (comments within ~1% of each other are grouped) */}
         {clusters.map((cluster) => {
           const isCluster = cluster.comments.length > 1;
