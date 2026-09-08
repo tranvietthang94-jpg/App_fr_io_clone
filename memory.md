@@ -35,6 +35,7 @@
 15. **720p proxy playback + scrub** (`67e2014`, 2026-09-08): player mặc định `stream/720p` (picker 720p/1080p/Gốc; file thiếu → original server-side). Timeline rAF + pointer capture, không CSS transition lúc kéo, socket `video:seek` chỉ lúc thả. Rebuild **chỉ web**. Clip 4K prod có `720p.mp4` 23MB.
 16. **Ready ngay khi 720p xong** (`959c29d`, 2026-09-08): transcode thứ tự 720p → 360p → 1080p → 4k. `status=ready` + socket sau 720p (hoặc 360p nếu nguồn <720). 1080/4k lỗi không fail clip đã ready. Rebuild **chỉ api**.
 17. **Trần upload 30 GiB** (`321ff1d`, 2026-09-08): `MAX_FILE_SIZE` / client `MAX_CLIENT_FILE_SIZE` 30×1024³ = 32212254720. Chunk vẫn 5MB (Cloudflare). Compose default + `.env` (gitignored) + examples. Rebuild **api + web**. Container env `32212254720`; chunk web `e.size>0x780000000` → `"30GB"`.
+18. **Upload 4 chunk song song** (`5b08aa0`, 2026-09-08): `UPLOAD_CONCURRENCY=4` trong `uploadManager` — server ghi `chunk_N` độc lập. Không tăng size part (Cloudflare). Rebuild **chỉ web**. Chunk prod `await a(p,4,…)`. Không nhảy lên 265 Mb/s speedtest — trần vẫn tunnel.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
