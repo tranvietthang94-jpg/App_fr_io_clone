@@ -52,6 +52,7 @@ export default function VideoReviewPage() {
 
   const [video, setVideo] = useState<Video | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [streamQuality, setStreamQuality] = useState('720p');
   const [posterUrl, setPosterUrl] = useState<string | undefined>(undefined);
   const [transcodeProgress, setTranscodeProgress] = useState<number | null>(null);
   const [versions, setVersions] = useState<Video[]>([]);
@@ -206,7 +207,7 @@ export default function VideoReviewPage() {
       .getStreamToken(videoId)
       .then((res) => {
         if (!cancelled) {
-          setStreamUrl(videosApi.getStreamUrl(videoId, "original", res.data.token));
+          setStreamUrl(videosApi.getStreamUrl(videoId, streamQuality, res.data.token));
           setPosterUrl(videosApi.getThumbnailUrl(videoId, res.data.token));
         }
       })
@@ -214,7 +215,7 @@ export default function VideoReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [video?.status, videoId]);
+  }, [video?.status, videoId, streamQuality]);
 
   // Stream token for the version being compared against — each version is its
   // own video row, so it needs its own video-scoped token.
@@ -228,14 +229,14 @@ export default function VideoReviewPage() {
       .getStreamToken(compareVersionId)
       .then((res) => {
         if (!cancelled) {
-          setCompareStreamUrl(videosApi.getStreamUrl(compareVersionId, "original", res.data.token));
+          setCompareStreamUrl(videosApi.getStreamUrl(compareVersionId, streamQuality, res.data.token));
         }
       })
       .catch((err) => console.error("Failed to get compare stream token:", err));
     return () => {
       cancelled = true;
     };
-  }, [compareVersionId]);
+  }, [compareVersionId, streamQuality]);
 
   const loadVideo = async () => {
     try {
@@ -418,6 +419,10 @@ export default function VideoReviewPage() {
   // User-initiated seek (Timeline drag, comment click) — applies locally AND
   // broadcasts to co-watchers.
   const handleUserSeek = (timestamp: number) => {
+    applySeek(timestamp);
+  };
+
+  const handleSeekCommit = (timestamp: number) => {
     applySeek(timestamp);
     socketService.sendVideoSeek(videoId, timestamp);
   };
@@ -681,6 +686,8 @@ export default function VideoReviewPage() {
                 remotePlayback={remotePlayback ?? undefined}
                 onUserPlay={handleUserPlay}
                 onUserPause={handleUserPause}
+                quality={streamQuality}
+                onQualityChange={setStreamQuality}
               />
             ) : video.status === "failed" ? (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -734,6 +741,7 @@ export default function VideoReviewPage() {
             comments={comments}
             fps={video.fps}
             onSeek={handleUserSeek}
+            onSeekCommit={handleSeekCommit}
           />
         </div>
 
@@ -770,7 +778,7 @@ export default function VideoReviewPage() {
                   onEditComment={handleEditComment}
                   onResolveComment={handleResolveComment}
                   onReactToComment={handleReactToComment}
-                  onSeekToComment={handleUserSeek}
+                  onSeekToComment={handleSeekCommit}
                   onTyping={handleTypingChange}
                   annotating={isAnnotating}
                   onToggleAnnotate={() => setIsAnnotating((v) => !v)}

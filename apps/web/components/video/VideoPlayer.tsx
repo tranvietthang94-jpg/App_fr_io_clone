@@ -57,6 +57,9 @@ interface VideoPlayerProps {
   remotePlayback?: { action: 'play' | 'pause'; nonce: number };
   onUserPlay?: () => void;
   onUserPause?: () => void;
+  /** Playback rendition. Default 720p (Frame.io-style proxy). Missing files fall back to original server-side. */
+  quality?: string;
+  onQualityChange?: (quality: string) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -70,11 +73,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   remotePlayback,
   onUserPlay,
   onUserPause,
+  quality = '720p',
+  onQualityChange,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSeekTimeRef = useRef<number | null>(null);
   const lastPlaybackNonceRef = useRef<number | null>(null);
+  const resumeTimeRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -95,6 +101,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      if (resumeTimeRef.current > 0.05) {
+        const t = Math.min(resumeTimeRef.current, video.duration || resumeTimeRef.current);
+        video.currentTime = t;
+        setCurrentTime(t);
+        resumeTimeRef.current = 0;
+      }
     };
 
     const handlePlay = () => {
@@ -349,6 +361,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <option value="1.5">1.5x</option>
               <option value="2">2x</option>
             </select>
+
+            {onQualityChange && (
+              <select
+                value={quality}
+                onChange={(e) => {
+                  const video = videoRef.current;
+                  if (video) resumeTimeRef.current = video.currentTime;
+                  onQualityChange(e.target.value);
+                }}
+                aria-label="Chất lượng phát"
+                className="bg-bg-tertiary text-white text-sm px-2 py-1 rounded border-none cursor-pointer"
+              >
+                <option value="720p">720p</option>
+                <option value="1080p">1080p</option>
+                <option value="original">Gốc</option>
+              </select>
+            )}
 
             {/* Fullscreen */}
             <ControlButton

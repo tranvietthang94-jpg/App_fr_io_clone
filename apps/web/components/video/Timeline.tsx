@@ -35,6 +35,8 @@ interface TimelineProps {
   comments: Comment[];
   fps?: number;
   onSeek: (time: number) => void;
+  /** Fired once when a drag/click finishes — parent broadcasts to co-watchers here, not on every pixel. */
+  onSeekCommit?: (time: number) => void;
   className?: string;
 }
 
@@ -44,49 +46,73 @@ export const Timeline: React.FC<TimelineProps> = ({
   comments,
   fps = 30,
   onSeek,
+  onSeekCommit,
   className,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const pendingTimeRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastEmittedRef = useRef<number | null>(null);
 
-  const seekFromClientX = (clientX: number) => {
-    if (!timelineRef.current || duration === 0) return;
-
+  const timeFromClientX = (clientX: number) => {
+    if (!timelineRef.current || duration === 0) return 0;
     const rect = timelineRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const percentage = x / rect.width;
-    const time = percentage * duration;
-    onSeek(Math.max(0, Math.min(time, duration)));
+    return Math.max(0, Math.min(percentage * duration, duration));
   };
 
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => seekFromClientX(e.clientX);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(true);
-    handleTimelineClick(e);
+  const flushPending = () => {
+    rafRef.current = null;
+    const t = pendingTimeRef.current;
+    if (t == null) return;
+    if (lastEmittedRef.current === t) return;
+    lastEmittedRef.current = t;
+    onSeek(t);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging) {
-      handleTimelineClick(e);
+  const queueSeek = (clientX: number) => {
+    pendingTimeRef.current = timeFromClientX(clientX);
+    if (rafRef.current == null) {
+      rafRef.current = requestAnimationFrame(flushPending);
     }
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const commit = (time: number) => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    pendingTimeRef.current = time;
+    lastEmittedRef.current = time;
+    (onSeekCommit ?? onSeek)(time);
   };
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     setIsDragging(true);
-    seekFromClientX(e.touches[0].clientX);
+    const t = timeFromClientX(e.clientX);
+    pendingTimeRef.current = t;
+    onSeek(t);
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isDragging) seekFromClientX(e.touches[0].clientX);
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    queueSeek(e.clientX);
   };
 
-  const handleTouchEnd = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
     setIsDragging(false);
+    try {
+      (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    commit(timeFromClientX(e.clientX));
   };
 
   const handleTrackKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -94,16 +120,16 @@ export const Timeline: React.FC<TimelineProps> = ({
     const step = 1 / fps;
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      onSeek(Math.min(currentTime + step, duration));
+      commit(Math.min(currentTime + step, duration));
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      onSeek(Math.max(currentTime - step, 0));
+      commit(Math.max(currentTime - step, 0));
     } else if (e.key === 'Home') {
       e.preventDefault();
-      onSeek(0);
+      commit(0);
     } else if (e.key === 'End') {
       e.preventDefault();
-      onSeek(duration);
+      commit(duration);
     }
   };
 
@@ -123,20 +149,17 @@ export const Timeline: React.FC<TimelineProps> = ({
         aria-valuenow={currentTime}
         aria-valuetext={formatTimecode(currentTime, fps)}
         className="relative h-8 cursor-pointer touch-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue rounded"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onKeyDown={handleTrackKeyDown}
       >
         {/* Background Track */}
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-bg-tertiary rounded-full overflow-hidden">
           {/* Progress Fill */}
           <div
-            className="h-full bg-accent-blue transition-all duration-75"
+            className={cn('h-full bg-accent-blue', !isDragging && 'transition-all duration-75')}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>

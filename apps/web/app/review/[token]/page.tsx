@@ -86,6 +86,7 @@ export default function GuestReviewPage() {
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [pendingAnnotations, setPendingAnnotations] = useState<PendingAnnotation[]>([]);
+  const [streamQuality, setStreamQuality] = useState("720p");
 
   const [identity, setIdentity] = useState<{ name: string; email?: string } | null>(null);
   const [identityPromptOpen, setIdentityPromptOpen] = useState(false);
@@ -407,10 +408,12 @@ export default function GuestReviewPage() {
           <div className="flex-1 relative bg-black">
             {video.status === "ready" ? (
               <VideoPlayer
-                src={publicReviewApi.streamUrl(token)}
+                src={publicReviewApi.streamUrl(token, streamQuality)}
                 fps={video.fps}
                 onTimeUpdate={setCurrentTime}
                 seekTo={seekTarget ?? undefined}
+                quality={streamQuality}
+                onQualityChange={setStreamQuality}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">

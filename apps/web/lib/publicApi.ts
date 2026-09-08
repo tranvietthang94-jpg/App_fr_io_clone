@@ -14,7 +14,8 @@ function authHeaders(password?: string) {
 export const publicReviewApi = {
   get: (token: string, password?: string) =>
     client.get(`/api/public/review/${token}`, { headers: authHeaders(password) }),
-  streamUrl: (token: string) => `${API_URL}/api/public/review/${token}/stream/original`,
+  streamUrl: (token: string, quality: string = '720p') =>
+    `${API_URL}/api/public/review/${token}/stream/${quality}`,
   getComments: (
     token: string,
     opts?: { sort?: 'timecode' | 'date'; offset?: number; limit?: number },
