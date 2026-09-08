@@ -31,6 +31,7 @@
 11. **Share từ list clip** (`311cc83`, 2026-09-07): menu ⋮ trên `VideoCard` → `Chia sẻ` mở `ShareLinkPanel` (cùng API tạo/copy/thu hồi như trang player). Rebuild **chỉ web**. GitHub `origin/master` = `311cc83`. Không commit `apps/web/AGENTS.md` / `CLAUDE.md`.
 12. **Live comment + range In/Out** (`30c4863`, 2026-09-08): dump `F:\frclone-backups\pg-pre-endTimestamp-20260907-2229.sql` trước entity. `CommentsService.create/setResolved` → `emitToVideo` (payload `{commentId,parentId,videoId}` — không `guestEditToken`). Web bỏ `sendComment`/`sendCommentResolved`. Cột `endTimestamp` nullable; 12 comment cũ vẫn điểm. Composer Đặt In/Đặt Out; XML `<out>` thật nếu có range. Rebuild **api+web**, postgres không recreate. Nest boot OK, health `ok`, socket.io 200, schema `endTimestamp` YES. Push `origin/master`.
 13. **Nút vẽ sát ô comment** (`cd778d3`, 2026-09-08): toolbar annotation portal vào `#comment-annotate-toolbar` ngay trên `Viết nhận xét` (share + member). Canvas vẫn vẽ trên pane video. Rebuild **chỉ web**. Aria `Vẽ chú thích trên video` giữ cho e2e.
+14. **Bỏ overlay play giữa khung khi pause** (`cb02c01`, 2026-09-08): xóa nút tròn `Phát video` + dim `bg-black/30`. Click video + thanh dưới vẫn play/pause. Chunk prod 0 lần `Phát video` / `w-20 h-20 rounded-full`. Rebuild **chỉ web**.
 
 ## 3. Sự cố & bài học — phần quan trọng nhất, đừng lặp lại
 
