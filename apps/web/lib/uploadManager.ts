@@ -42,6 +42,24 @@ const CHUNK_TIMEOUT_MS = 180_000;
 // background throttling stalls) before giving up and marking the upload
 // "Lỗi" — the server-side resume means retries never redo finished chunks.
 const MAX_CHUNK_RETRIES = 8;
+// Fill the Cloudflare tunnel: 1 stream leaves the pipe idle between parts.
+// Server writes independent `chunk_N` files — 4 in flight is safe. Do not
+// raise chunk size (Cloudflare request body). Bump this if the tunnel is still idle.
+const UPLOAD_CONCURRENCY = 4;
+
+async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let i = 0;
+  const n = Math.min(limit, items.length);
+  if (n <= 0) return;
+  await Promise.all(
+    Array.from({ length: n }, async () => {
+      while (i < items.length) {
+        const item = items[i++];
+        await fn(item);
+      }
+    }),
+  );
+}
 
 async function uploadChunkWithRetry(uploadId: string, index: number, chunk: Blob): Promise<void> {
   for (let attempt = 0; ; attempt++) {
@@ -119,14 +137,13 @@ export async function uploadFileWithResume(
   let completedCount = totalChunks! - remaining.length;
   onProgress(Math.round((completedCount / totalChunks!) * 100));
 
-  for (const i of remaining) {
+  await mapPool(remaining, UPLOAD_CONCURRENCY, async (i) => {
     const start = i * chunkSize!;
     const end = Math.min(start + chunkSize!, file.size);
-    const chunk = file.slice(start, end);
-    await uploadChunkWithRetry(uploadId!, i, chunk);
+    await uploadChunkWithRetry(uploadId!, i, file.slice(start, end));
     completedCount++;
     onProgress(Math.round((completedCount / totalChunks!) * 100));
-  }
+  });
 
   const completeRes = await uploadApi.complete(uploadId!);
   localStorage.removeItem(key);
