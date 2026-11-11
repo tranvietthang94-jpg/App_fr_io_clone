@@ -14,6 +14,7 @@ import {
   FolderOpen,
   LogOut,
   Settings,
+  Shield,
   User,
   Menu,
   X,
@@ -39,6 +40,7 @@ export default function DashboardLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  const isAdmin = !!user && (user.isSuperAdmin || (user.adminPermissions?.length ?? 0) > 0);
   const isVideoWorkspace = /\/projects\/[^/]+\/videos\//.test(pathname);
 
   const handleLogout = () => {
@@ -108,6 +110,18 @@ export default function DashboardLayout({
             <Settings className="w-5 h-5" />
             <span>Cài đặt</span>
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
+                pathname.startsWith("/admin") ? "bg-accent-green/10 text-accent-green" : "hover:bg-bg-tertiary"
+              )}
+            >
+              <Shield className="w-5 h-5" />
+              <span>Quản trị</span>
+            </Link>
+          )}
         </nav>
 
         <div className="border-t border-border pt-3">
