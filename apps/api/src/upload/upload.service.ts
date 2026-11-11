@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import { pipeline } from 'stream/promises';
@@ -7,6 +7,7 @@ import { VideosService } from '../videos/videos.service';
 import { TranscodeQueue } from '../media/transcode.queue';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
+import { StorageService } from '../storage/storage.service';
 
 // parseInt(x) || fallback treats an explicit "0" the same as unset — an env
 // var set to 0 (e.g. to reject all uploads) would be silently overridden.
@@ -46,18 +47,24 @@ interface UploadMetadata {
   chunkSize: number;
   assetGroupId?: string | null;
   folderId?: string | null;
+  // Quota held for this session; absent on sessions created before quotas existed.
+  reservedBytes?: number;
 }
 
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
 @Injectable()
-export class UploadService {
+export class UploadService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(UploadService.name);
   private uploadDir = path.join(process.cwd(), 'uploads');
   private chunkDir = path.join(this.uploadDir, 'chunks');
+  private cleanupTimer?: NodeJS.Timeout;
 
   constructor(
     private videosService: VideosService,
     private transcodeQueue: TranscodeQueue,
     private projectsService: ProjectsService,
+    private storage: StorageService,
   ) {
     // Create upload directories if they don't exist
     if (!fs.existsSync(this.uploadDir)) {
@@ -66,6 +73,17 @@ export class UploadService {
     if (!fs.existsSync(this.chunkDir)) {
       fs.mkdirSync(this.chunkDir, { recursive: true });
     }
+  }
+
+  onModuleInit() {
+    const run = () => this.cleanupExpiredUploads().catch((err) => this.logger.error(`Upload cleanup failed: ${err}`));
+    void run();
+    this.cleanupTimer = setInterval(run, CLEANUP_INTERVAL_MS);
+    this.cleanupTimer.unref(); // never keep the process (or tests) alive
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.cleanupTimer);
   }
 
   async initUpload(
@@ -95,13 +113,15 @@ export class UploadService {
       throw new BadRequestException('Chỉ hỗ trợ file video (mp4, m4v, mov, mkv, webm, avi, mpeg)');
     }
 
+    // Reserve quota only after every cheap check passed; refused uploads leave nothing on disk.
+    await this.storage.charge(userId, fileSize);
+
     const uploadId = uuidv4();
     const chunkSize = parseEnvInt(process.env.UPLOAD_CHUNK_SIZE, 5 * 1024 * 1024);
     const totalChunks = Math.ceil(fileSize / chunkSize);
 
     // Create chunk directory for this upload
     const uploadChunkDir = path.join(this.chunkDir, uploadId);
-    fs.mkdirSync(uploadChunkDir, { recursive: true });
 
     // Store upload metadata. userId is re-checked against project membership
     // at completeUpload() too, in case access changes mid-upload.
@@ -116,11 +136,19 @@ export class UploadService {
       userId,
       assetGroupId: assetGroupId || null,
       folderId: folderId || null,
+      reservedBytes: fileSize,
     };
-    fs.writeFileSync(
-      path.join(uploadChunkDir, 'metadata.json'),
-      JSON.stringify(metadata),
-    );
+    try {
+      fs.mkdirSync(uploadChunkDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(uploadChunkDir, 'metadata.json'),
+        JSON.stringify(metadata),
+      );
+    } catch (err) {
+      fs.rmSync(uploadChunkDir, { recursive: true, force: true });
+      await this.storage.credit(userId, fileSize);
+      throw err;
+    }
 
     return {
       uploadId,
@@ -159,6 +187,48 @@ export class UploadService {
     fs.writeFileSync(chunkPath, chunk);
 
     return { success: true, chunkIndex };
+  }
+
+  /** Releases the reservation and removes the chunk dir. Owner only. */
+  async cancelUpload(uploadId: string, userId: string) {
+    const { metadata } = this.readUploadMetadata(uploadId);
+    if (metadata.userId !== userId) {
+      throw new ForbiddenException('Bạn không phải người tạo upload này');
+    }
+    await this.release(uploadId, metadata);
+    return { success: true as const };
+  }
+
+  /**
+   * Releases sessions whose newest file is older than UPLOAD_RESERVATION_TTL_MS.
+   * shortcut: a cancel/complete racing the sweep on the same session can credit twice;
+   * the window is milliseconds — `storage:recalc` repairs drift if it ever happens.
+   */
+  async cleanupExpiredUploads(now = Date.now()): Promise<number> {
+    const ttl = parseEnvInt(process.env.UPLOAD_RESERVATION_TTL_MS, 24 * 60 * 60 * 1000);
+    let released = 0;
+    for (const uploadId of fs.readdirSync(this.chunkDir)) {
+      const dir = path.join(this.chunkDir, uploadId);
+      try {
+        const mtimes = fs.readdirSync(dir).map((f) => fs.statSync(path.join(dir, f)).mtimeMs);
+        const newest = mtimes.length ? Math.max(...mtimes) : fs.statSync(dir).mtimeMs;
+        if (now - newest <= ttl) continue;
+        let metadata: UploadMetadata | null = null;
+        try { metadata = this.readUploadMetadata(uploadId).metadata; } catch { /* no/corrupt metadata: just remove the dir */ }
+        await this.release(uploadId, metadata);
+        released++;
+      } catch (err) {
+        this.logger.error(`Failed to release upload ${uploadId}: ${err}`);
+      }
+    }
+    return released;
+  }
+
+  // Dir first, credit second: a failed credit under-counts free space (recalc repairs it),
+  // whereas a failed removal followed by a retry would credit twice and let users exceed quota.
+  private async release(uploadId: string, metadata: UploadMetadata | null) {
+    fs.rmSync(path.join(this.chunkDir, uploadId), { recursive: true, force: true });
+    if (metadata?.reservedBytes) await this.storage.credit(metadata.userId, metadata.reservedBytes);
   }
 
   /** Loads metadata.json for a (UUID-validated) uploadId, or 404s when unknown. */
@@ -222,6 +292,7 @@ export class UploadService {
       folderId: resolvedFolderId,
       assetGroupId: assetGroupId || undefined,
       versionNumber,
+      uploadedById: userId,
       uploadedBy: { userId, actorName },
     });
 

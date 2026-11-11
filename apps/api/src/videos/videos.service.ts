@@ -153,6 +153,7 @@ export class VideosService {
     assetGroupId?: string;
     versionNumber?: number;
     versionLabel?: string;
+    uploadedById?: string;
     uploadedBy?: { userId: string; actorName: string };
   }) {
     const { uploadedBy, ...videoData } = data;

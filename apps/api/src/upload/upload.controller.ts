@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   UploadedFile,
@@ -72,6 +73,14 @@ export class UploadController {
       file.buffer,
       req.user.userId,
     );
+  }
+
+  @Delete(':uploadId')
+  async cancelUpload(
+    @Param('uploadId', ParseUUIDPipe) uploadId: string,
+    @Request() req,
+  ) {
+    return this.uploadService.cancelUpload(uploadId, req.user.userId);
   }
 
   @Post('complete/:uploadId')
