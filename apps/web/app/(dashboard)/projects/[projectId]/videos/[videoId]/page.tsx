@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { videosApi, commentsApi, exportApi, annotationsApi, reactionsApi, projectMembersApi } from "@/lib/api";
+import { videosApi, commentsApi, exportApi, annotationsApi, reactionsApi, projectMembersApi, projectsApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { formatTimecode, isCommentActive } from "@/lib/utils";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
@@ -27,7 +27,7 @@ import {
   Keyboard,
   X,
 } from "lucide-react";
-import type { Video, Comment, Annotation, VideoReviewStatus } from "@r-frame/shared";
+import type { Video, Comment, Annotation, VideoReviewStatus, ProjectAccess } from "@r-frame/shared";
 import type { MentionMember } from "@/components/comments/MentionInput";
 
 interface PendingAnnotation {
@@ -51,6 +51,9 @@ export default function VideoReviewPage() {
   const projectId = params.projectId as string;
 
   const [video, setVideo] = useState<Video | null>(null);
+  // What this user may do in the project. Until it answers nothing interactive is offered (the API enforces it anyway).
+  const [access, setAccess] = useState<ProjectAccess | null>(null);
+  const canInteract = !!access?.canInteract;
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamQuality, setStreamQuality] = useState('720p');
   const [posterUrl, setPosterUrl] = useState<string | undefined>(undefined);
@@ -105,9 +108,7 @@ export default function VideoReviewPage() {
     loadComments();
     loadAnnotations();
 
-    // Connect socket and join video room
     socketService.connect();
-    socketService.joinVideo(videoId);
 
     // Listen for real-time comments/replies — refetch to get correctly
     // threaded/numbered/reaction-embedded data rather than hand-building it.
@@ -176,9 +177,23 @@ export default function VideoReviewPage() {
       socketService.off('video:play', handleRemotePlay);
       socketService.off('video:pause', handleRemotePause);
       socketService.off('video:transcode-progress', handleTranscodeProgress);
-      socketService.leaveVideo();
     };
   }, [videoId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    projectsApi
+      .getById(projectId)
+      .then((res) => setAccess(res.data.myAccess ?? null))
+      .catch(() => setAccess(null));
+  }, [projectId]);
+
+  // Joining the realtime room announces presence, so only users who may interact join (the API refuses the rest).
+  useEffect(() => {
+    if (!canInteract) return;
+    socketService.joinVideo(videoId);
+    return () => socketService.leaveVideo();
+  }, [videoId, canInteract]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -595,7 +610,7 @@ export default function VideoReviewPage() {
               {formatTimecode(video.duration, video.fps)} • {video.width}x{video.height}
             </p>
           </div>
-          <ReviewStatusControl status={video.reviewStatus} onChange={handleReviewStatusChange} />
+          <ReviewStatusControl status={video.reviewStatus} readOnly={!canInteract} onChange={handleReviewStatusChange} />
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <UserPresence videoId={videoId} />
@@ -617,14 +632,16 @@ export default function VideoReviewPage() {
             >
               <span className="hidden sm:inline">Xuất XML</span>
             </Button>
-            <Button
-              variant="ghost"
-              icon={<Share2 className="w-5 h-5" />}
-              aria-label="Chia sẻ"
-              onClick={() => setShowShareLinks(true)}
-            >
-              <span className="hidden sm:inline">Chia sẻ</span>
-            </Button>
+            {access?.canEdit && (
+              <Button
+                variant="ghost"
+                icon={<Share2 className="w-5 h-5" />}
+                aria-label="Chia sẻ"
+                onClick={() => setShowShareLinks(true)}
+              >
+                <span className="hidden sm:inline">Chia sẻ</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               aria-label="Phím tắt"
@@ -774,15 +791,15 @@ export default function VideoReviewPage() {
                   onSortChange={handleSortChange}
                   hasMore={hasMoreComments}
                   onLoadMore={handleLoadMoreComments}
-                  onAddComment={handleAddComment}
-                  onDeleteComment={handleDeleteComment}
-                  onEditComment={handleEditComment}
-                  onResolveComment={handleResolveComment}
-                  onReactToComment={handleReactToComment}
+                  onAddComment={canInteract ? handleAddComment : undefined}
+                  onDeleteComment={canInteract ? handleDeleteComment : undefined}
+                  onEditComment={canInteract ? handleEditComment : undefined}
+                  onResolveComment={canInteract ? handleResolveComment : undefined}
+                  onReactToComment={canInteract ? handleReactToComment : undefined}
                   onSeekToComment={handleSeekCommit}
-                  onTyping={handleTypingChange}
+                  onTyping={canInteract ? handleTypingChange : undefined}
                   annotating={isAnnotating}
-                  onToggleAnnotate={() => setIsAnnotating((v) => !v)}
+                  onToggleAnnotate={canInteract ? () => setIsAnnotating((v) => !v) : undefined}
                   annotateDisabled={!!compareVersion}
                 />
               </TabsContent>

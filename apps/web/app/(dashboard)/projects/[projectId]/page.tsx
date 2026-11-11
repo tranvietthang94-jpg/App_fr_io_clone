@@ -14,6 +14,10 @@ import { AlertDialog } from "@/components/ui/AlertDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ConfirmPermanentDelete } from "@/components/common/ConfirmPermanentDelete";
+import { CopyMoveDialog } from "@/components/video/CopyMoveDialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/DropdownMenu";
+import { refreshUsage } from "@/lib/refreshUsage";
 import {
   Upload,
   FileVideo,
@@ -27,10 +31,20 @@ import {
   Home,
   Search,
   X,
+  MoreVertical,
+  Copy,
 } from "lucide-react";
 import { VideoReviewStatus, type Project, type Video, type Folder } from "@r-frame/shared";
 
 type DeleteTarget = { type: "folder" | "video"; id: string };
+type CopyMoveTarget = { mode: "copy" | "move"; kind: "video" | "folder"; id: string };
+type PermanentTarget = { kind: "video" | "folder"; id: string; name: string; preview: { videoCount: number; totalBytes: number } };
+
+/** The API's own message when it has a useful one (409 not ready, 413 quota, 400 name); a plain hint for 403. */
+function opError(err: any, fallback: string): string {
+  if (err?.response?.status === 403) return "Bạn không có quyền sửa nội dung ở project này hoặc project đích";
+  return err?.response?.data?.message || fallback;
+}
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -54,6 +68,8 @@ export default function ProjectDetailPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [shareVideoId, setShareVideoId] = useState<string | null>(null);
+  const [copyMove, setCopyMove] = useState<CopyMoveTarget | null>(null);
+  const [permanent, setPermanent] = useState<PermanentTarget | null>(null);
   const [search, setSearch] = useState("");
   const [reviewStatusFilter, setReviewStatusFilter] = useState(
     () => searchParams.get("reviewStatus") || ""
@@ -64,6 +80,10 @@ export default function ProjectDetailPage() {
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
   const isSearching = search.trim().length > 0;
+  // Until the project answers nothing mutating is offered; the API enforces all of this regardless.
+  const access = project?.myAccess;
+  const canEdit = !!access?.canEdit;
+  const canContent = !!access?.canContent;
 
   useEffect(() => {
     setReviewStatusFilter(searchParams.get("reviewStatus") || "");
@@ -202,13 +222,13 @@ export default function ProjectDetailPage() {
     e.preventDefault();
     dragCounter.current = 0;
     setIsDragging(false);
-    if (e.dataTransfer.files) handleFilesSelected(e.dataTransfer.files);
+    if (canEdit && e.dataTransfer.files) handleFilesSelected(e.dataTransfer.files);
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     dragCounter.current++;
-    if (e.dataTransfer.types.includes("Files")) setIsDragging(true);
+    if (canEdit && e.dataTransfer.types.includes("Files")) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -274,6 +294,68 @@ export default function ProjectDetailPage() {
     } catch (err) {
       console.error("Failed to move video:", err);
       toast({ variant: "error", title: "Di chuyển thất bại" });
+    }
+  };
+
+  const handleDuplicate = async (video: Video) => {
+    try {
+      await videosApi.duplicate(video.id);
+      await loadVideos();
+      void refreshUsage();
+      toast({ variant: "success", title: "Đã nhân bản video" });
+    } catch (err) {
+      toast({ variant: "error", title: opError(err, "Nhân bản thất bại") });
+    }
+  };
+
+  const handleCopyMove = async (targetProjectId: string, targetFolderId: string | null) => {
+    if (!copyMove) return;
+    try {
+      if (copyMove.kind === "folder") {
+        await foldersApi.copy(copyMove.id, targetProjectId, targetFolderId);
+        toast({ variant: "success", title: "Đã copy thư mục" });
+        if (targetProjectId === projectId) await loadFolders();
+      } else if (copyMove.mode === "copy") {
+        await videosApi.copy(copyMove.id, targetProjectId, targetFolderId);
+        toast({ variant: "success", title: "Đã copy video" });
+        if (targetProjectId === projectId) await loadVideos();
+      } else {
+        await videosApi.move(copyMove.id, targetFolderId, targetProjectId);
+        setVideos((prev) => prev.filter((v) => v.id !== copyMove.id));
+        toast({ variant: "success", title: "Đã di chuyển video sang project khác" });
+      }
+      void refreshUsage();
+      setCopyMove(null);
+    } catch (err) {
+      toast({ variant: "error", title: opError(err, "Thao tác thất bại") });
+    }
+  };
+
+  const askPermanentDelete = async (kind: "video" | "folder", id: string) => {
+    try {
+      const res = kind === "video" ? await videosApi.getDeletePreview(id) : await foldersApi.getDeletePreview(id);
+      setPermanent({ kind, id, name: res.data.name, preview: { videoCount: res.data.videoCount, totalBytes: res.data.totalBytes } });
+    } catch (err) {
+      toast({ variant: "error", title: opError(err, "Không tải được thông tin xoá") });
+    }
+  };
+
+  const confirmPermanentDelete = async (confirmName: string) => {
+    if (!permanent) return;
+    try {
+      if (permanent.kind === "video") {
+        await videosApi.deletePermanently(permanent.id, confirmName);
+        setVideos((prev) => prev.filter((v) => v.id !== permanent.id));
+        setTrashVideos((prev) => prev.filter((v) => v.id !== permanent.id));
+      } else {
+        await foldersApi.deletePermanently(permanent.id, confirmName);
+        await Promise.all([loadFolders(), loadVideos()]);
+      }
+      void refreshUsage();
+      toast({ variant: "success", title: "Đã xoá vĩnh viễn" });
+      setPermanent(null);
+    } catch (err) {
+      toast({ variant: "error", title: opError(err, "Xoá vĩnh viễn thất bại") });
     }
   };
 
@@ -351,21 +433,25 @@ export default function ProjectDetailPage() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            aria-label="Thành viên"
-            icon={<Users className="w-5 h-5" />}
-            onClick={() => setShowMembers(true)}
-          >
-            <span className="hidden sm:inline">Thành viên</span>
-          </Button>
-          <Button
-            variant="secondary"
-            aria-label="Cài đặt dự án"
-            onClick={() => router.push(`/projects/${projectId}/settings`)}
-          >
-            <Settings className="w-5 h-5" />
-          </Button>
+          {access?.role && (
+            <Button
+              variant="secondary"
+              aria-label="Thành viên"
+              icon={<Users className="w-5 h-5" />}
+              onClick={() => setShowMembers(true)}
+            >
+              <span className="hidden sm:inline">Thành viên</span>
+            </Button>
+          )}
+          {access?.canManage && (
+            <Button
+              variant="secondary"
+              aria-label="Cài đặt dự án"
+              onClick={() => router.push(`/projects/${projectId}/settings`)}
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+          )}
           <Button
             variant="secondary"
             aria-label="Thùng rác"
@@ -375,25 +461,29 @@ export default function ProjectDetailPage() {
           >
             <span className="hidden sm:inline">Thùng rác</span>
           </Button>
-          <Button
-            variant="secondary"
-            aria-label="Tạo thư mục mới"
-            onClick={() => setNewFolderOpen(true)}
-          >
-            <FolderPlus className="w-5 h-5" />
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileInputChange}
-            accept="video/*"
-            multiple
-            className="hidden"
-          />
-          <Button icon={<Upload className="w-5 h-5" />} onClick={() => fileInputRef.current?.click()}>
-            <span className="hidden sm:inline">Tải video lên</span>
-            <span className="sm:hidden">Tải lên</span>
-          </Button>
+          {canEdit && (
+            <>
+              <Button
+                variant="secondary"
+                aria-label="Tạo thư mục mới"
+                onClick={() => setNewFolderOpen(true)}
+              >
+                <FolderPlus className="w-5 h-5" />
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileInputChange}
+                accept="video/*"
+                multiple
+                className="hidden"
+              />
+              <Button icon={<Upload className="w-5 h-5" />} onClick={() => fileInputRef.current?.click()}>
+                <span className="hidden sm:inline">Tải video lên</span>
+                <span className="sm:hidden">Tải lên</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -401,7 +491,7 @@ export default function ProjectDetailPage() {
         <MembersPanel projectId={projectId} onClose={() => setShowMembers(false)} />
       )}
 
-      {newFolderOpen && (
+      {canEdit && newFolderOpen && (
         <form onSubmit={handleCreateFolder} className="flex flex-wrap items-center gap-2 mb-4">
           <div className="w-full sm:w-56">
             <Input
@@ -446,12 +536,22 @@ export default function ProjectDetailPage() {
                     <p className="font-medium truncate">{video.title}</p>
                     <p className="text-xs text-text-muted">Đã xóa</p>
                   </div>
-                  <button
-                    onClick={() => handleRestore(video.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-md text-sm hover:bg-primary/20"
-                  >
-                    <RotateCcw className="w-4 h-4" /> Khôi phục
-                  </button>
+                  {canContent && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleRestore(video.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-md text-sm hover:bg-primary/20"
+                      >
+                        <RotateCcw className="w-4 h-4" /> Khôi phục
+                      </button>
+                      <button
+                        onClick={() => askPermanentDelete("video", video.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-accent-red/10 text-accent-red rounded-md text-sm hover:bg-accent-red/20"
+                      >
+                        <Trash2 className="w-4 h-4" /> Xoá vĩnh viễn
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -525,16 +625,39 @@ export default function ProjectDetailPage() {
                 >
                   <FolderIcon className="w-5 h-5 text-accent-blue flex-shrink-0" />
                   <span className="text-sm truncate flex-1">{folder.name}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget({ type: "folder", id: folder.id });
-                    }}
-                    aria-label="Xóa thư mục"
-                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  {canContent && (
+                    <>
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="Tùy chọn thư mục"
+                            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onSelect={() => setCopyMove({ mode: "copy", kind: "folder", id: folder.id })}>
+                            <Copy className="w-3.5 h-3.5" /> Copy sang…
+                          </DropdownMenuItem>
+                          <DropdownMenuItem variant="danger" onSelect={() => askPermanentDelete("folder", folder.id)}>
+                            <Trash2 className="w-3.5 h-3.5" /> Xoá vĩnh viễn
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget({ type: "folder", id: folder.id });
+                        }}
+                        aria-label="Xóa thư mục"
+                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -563,11 +686,15 @@ export default function ProjectDetailPage() {
                   progress={transcodeProgress[video.id] ?? null}
                   thumbnailUrl={videosApi.getThumbnailUrl(video.id, thumbTokens[video.id])}
                   onClick={() => router.push(`/projects/${projectId}/videos/${video.id}`)}
-                  onDelete={() => setDeleteTarget({ type: "video", id: video.id })}
-                  onRename={(title) => handleRenameVideo(video.id, title)}
-                  onMove={(folderId) => handleMoveVideo(video.id, folderId)}
-                  onUploadVersion={(file) => handleUploadVersion(video, file)}
-                  onShare={() => setShareVideoId(video.id)}
+                  onDelete={canContent ? () => setDeleteTarget({ type: "video", id: video.id }) : undefined}
+                  onMove={canContent ? (folderId) => handleMoveVideo(video.id, folderId) : undefined}
+                  onDuplicate={canContent ? () => handleDuplicate(video) : undefined}
+                  onCopy={canContent ? () => setCopyMove({ mode: "copy", kind: "video", id: video.id }) : undefined}
+                  onMoveToProject={canContent ? () => setCopyMove({ mode: "move", kind: "video", id: video.id }) : undefined}
+                  onDeletePermanently={canContent ? () => askPermanentDelete("video", video.id) : undefined}
+                  onRename={canEdit ? (title) => handleRenameVideo(video.id, title) : undefined}
+                  onUploadVersion={canEdit ? (file) => handleUploadVersion(video, file) : undefined}
+                  onShare={canEdit ? () => setShareVideoId(video.id) : undefined}
                 />
               ))}
             </div>
@@ -577,6 +704,20 @@ export default function ProjectDetailPage() {
 
       {shareVideoId && (
         <ShareLinkPanel videoId={shareVideoId} onClose={() => setShareVideoId(null)} />
+      )}
+
+      {copyMove && (
+        <CopyMoveDialog mode={copyMove.mode} sourceProjectId={projectId} onSubmit={handleCopyMove} onClose={() => setCopyMove(null)} />
+      )}
+
+      {permanent && (
+        <ConfirmPermanentDelete
+          name={permanent.name}
+          kind={permanent.kind}
+          preview={permanent.preview}
+          onConfirm={confirmPermanentDelete}
+          onClose={() => setPermanent(null)}
+        />
       )}
 
       <AlertDialog

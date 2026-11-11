@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { useUploadStore } from "@/lib/stores/uploadStore";
-import { authApi } from "@/lib/api";
+import { refreshUsage } from "@/lib/refreshUsage";
 import { formatBytes } from "@/lib/formatBytes";
 import { cn } from "@/lib/utils";
 
@@ -16,22 +16,12 @@ function barColor(percent: number): string {
 
 export function StorageBar() {
   const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
   // Changes whenever an upload starts, completes or fails, so usage is re-read at those moments.
   const uploadStates = useUploadStore((s) => s.tasks.map((t) => t.status).join(","));
 
   useEffect(() => {
-    let cancelled = false;
-    authApi
-      .getMe()
-      .then((res) => {
-        if (!cancelled) setUser(res.data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [uploadStates, setUser]);
+    void refreshUsage();
+  }, [uploadStates]);
 
   // Sessions stored before quotas existed have no usage fields until getMe answers.
   if (typeof user?.storageUsed !== "number") return null;

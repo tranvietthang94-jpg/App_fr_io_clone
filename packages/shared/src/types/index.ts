@@ -30,6 +30,16 @@ export interface AuthResponse {
 }
 
 // Project types
+/** What the caller may do in a project (GET /projects/:id); the API enforces it, the UI hides what it would refuse. */
+export interface ProjectAccess {
+  role: MemberRole | null; // null = reaches the project only through an admin permission
+  canInteract: boolean; // comment, annotate, react, review status, realtime presence
+  canContent: boolean; // delete / restore / move / copy / duplicate
+  canEdit: boolean; // upload, rename, folders, share links (members only)
+  canManage: boolean; // settings and members (members only)
+  viaAdmin: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -42,6 +52,7 @@ export interface Project {
   owner?: User;
   videos?: Video[];
   members?: ProjectMember[];
+  myAccess?: ProjectAccess;
 }
 
 export enum ProjectStatus {

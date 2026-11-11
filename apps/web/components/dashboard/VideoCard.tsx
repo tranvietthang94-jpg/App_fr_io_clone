@@ -10,7 +10,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/DropdownMenu';
-import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput, Share2 } from 'lucide-react';
+import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput, Share2, Copy, ArrowRightLeft } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
 import { VideoReviewStatus, type Video, type Folder } from '@r-frame/shared';
 
@@ -27,13 +27,20 @@ interface VideoCardProps {
   onMove?: (folderId: string | null) => void;
   onUploadVersion?: (file: File) => void;
   onShare?: () => void;
+  /** Content ops — passed only when the caller has the CONTENT right in this project. */
+  onDuplicate?: () => void;
+  onCopy?: () => void;
+  onMoveToProject?: () => void;
+  onDeletePermanently?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, thumbnailUrl, onClick, onDelete, onRename, onMove, onUploadVersion, onShare }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progress = null, thumbnailUrl, onClick, onDelete, onRename, onMove, onUploadVersion, onShare, onDuplicate, onCopy, onMoveToProject, onDeletePermanently }) => {
   const [renaming, setRenaming] = useState(false);
   const [titleInput, setTitleInput] = useState(video.title);
   const [thumbFailed, setThumbFailed] = useState(false);
   const versionInputRef = useRef<HTMLInputElement>(null);
+  const copyable = video.status === 'ready';
+  const notReadyHint = 'Video chưa xử lý xong, thử lại sau';
 
   const getStatusBadge = () => {
     switch (video.status) {
@@ -136,9 +143,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
           )}
         </div>
 
-        {(onRename || onDelete || onMove || onUploadVersion || onShare) && (
+        {(onRename || onDelete || onMove || onUploadVersion || onShare || onDuplicate || onCopy || onMoveToProject || onDeletePermanently) && (
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-            <DropdownMenu>
+            {/* modal={false}: items open dialogs, and a modal menu leaves pointer-events:none on <body> after they close. */}
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
@@ -176,18 +184,37 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )}
+                {/* A video still transcoding has no complete renditions to copy; the API refuses with 409. */}
+                {onDuplicate && (
+                  <DropdownMenuItem disabled={!copyable} title={copyable ? undefined : notReadyHint} onSelect={onDuplicate}>
+                    <Copy className="w-3.5 h-3.5" /> Nhân bản
+                  </DropdownMenuItem>
+                )}
+                {onCopy && (
+                  <DropdownMenuItem disabled={!copyable} title={copyable ? undefined : notReadyHint} onSelect={onCopy}>
+                    <Copy className="w-3.5 h-3.5" /> Copy sang…
+                  </DropdownMenuItem>
+                )}
+                {onMoveToProject && (
+                  <DropdownMenuItem onSelect={onMoveToProject}>
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> Di chuyển sang project…
+                  </DropdownMenuItem>
+                )}
                 {onUploadVersion && (
                   <DropdownMenuItem onSelect={() => versionInputRef.current?.click()}>
                     <UploadCloud className="w-3.5 h-3.5" /> Tải lên phiên bản mới
                   </DropdownMenuItem>
                 )}
+                {(onDelete || onDeletePermanently) && <DropdownMenuSeparator />}
                 {onDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="danger" onSelect={onDelete}>
-                      <Trash2 className="w-3.5 h-3.5" /> Xóa
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem variant="danger" onSelect={onDelete}>
+                    <Trash2 className="w-3.5 h-3.5" /> Xóa
+                  </DropdownMenuItem>
+                )}
+                {onDeletePermanently && (
+                  <DropdownMenuItem variant="danger" onSelect={onDeletePermanently}>
+                    <Trash2 className="w-3.5 h-3.5" /> Xoá vĩnh viễn
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
