@@ -1,5 +1,5 @@
 // Run: npx ts-node --transpile-only src/videos/stream-file.util.check.ts  (from apps/api)
-import assert from 'assert';
+import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
