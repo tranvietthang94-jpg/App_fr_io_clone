@@ -60,6 +60,8 @@ Lệnh này sẽ khởi chạy:
 > (gitignored: `pgsql/`, `pgdata/`, `redis/`, `redisdata/`), chỉ bind `127.0.0.1`:
 > `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/devenv.ps1 start|stop|status`.
 > Schema tự tạo khi API khởi động (TypeORM `synchronize`). MinIO không được code dùng nên bỏ qua.
+> Xuất PDF cần Chrome của puppeteer: đặt `PUPPETEER_CACHE_DIR=<repo>/.devenv/puppeteer` trong `apps/api/.env`
+> rồi chạy `cd apps/api && npx puppeteer browsers install chrome` (Docker prod dùng `PUPPETEER_EXECUTABLE_PATH`).
 
 ### 4. Chạy development servers
 
