@@ -77,7 +77,7 @@ export function UploadQueuePanel() {
                 {t.status === "done" && <CheckCircle2 className="w-4 h-4 text-accent-green flex-shrink-0" />}
                 {t.status === "error" && <AlertCircle className="w-4 h-4 text-accent-red flex-shrink-0" />}
                 <span className="truncate flex-1" title={t.name}>{t.name}</span>
-                {(t.status === "uploading" || t.status === "done") && (
+                {(t.status !== "error" || t.retryable === false) && (
                   <button onClick={() => dismiss(t.id)} aria-label="Ẩn" className="p-0.5 rounded hover:bg-bg-tertiary">
                     <X className="w-3.5 h-3.5 text-text-secondary" />
                   </button>
@@ -86,12 +86,14 @@ export function UploadQueuePanel() {
               {t.status === "error" && (
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-xs text-accent-red">{t.errorMessage || "Lỗi"}</span>
-                  <button
-                    onClick={() => retry(t.id)}
-                    className="flex items-center gap-1 text-xs text-accent-green hover:underline"
-                  >
-                    <RotateCcw className="w-3 h-3" /> Thử lại
-                  </button>
+                  {t.retryable !== false && (
+                    <button
+                      onClick={() => retry(t.id)}
+                      className="flex items-center gap-1 text-xs text-accent-green hover:underline"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Thử lại
+                    </button>
+                  )}
                 </div>
               )}
               {t.status !== "error" && (

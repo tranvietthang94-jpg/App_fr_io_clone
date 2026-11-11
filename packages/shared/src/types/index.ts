@@ -5,6 +5,12 @@ export interface User {
   name: string;
   avatarUrl?: string;
   createdAt: Date;
+  /** Bytes of original files charged to this user (includes live upload reservations). */
+  storageUsed: number;
+  /** Effective quota in bytes; null = unlimited (super admin). */
+  storageQuota: number | null;
+  adminPermissions: string[];
+  isSuperAdmin: boolean;
 }
 
 export interface CreateUserDto {

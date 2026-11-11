@@ -15,6 +15,8 @@ export interface UploadTask {
   startedAt?: number;
   status: 'uploading' | 'done' | 'error';
   errorMessage?: string;
+  /** false when retrying cannot help (e.g. quota refusal): the row offers dismiss instead of retry. */
+  retryable?: boolean;
   file: File;
   projectId: string;
   assetGroupId?: string;
@@ -36,7 +38,7 @@ interface UploadState {
 }
 
 async function runTask(task: UploadTask, update: (patch: Partial<UploadTask>) => void) {
-  update({ status: 'uploading', progress: 0, startedAt: Date.now(), errorMessage: undefined });
+  update({ status: 'uploading', progress: 0, startedAt: Date.now(), errorMessage: undefined, retryable: true });
   try {
     await uploadFileWithResume(
       task.file,
@@ -53,9 +55,15 @@ async function runTask(task: UploadTask, update: (patch: Partial<UploadTask>) =>
       useUploadStore.getState().dismiss(task.id);
     }, 4000);
   } catch (err: any) {
+    const status = err?.response?.status;
+    if (status === 413) {
+      // Over quota: the API's message ("Còn trống X, file cần Y — ...") is shown verbatim and retrying cannot help.
+      update({ status: 'error', retryable: false, errorMessage: err.response.data?.message ?? 'Hết dung lượng' });
+      return;
+    }
     update({
       status: 'error',
-      errorMessage: err?.response?.status === 401 ? 'Phiên đăng nhập hết hạn' : 'Mất kết nối — thử lại',
+      errorMessage: status === 401 ? 'Phiên đăng nhập hết hạn' : 'Mất kết nối — thử lại',
     });
   }
 }

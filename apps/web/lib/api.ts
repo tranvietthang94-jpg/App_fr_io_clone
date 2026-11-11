@@ -160,7 +160,14 @@ export const videosApi = {
   getById: (id: string) => api.get(`/api/videos/${id}`),
   getVersions: (id: string) => api.get(`/api/videos/${id}/versions`),
   rename: (id: string, title: string) => api.patch(`/api/videos/${id}`, { title }),
-  move: (id: string, folderId: string | null) => api.patch(`/api/videos/${id}/move`, { folderId }),
+  move: (id: string, folderId: string | null, targetProjectId?: string) =>
+    api.patch(`/api/videos/${id}/move`, { folderId, targetProjectId }),
+  copy: (id: string, targetProjectId: string, targetFolderId: string | null) =>
+    api.post(`/api/videos/${id}/copy`, { targetProjectId, targetFolderId }),
+  duplicate: (id: string) => api.post(`/api/videos/${id}/duplicate`),
+  getDeletePreview: (id: string) => api.get(`/api/videos/${id}/delete-preview`),
+  deletePermanently: (id: string, confirmName: string) =>
+    api.delete(`/api/videos/${id}/permanent`, { data: { confirmName } }),
   delete: (id: string) => api.delete(`/api/videos/${id}`),
   restore: (id: string) => api.post(`/api/videos/${id}/restore`),
   setReviewStatus: (id: string, status: string) =>
@@ -189,6 +196,23 @@ export const foldersApi = {
   rename: (projectId: string, id: string, name: string) =>
     api.patch(`/api/projects/${projectId}/folders/${id}`, { name }),
   delete: (projectId: string, id: string) => api.delete(`/api/projects/${projectId}/folders/${id}`),
+  copy: (id: string, targetProjectId: string, targetParentFolderId: string | null) =>
+    api.post(`/api/folders/${id}/copy`, { targetProjectId, targetParentFolderId }),
+  getDeletePreview: (id: string) => api.get(`/api/folders/${id}/delete-preview`),
+  deletePermanently: (id: string, confirmName: string) =>
+    api.delete(`/api/folders/${id}/permanent`, { data: { confirmName } }),
+};
+
+// Admin API (permissions are enforced by the server; the UI only hides what it would refuse)
+export const adminApi = {
+  listUsers: (params?: { search?: string; offset?: number; limit?: number }) => api.get('/api/admin/users', { params }),
+  updateQuota: (userId: string, quotaBytes: number | null) =>
+    api.patch(`/api/admin/users/${userId}/quota`, { quotaBytes }),
+  updatePermissions: (userId: string, permissions: string[]) =>
+    api.patch(`/api/admin/users/${userId}/permissions`, { permissions }),
+  getUserProjects: (userId: string) => api.get(`/api/admin/users/${userId}/projects`),
+  searchProjects: (search?: string) => api.get('/api/admin/projects', { params: { search } }),
+  recalculate: () => api.post('/api/admin/storage/recalculate'),
 };
 
 // Comments API

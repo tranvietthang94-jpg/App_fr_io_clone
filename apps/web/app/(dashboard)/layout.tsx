@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { authApi } from "@/lib/api";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UploadQueuePanel } from "@/components/upload/UploadQueuePanel";
+import { StorageBar } from "@/components/storage/StorageBar";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import {
@@ -108,6 +109,10 @@ export default function DashboardLayout({
             <span>Cài đặt</span>
           </Link>
         </nav>
+
+        <div className="border-t border-border pt-3">
+          <StorageBar />
+        </div>
 
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 px-4 py-2 mb-2">
