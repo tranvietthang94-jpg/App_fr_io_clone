@@ -9,6 +9,8 @@ import { MailerService } from '../mailer/mailer.service';
 import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
 import { Notification, NotificationType } from '../notifications/notification.entity';
+import { Video } from '../videos/video.entity';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ProjectsService {
@@ -23,6 +25,9 @@ export class ProjectsService {
     private notificationsRepository: Repository<Notification>,
     private mailerService: MailerService,
     private activityLogService: ActivityLogService,
+    @InjectRepository(Video)
+    private videosRepository: Repository<Video>,
+    private storage: StorageService,
   ) {}
 
   /**
@@ -128,6 +133,9 @@ export class ProjectsService {
 
   async delete(id: string, userId: string) {
     const project = await this.assertRole(id, userId, MemberRole.ADMIN);
+    // Cascade would drop the rows but leave every file on disk and every byte charged.
+    const videos = await this.videosRepository.find({ where: { projectId: id } });
+    await this.storage.destroyVideos(videos);
     await this.projectsRepository.remove(project);
     return { success: true };
   }

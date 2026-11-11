@@ -9,6 +9,8 @@ import { User } from '../auth/user.entity';
 import { Notification } from '../notifications/notification.entity';
 import { MailerModule } from '../mailer/mailer.module';
 import { ActivityModule } from '../activity/activity.module';
+import { StorageModule } from '../storage/storage.module';
+import { Video } from '../videos/video.entity';
 
 // Note: we inject the Notification repository directly (leaf dependency)
 // rather than NotificationsModule/Service — importing that module would pull
@@ -16,9 +18,10 @@ import { ActivityModule } from '../activity/activity.module';
 // cycle. See ProjectsService.invite for the (persist-only) tradeoff.
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, ProjectMember, User, Notification]),
+    TypeOrmModule.forFeature([Project, ProjectMember, User, Notification, Video]),
     MailerModule,
     ActivityModule,
+    StorageModule,
   ],
   controllers: [ProjectsController, InvitesController],
   providers: [ProjectsService],

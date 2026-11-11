@@ -1,5 +1,8 @@
 import 'reflect-metadata';
 import { test, describe, beforeEach, afterEach } from 'node:test';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import * as assert from 'node:assert/strict';
 import { StorageService, QuotaExceededException } from './storage.service';
 import { formatBytes } from './format-bytes';
@@ -88,5 +91,78 @@ describe('formatBytes', () => {
     assert.equal(formatBytes(1288490188.8), '1.2 GB');
     assert.equal(formatBytes(524288000), '500 MB');
     assert.equal(formatBytes(GiB), '1 GB');
+  });
+});
+
+describe('StorageService.destroyVideos', () => {
+  let cwd: string;
+  let tmp: string;
+  beforeEach(() => {
+    cwd = process.cwd();
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'destroy-test-'));
+    process.chdir(tmp);
+  });
+  afterEach(() => {
+    process.chdir(cwd);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  /** Fake datasource: records order of events and the users' counters. */
+  function fake(users: Record<string, number>) {
+    const events: string[] = [];
+    const usersRepo: any = {
+      findOne: async ({ where }: any) => ({ id: where.id, storageQuota: null, storageUsed: users[where.id] }),
+      update: async (id: string, patch: any) => { users[id] = patch.storageUsed; events.push(`credit:${id}`); },
+    };
+    const videosRepo: any = {
+      remove: async (vs: any[]) => { events.push(`rows:${vs.map((v) => v.id).join(',')}`); },
+    };
+    const manager: any = { getRepository: () => usersRepo };
+    const ds: any = {
+      transaction: async (cb: any) => cb(manager),
+      getRepository: () => videosRepo,
+    };
+    return { service: new StorageService(ds), events };
+  }
+
+  function makeVideo(id: string, uploadedById: string | null, fileSize: number | string, withFiles = true) {
+    const filePath = path.join(tmp, `${id}.mp4`);
+    if (withFiles) {
+      fs.writeFileSync(filePath, 'x');
+      fs.mkdirSync(path.join(tmp, 'uploads', 'transcoded', id), { recursive: true });
+      fs.mkdirSync(path.join(tmp, 'uploads', 'thumbnails'), { recursive: true });
+      fs.writeFileSync(path.join(tmp, 'uploads', 'thumbnails', `${id}.jpg`), 'x');
+    }
+    return { id, uploadedById, fileSize, filePath } as any;
+  }
+
+  test('destroyVideos removes files then rows then credits each uploader once with the summed numeric size', async () => {
+    const users = { a: 100, b: 100 };
+    const { service, events } = fake(users);
+    const v1 = makeVideo('v1', 'a', '10'); // bigint arrives as string
+    const v2 = makeVideo('v2', 'a', '20');
+    const v3 = makeVideo('v3', 'b', 5);
+    let filesGoneAtRowRemoval = false;
+    const origRows = (service as any).dataSource.getRepository().remove;
+    (service as any).dataSource.getRepository().remove = async (vs: any[]) => {
+      filesGoneAtRowRemoval = vs.every((v) => !fs.existsSync(v.filePath)
+        && !fs.existsSync(path.join(tmp, 'uploads', 'transcoded', v.id))
+        && !fs.existsSync(path.join(tmp, 'uploads', 'thumbnails', `${v.id}.jpg`)));
+      return origRows(vs);
+    };
+
+    await service.destroyVideos([v1, v2, v3]);
+
+    assert.equal(filesGoneAtRowRemoval, true);
+    assert.deepEqual(events, ['rows:v1,v2,v3', 'credit:a', 'credit:b']);
+    assert.deepEqual(users, { a: 70, b: 95 });
+  });
+
+  test('destroyVideos still credits when a file is already missing', async () => {
+    const users = { a: 50 };
+    const { service, events } = fake(users);
+    await service.destroyVideos([makeVideo('v1', 'a', 20, false)]);
+    assert.deepEqual(events, ['rows:v1', 'credit:a']);
+    assert.equal(users.a, 30);
   });
 });

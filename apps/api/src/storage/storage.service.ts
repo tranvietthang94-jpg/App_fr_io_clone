@@ -1,6 +1,9 @@
-import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { DataSource, EntityManager } from 'typeorm';
 import { User } from '../auth/user.entity';
+import { Video } from '../videos/video.entity';
 import { formatBytes } from './format-bytes';
 
 const DEFAULT_QUOTA_BYTES = 16106127360; // 15 GiB
@@ -13,6 +16,8 @@ export class QuotaExceededException extends HttpException {
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
+
   constructor(private readonly dataSource: DataSource) {}
 
   defaultQuota(): number {
@@ -56,6 +61,45 @@ export class StorageService {
       const user = await this.lock(m, userId);
       await m.getRepository(User).update(userId, { storageUsed: Math.max(Number(user.storageUsed) - n, 0) });
     });
+  }
+
+  /**
+   * The only place video files are destroyed. Files first, then rows, then quota:
+   * if the process died after dropping rows the file paths would be lost and the
+   * mp4s would leak forever; a crash before the credit only over-counts (recalc repairs).
+   */
+  async destroyVideos(videos: Video[]): Promise<void> {
+    if (videos.length === 0) return;
+    for (const video of videos) await this.removeFiles(video);
+    await this.dataSource.getRepository(Video).remove(videos);
+
+    const perUser = new Map<string, number>();
+    for (const v of videos) {
+      if (v.uploadedById) perUser.set(v.uploadedById, (perUser.get(v.uploadedById) ?? 0) + Number(v.fileSize));
+    }
+    for (const [userId, bytes] of perUser) await this.credit(userId, bytes);
+  }
+
+  /**
+   * Best-effort removal of every on-disk artifact of one video version: the original,
+   * its transcoded-quality directory and its thumbnail. A missing file is not an error
+   * (idempotent re-runs, partial transcodes) - log and continue so it never blocks DB cleanup.
+   */
+  private async removeFiles(video: Video): Promise<void> {
+    const uploadsRoot = path.join(process.cwd(), 'uploads');
+    const targets = [
+      video.filePath,
+      path.join(uploadsRoot, 'transcoded', video.id),
+      path.join(uploadsRoot, 'thumbnails', `${video.id}.jpg`),
+    ];
+    for (const target of targets) {
+      if (!target) continue;
+      try {
+        await fs.rm(target, { recursive: true, force: true });
+      } catch (err) {
+        this.logger.warn(`Failed to remove ${target} for video ${video.id}: ${err}`);
+      }
+    }
   }
 
   async getUsage(userId: string): Promise<{ used: number; quota: number | null }> {

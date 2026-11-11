@@ -1,21 +1,22 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { Video, VideoReviewStatus } from './video.entity';
 import { Folder } from './folder.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
 import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
+import { StorageService } from '../storage/storage.service';
 
 const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 10);
+const PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
-export class VideosService {
+export class VideosService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(VideosService.name);
+  private purgeTimer?: NodeJS.Timeout;
 
   constructor(
     @InjectRepository(Video)
@@ -24,7 +25,19 @@ export class VideosService {
     private foldersRepository: Repository<Folder>,
     private projectsService: ProjectsService,
     private activityLogService: ActivityLogService,
+    private storage: StorageService,
   ) {}
+
+  onModuleInit() {
+    const run = () => this.purgeAllExpiredTrash().catch((err) => this.logger.error(`Trash purge failed: ${err}`));
+    void run();
+    this.purgeTimer = setInterval(run, PURGE_INTERVAL_MS);
+    this.purgeTimer.unref(); // never keep the process (or tests) alive
+  }
+
+  onModuleDestroy() {
+    clearInterval(this.purgeTimer);
+  }
 
   /**
    * Latest (highest versionNumber), non-deleted video per asset, optionally
@@ -75,46 +88,24 @@ export class VideosService {
   }
 
   private async purgeExpiredTrash(projectId: string) {
-    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const expired = await this.videosRepository
-      .createQueryBuilder('video')
-      .where('video.projectId = :projectId', { projectId })
-      .andWhere('video.deletedAt IS NOT NULL')
-      .andWhere('video.deletedAt < :cutoff', { cutoff })
-      .getMany();
-    if (expired.length > 0) {
-      // Free the disk BEFORE dropping the DB rows — if we removed rows first
-      // and the process died, the file paths would be lost and the mp4s would
-      // leak forever.
-      for (const video of expired) {
-        await this.removeFilesFromDisk(video);
-      }
-      await this.videosRepository.remove(expired);
-    }
+    await this.purgeExpired(projectId);
   }
 
-  /**
-   * Best-effort removal of every on-disk artifact tied to a single video
-   * version: the uploaded original, its transcoded-quality directory, and its
-   * thumbnail. Layout must match how MediaService/UploadService write them.
-   * A missing file is not an error (idempotent re-runs, partial transcodes) —
-   * we log and continue so a stray file never blocks the DB cleanup.
-   */
-  private async removeFilesFromDisk(video: Video): Promise<void> {
-    const uploadsRoot = path.join(process.cwd(), 'uploads');
-    const targets = [
-      video.filePath,
-      path.join(uploadsRoot, 'transcoded', video.id),
-      path.join(uploadsRoot, 'thumbnails', `${video.id}.jpg`),
-    ];
-    for (const target of targets) {
-      if (!target) continue;
-      try {
-        await fs.rm(target, { recursive: true, force: true });
-      } catch (err) {
-        this.logger.warn(`Failed to remove ${target} for video ${video.id}: ${err}`);
-      }
-    }
+  /** Trash retention applies to every project, so it no longer depends on someone opening the trash. */
+  async purgeAllExpiredTrash(): Promise<number> {
+    return this.purgeExpired();
+  }
+
+  private async purgeExpired(projectId?: string): Promise<number> {
+    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const qb = this.videosRepository
+      .createQueryBuilder('video')
+      .where('video.deletedAt IS NOT NULL')
+      .andWhere('video.deletedAt < :cutoff', { cutoff });
+    if (projectId) qb.andWhere('video.projectId = :projectId', { projectId });
+    const expired = await qb.getMany();
+    await this.storage.destroyVideos(expired);
+    return expired.length;
   }
 
   async findOne(id: string) {
@@ -287,13 +278,5 @@ export class VideosService {
     video.deletedAt = null;
     await this.videosRepository.save(video);
     return video;
-  }
-
-  /** Permanent delete — used only for legacy hard-delete call sites (e.g. project cascade already handles bulk cleanup). */
-  async delete(id: string) {
-    const video = await this.findOne(id);
-    await this.removeFilesFromDisk(video);
-    await this.videosRepository.remove(video);
-    return { success: true };
   }
 }
