@@ -56,6 +56,11 @@ Lệnh này sẽ khởi chạy:
 - **Redis** (port 6379) - Cache & real-time
 - **MinIO** (port 9000, 9001) - Object storage
 
+> **Không có Docker (Windows)?** Có thể dùng Postgres + Redis portable đặt trong `.devenv/`
+> (gitignored: `pgsql/`, `pgdata/`, `redis/`, `redisdata/`), chỉ bind `127.0.0.1`:
+> `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/devenv.ps1 start|stop|status`.
+> Schema tự tạo khi API khởi động (TypeORM `synchronize`). MinIO không được code dùng nên bỏ qua.
+
 ### 4. Chạy development servers
 
 ```bash

@@ -60,3 +60,5 @@ temp/
 # Vendored reference material (local only — rule/agent.md itself is tracked)
 rule/*
 !rule/agent.md
+# Portable local services (Postgres/Redis binaries + data)
+.devenv/
