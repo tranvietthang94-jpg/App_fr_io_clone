@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from './stores/authStore';
+import { api } from './api';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -11,6 +12,16 @@ class SocketService {
   // emit() guard would drop that join. Re-emitting on 'connect' makes room
   // membership survive the cold-start race and any later reconnection.
   private currentVideoId: string | null = null;
+  private reauthenticating = false;
+  private lastReauthAt = 0;
+
+  constructor() {
+    // Logout (manual, or forced after a failed refresh) must not leave an
+    // authenticated socket receiving project events.
+    useAuthStore.subscribe((state, prev) => {
+      if (prev.accessToken && !state.accessToken) this.disconnect();
+    });
+  }
 
   connect() {
     const token = useAuthStore.getState().accessToken;
@@ -18,15 +29,38 @@ class SocketService {
       console.warn('Cannot connect socket: no token');
       return;
     }
-    this.openSocket({ token });
+    // Read lazily so every (re)connect handshake carries the CURRENT token.
+    this.openSocket(() => ({ token: useAuthStore.getState().accessToken ?? '' }), true);
   }
 
   /** Guest path for the public share-link review page — no account, no accessToken. */
   connectAsGuest(shareToken: string, guestName: string, sharePassword?: string) {
-    this.openSocket(sharePassword ? { shareToken, guestName, sharePassword } : { shareToken, guestName });
+    this.openSocket(() => (sharePassword ? { shareToken, guestName, sharePassword } : { shareToken, guestName }), false);
   }
 
-  private openSocket(auth: Record<string, string>) {
+  /**
+   * The server drops a JWT socket when its token expires or the user's
+   * sessions are revoked, and socket.io doesn't retry a server-initiated
+   * disconnect. Any authenticated request goes through the api.ts 401
+   * interceptor, which refreshes an expired token once (shared in-flight, so
+   * no double refresh-token rotation) or logs out; then reconnect with the
+   * fresh token.
+   */
+  private reauthenticate() {
+    // 2s guard: never hammer the API if the server keeps rejecting this socket.
+    if (this.reauthenticating || Date.now() - this.lastReauthAt < 2000) return;
+    this.reauthenticating = true;
+    this.lastReauthAt = Date.now();
+    api
+      .get('/api/auth/me')
+      .then(() => this.connect())
+      .catch(() => {})
+      .finally(() => {
+        this.reauthenticating = false;
+      });
+  }
+
+  private openSocket(getAuth: () => Record<string, string | undefined>, isAuthenticated: boolean) {
     if (this.socket?.connected) {
       return;
     }
@@ -40,7 +74,7 @@ class SocketService {
     }
 
     this.socket = io(`${SOCKET_URL}/collaboration`, {
-      auth,
+      auth: (cb) => cb(getAuth()),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -53,6 +87,10 @@ class SocketService {
       if (this.currentVideoId) {
         this.socket?.emit('join:video', { videoId: this.currentVideoId });
       }
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect' && isAuthenticated) this.reauthenticate();
     });
 
     this.socket.on('connect_error', (error) => {

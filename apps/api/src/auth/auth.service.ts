@@ -8,6 +8,7 @@ import { User } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { PasswordResetToken } from './password-reset-token.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { CollaborationGateway } from '../gateway/collaboration.gateway';
 import type { GoogleProfile } from './google.strategy';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -25,6 +26,7 @@ export class AuthService {
     private resetTokensRepository: Repository<PasswordResetToken>,
     private jwtService: JwtService,
     private mailerService: MailerService,
+    private collaborationGateway: CollaborationGateway,
   ) {}
 
   private signAccessToken(user: User): string {
@@ -54,6 +56,12 @@ export class AuthService {
     if (where.email) qb.where('user.email = :email', { email: where.email });
     if (where.id) qb.where('user.id = :id', { id: where.id });
     return qb.getOne();
+  }
+
+  /** Revokes every refresh token of a user and drops their live realtime sockets. */
+  private async revokeAllSessions(userId: string): Promise<void> {
+    await this.refreshTokensRepository.update({ userId, revokedAt: IsNull() }, { revokedAt: new Date() });
+    this.collaborationGateway.disconnectUser(userId);
   }
 
   private async issueRefreshToken(userId: string): Promise<string> {
@@ -113,10 +121,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     if (existing.revokedAt) {
-      await this.refreshTokensRepository.update(
-        { userId: existing.userId, revokedAt: IsNull() },
-        { revokedAt: new Date() },
-      );
+      await this.revokeAllSessions(existing.userId);
       throw new UnauthorizedException('Refresh token reuse detected — all sessions revoked');
     }
     if (existing.expiresAt.getTime() < Date.now()) {
@@ -172,10 +177,7 @@ export class AuthService {
     await this.usersRepository.save(user);
 
     // Same "invalidate every session" behavior as resetPassword.
-    await this.refreshTokensRepository.update(
-      { userId: user.id, revokedAt: IsNull() },
-      { revokedAt: new Date() },
-    );
+    await this.revokeAllSessions(user.id);
   }
 
   /** Always succeeds from the caller's perspective — never reveals whether the email exists. */
@@ -220,10 +222,7 @@ export class AuthService {
     await this.resetTokensRepository.save(resetToken);
 
     // Resetting the password invalidates every existing session.
-    await this.refreshTokensRepository.update(
-      { userId: user.id, revokedAt: IsNull() },
-      { revokedAt: new Date() },
-    );
+    await this.revokeAllSessions(user.id);
   }
 
   /** Links to an existing local account by email if one exists, otherwise creates a Google-only account. */

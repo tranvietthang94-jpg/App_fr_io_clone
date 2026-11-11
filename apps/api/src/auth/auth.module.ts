@@ -11,6 +11,7 @@ import { RefreshToken } from './refresh-token.entity';
 import { PasswordResetToken } from './password-reset-token.entity';
 import { jwtModuleOptions } from '../config/jwt.config';
 import { MailerModule } from '../mailer/mailer.module';
+import { CollaborationModule } from '../gateway/collaboration.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MailerModule } from '../mailer/mailer.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register(jwtModuleOptions),
     MailerModule,
+    CollaborationModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, GoogleStrategy],

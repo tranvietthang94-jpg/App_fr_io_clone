@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { test, describe, before } from 'node:test';
+import { test, describe, before, afterEach, mock } from 'node:test';
 import * as assert from 'node:assert/strict';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { CollaborationGateway } from './collaboration.gateway';
@@ -28,7 +28,9 @@ function fakeClient(id: string, auth: Record<string, unknown>) {
   return client;
 }
 
-function makeGateway(opts: { resolve?: (token: string, password?: string) => Promise<any>; ownedVideos?: string[] } = {}) {
+function makeGateway(
+  opts: { resolve?: (token: string, password?: string) => Promise<any>; ownedVideos?: string[]; exp?: number } = {},
+) {
   const resolveCalls: Array<[string, string | undefined]> = [];
   const shareLinks: any = {
     resolveForAccess: async (token: string, password?: string) => {
@@ -39,7 +41,7 @@ function makeGateway(opts: { resolve?: (token: string, password?: string) => Pro
   const jwt: any = {
     verify: (t: string) => {
       if (t !== 'good') throw new Error('bad jwt');
-      return { sub: 'u1', username: 'alice' };
+      return { sub: 'u1', username: 'alice', exp: opts.exp };
     },
   };
   const videos: any = {
@@ -47,7 +49,12 @@ function makeGateway(opts: { resolve?: (token: string, password?: string) => Pro
       if (!(opts.ownedVideos ?? ['v1']).includes(videoId)) throw new Error('not owned');
     },
   };
-  return { gateway: new CollaborationGateway(jwt, videos, shareLinks), resolveCalls };
+  const gateway = new CollaborationGateway(jwt, videos, shareLinks);
+  const disconnectedRooms: Array<{ room: string; close: boolean }> = [];
+  (gateway as any).server = {
+    in: (room: string) => ({ disconnectSockets: (close: boolean) => disconnectedRooms.push({ room, close }) }),
+  };
+  return { gateway, resolveCalls, disconnectedRooms };
 }
 
 describe('CollaborationGateway connection', () => {
@@ -188,5 +195,70 @@ describe('CollaborationGateway room-scoped broadcasts', () => {
     await gateway.handleJoinVideo(c, { videoId: 'v1' });
     gateway.handleVideoSeek(c, { videoId: 'v2', timestamp: 9 });
     assert.deepEqual(c.sent.filter((s: Sent) => s.event === 'video:seek'), []);
+  });
+});
+
+describe('CollaborationGateway token expiry and revocation', () => {
+  const NOW = 1_000_000;
+  const EXP_IN_MS = 60_000;
+  const exp = (NOW + EXP_IN_MS) / 1000;
+  afterEach(() => mock.timers.reset());
+  const fakeTime = () => mock.timers.enable({ apis: ['setTimeout', 'Date'], now: NOW });
+
+  test('JWT socket is disconnected at the token exp, not before', async () => {
+    fakeTime();
+    const { gateway } = makeGateway({ exp });
+    const c = fakeClient('c1', { token: 'good' });
+    await gateway.handleConnection(c);
+
+    mock.timers.tick(EXP_IN_MS - 1);
+    assert.equal(c.disconnected, false);
+    mock.timers.tick(1);
+    assert.equal(c.disconnected, true);
+  });
+
+  test('expiry timer is cleared when the socket disconnects early (no leak, no late disconnect)', async () => {
+    fakeTime();
+    const { gateway } = makeGateway({ exp });
+    const c = fakeClient('c1', { token: 'good' });
+    await gateway.handleConnection(c);
+    assert.equal((gateway as any).expiryTimers.size, 1);
+
+    gateway.handleDisconnect(c);
+    assert.equal((gateway as any).expiryTimers.size, 0);
+    mock.timers.tick(EXP_IN_MS * 2);
+    assert.equal(c.disconnected, false);
+  });
+
+  test('a token without exp gets no timer', async () => {
+    fakeTime();
+    const { gateway } = makeGateway({ exp: undefined });
+    await gateway.handleConnection(fakeClient('c1', { token: 'good' }));
+    assert.equal((gateway as any).expiryTimers.size, 0);
+  });
+
+  test('guests never get an expiry timer', async () => {
+    fakeTime();
+    const { gateway } = makeGateway({ exp });
+    const c = fakeClient('c1', { shareToken: 't' });
+    await gateway.handleConnection(c);
+    assert.equal((gateway as any).expiryTimers.size, 0);
+    mock.timers.tick(EXP_IN_MS * 10);
+    assert.equal(c.disconnected, false);
+  });
+
+  test('a far-future exp is capped so setTimeout cannot overflow into an immediate disconnect', async () => {
+    fakeTime();
+    const { gateway } = makeGateway({ exp: (NOW + 90 * 24 * 3_600_000) / 1000 });
+    const c = fakeClient('c1', { token: 'good' });
+    await gateway.handleConnection(c);
+    mock.timers.tick(1000);
+    assert.equal(c.disconnected, false);
+  });
+
+  test("disconnectUser drops every socket in the user's personal room", () => {
+    const { gateway, disconnectedRooms } = makeGateway();
+    gateway.disconnectUser('u1');
+    assert.deepEqual(disconnectedRooms, [{ room: 'user:u1', close: true }]);
   });
 });

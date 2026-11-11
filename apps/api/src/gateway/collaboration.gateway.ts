@@ -56,6 +56,10 @@ export class CollaborationGateway
   // join:video awaits this so it never runs before userSockets is populated.
   private authenticating = new Map<string, Promise<void>>();
 
+  // JWT is only verified at connect, so each authenticated socket is dropped
+  // at the token's `exp`; the client then refreshes its token and reconnects.
+  private expiryTimers = new Map<string, NodeJS.Timeout>();
+
   async handleConnection(client: Socket) {
     const pending = this.authenticate(client);
     this.authenticating.set(client.id, pending);
@@ -84,6 +88,12 @@ export class CollaborationGateway
 
         this.userSockets.set(client.id, userData);
         client.data = userData;
+
+        if (payload.exp) {
+          // setTimeout overflows (fires immediately) past 2^31-1 ms; capping only means an earlier, harmless reconnect.
+          const ms = Math.min(payload.exp * 1000 - Date.now(), 2 ** 31 - 1);
+          this.expiryTimers.set(client.id, setTimeout(() => client.disconnect(), ms));
+        }
 
         // Personal room for server-initiated pushes (notifications) that
         // aren't tied to any particular video room.
@@ -123,6 +133,8 @@ export class CollaborationGateway
   }
 
   handleDisconnect(client: Socket) {
+    clearTimeout(this.expiryTimers.get(client.id));
+    this.expiryTimers.delete(client.id);
     const userData = this.userSockets.get(client.id);
     if (userData) {
       // Leave room if in one
@@ -349,6 +361,16 @@ export class CollaborationGateway
       commentId: data.commentId,
       userId: userData.userId,
     });
+  }
+
+  /**
+   * Drops every live socket of a user (all their refresh tokens were revoked).
+   * ponytail: an already-issued access token can still reconnect until its
+   * `exp`, same as the REST API — revoking access tokens needs a server-side
+   * denylist / token version.
+   */
+  disconnectUser(userId: string) {
+    this.server.in(`user:${userId}`).disconnectSockets(true);
   }
 
   /** Server-initiated push (e.g. from NotificationsService) to a specific user's personal room. */
