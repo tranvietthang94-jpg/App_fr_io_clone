@@ -33,6 +33,6 @@ export class FoldersController {
 
   @Delete(':id')
   async delete(@Param('id') id: string, @Request() req) {
-    return this.foldersService.delete(id, req.user.userId);
+    return this.foldersService.delete(id, req.user.userId, req.user.username || req.user.email);
   }
 }

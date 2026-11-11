@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CommentsService } from './comments.service';
 import { VideosService } from '../videos/videos.service';
 import { ProjectsService } from '../projects/projects.service';
+import { ProjectAction } from '../projects/project-access';
 import { CreateCommentDto, UpdateCommentDto, SetResolvedDto } from './dto/create-comment.dto';
 
 @Controller()
@@ -37,7 +38,7 @@ export class CommentsController {
     @Body() body: CreateCommentDto,
     @Request() req,
   ) {
-    await this.videosService.findOwned(videoId, req.user.userId);
+    await this.videosService.findOwned(videoId, req.user.userId, ProjectAction.INTERACT);
     return this.commentsService.create({
       ...body,
       videoId,
@@ -46,10 +47,10 @@ export class CommentsController {
     });
   }
 
-  /** Resolves the video → project → caller's role, for the moderation checks in update/delete/resolve. */
+  /** Resolves the video → project → caller's member role, for the moderation checks in update/delete/resolve. An admin needs project_interact but is never a moderator (role stays null). */
   private async getCallerRole(commentId: string, userId: string) {
     const comment = await this.commentsService.findOne(commentId);
-    const video = await this.videosService.findOwned(comment.videoId, userId);
+    const video = await this.videosService.findOwned(comment.videoId, userId, ProjectAction.INTERACT);
     return this.projectsService.getMemberRole(video.projectId, userId);
   }
 

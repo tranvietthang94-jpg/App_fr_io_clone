@@ -5,6 +5,9 @@ import { Folder } from './folder.entity';
 import { Video } from './video.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
+import { ProjectAction } from '../projects/project-access';
+import { ActivityLogService } from '../activity/activity-log.service';
+import { ActivityType } from '../activity/activity-log.entity';
 
 @Injectable()
 export class FoldersService {
@@ -14,6 +17,7 @@ export class FoldersService {
     @InjectRepository(Video)
     private videosRepository: Repository<Video>,
     private projectsService: ProjectsService,
+    private activityLogService: ActivityLogService,
   ) {}
 
   async findByProject(projectId: string, userId: string, parentFolderId?: string | null) {
@@ -57,13 +61,16 @@ export class FoldersService {
   }
 
   /** Deletes the folder; videos/subfolders inside it move up to its parent rather than being deleted. */
-  async delete(id: string, userId: string) {
+  async delete(id: string, userId: string, actorName = '') {
     const folder = await this.findOneOrThrow(id);
-    await this.projectsService.assertRole(folder.projectId, userId, MemberRole.EDITOR);
+    const { viaAdmin } = await this.projectsService.authorize(folder.projectId, userId, ProjectAction.CONTENT);
 
     await this.videosRepository.update({ folderId: id }, { folderId: folder.parentFolderId });
     await this.foldersRepository.update({ parentFolderId: id }, { parentFolderId: folder.parentFolderId });
     await this.foldersRepository.remove(folder);
+    if (viaAdmin) {
+      await this.activityLogService.record(folder.projectId, ActivityType.ADMIN_FOLDER_DELETED, userId, actorName, { folderName: folder.name });
+    }
     return { success: true };
   }
 

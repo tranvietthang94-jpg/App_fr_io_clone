@@ -4,6 +4,7 @@ import * as path from 'path';
 import { DataSource, EntityManager } from 'typeorm';
 import { User } from '../auth/user.entity';
 import { Video } from '../videos/video.entity';
+import { isSuperAdminId } from '../admin/admin-permissions';
 import { formatBytes } from './format-bytes';
 
 const DEFAULT_QUOTA_BYTES = 16106127360; // 15 GiB
@@ -27,8 +28,7 @@ export class StorageService {
 
   /** null = unlimited (super admin). */
   effectiveQuota(user: Pick<User, 'id' | 'storageQuota'>): number | null {
-    const superId = process.env.SUPER_ADMIN_USER_ID;
-    if (superId && user.id === superId) return null;
+    if (isSuperAdminId(user.id)) return null;
     return user.storageQuota ?? this.defaultQuota();
   }
 

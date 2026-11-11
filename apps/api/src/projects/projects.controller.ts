@@ -20,7 +20,8 @@ export class ProjectsController {
 
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
-    return this.projectsService.findOne(id, req.user.userId);
+    const { project, myAccess } = await this.projectsService.getMyAccess(id, req.user.userId);
+    return { ...project, myAccess };
   }
 
   @Post()

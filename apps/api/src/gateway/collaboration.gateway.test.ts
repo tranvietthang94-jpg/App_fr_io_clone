@@ -3,6 +3,7 @@ import { test, describe, before, afterEach, mock } from 'node:test';
 import * as assert from 'node:assert/strict';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { CollaborationGateway } from './collaboration.gateway';
+import { ProjectAction } from '../projects/project-access';
 
 before(() => Logger.overrideLogger(false)); // expected auth failures log errors
 
@@ -29,7 +30,7 @@ function fakeClient(id: string, auth: Record<string, unknown>) {
 }
 
 function makeGateway(
-  opts: { resolve?: (token: string, password?: string) => Promise<any>; ownedVideos?: string[]; exp?: number } = {},
+  opts: { resolve?: (token: string, password?: string) => Promise<any>; ownedVideos?: string[]; exp?: number; viewOnly?: boolean } = {},
 ) {
   const resolveCalls: Array<[string, string | undefined]> = [];
   const shareLinks: any = {
@@ -45,8 +46,10 @@ function makeGateway(
     },
   };
   const videos: any = {
-    findOwned: async (videoId: string) => {
+    // viewOnly: an admin holding project_view alone — READ passes, anything stronger is refused.
+    findOwned: async (videoId: string, _userId?: string, action?: ProjectAction) => {
       if (!(opts.ownedVideos ?? ['v1']).includes(videoId)) throw new Error('not owned');
+      if (opts.viewOnly && action !== undefined && action !== ProjectAction.READ) throw new Error('forbidden');
     },
   };
   const gateway = new CollaborationGateway(jwt, videos, shareLinks);
@@ -129,6 +132,24 @@ describe('CollaborationGateway join:video', () => {
     await gateway.handleJoinVideo(c, { videoId: 'other' });
     assert.ok(!c.joined.includes('video:other'));
     assert.equal(c.own.at(-1)?.event, 'error');
+  });
+
+  test('view-only admin join:video gets error and no user:joined broadcast', async () => {
+    const { gateway } = makeGateway({ viewOnly: true });
+    const c = fakeClient('c1', { token: 'good' });
+    await gateway.handleConnection(c);
+    await gateway.handleJoinVideo(c, { videoId: 'v1' });
+    assert.ok(!c.joined.includes('video:v1'));
+    assert.equal(c.own.at(-1)?.event, 'error');
+    assert.ok(!c.sent.some((m: Sent) => m.event === 'user:joined'));
+  });
+
+  test('interact admin joins', async () => {
+    const { gateway } = makeGateway();
+    const c = fakeClient('c1', { token: 'good' });
+    await gateway.handleConnection(c);
+    await gateway.handleJoinVideo(c, { videoId: 'v1' });
+    assert.ok(c.joined.includes('video:v1'));
   });
 
   test('join:video emitted before guest auth resolves still joins (authenticating await)', async () => {

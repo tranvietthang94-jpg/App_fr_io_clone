@@ -13,6 +13,7 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { VideosService } from '../videos/videos.service';
+import { ProjectAction } from '../projects/project-access';
 import { ShareLinksService } from '../share-links/share-links.service';
 
 interface UserSocketData {
@@ -167,7 +168,8 @@ export class CollaborationGateway
       }
     } else {
       try {
-        await this.videosService.findOwned(data.videoId, userData.userId);
+        // INTERACT, not READ: joining announces presence, so a view-only admin must stay out.
+        await this.videosService.findOwned(data.videoId, userData.userId, ProjectAction.INTERACT);
       } catch {
         client.emit('error', { message: 'Not authorized to join this video' });
         return;

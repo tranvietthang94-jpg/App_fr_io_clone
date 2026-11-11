@@ -9,6 +9,7 @@ import { MemberRole } from '../projects/project-member.entity';
 import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
 import { StorageService } from '../storage/storage.service';
+import { ProjectAction } from '../projects/project-access';
 
 const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 10);
 const PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -121,17 +122,13 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
    * the video's project, and that the video hasn't been trashed (a
    * soft-deleted video must be restored before it can be viewed/commented on).
    */
-  async findOwned(id: string, userId: string) {
+  async findOwned(id: string, userId: string, action: ProjectAction = ProjectAction.READ) {
     const video = await this.findOne(id);
-    await this.projectsService.findOne(video.projectId, userId);
+    await this.projectsService.authorize(video.projectId, userId, action);
     if (video.deletedAt) {
       throw new NotFoundException('Video not found');
     }
     return video;
-  }
-
-  private async assertEditorAccess(video: Video, userId: string): Promise<void> {
-    await this.projectsService.assertRole(video.projectId, userId, MemberRole.EDITOR);
   }
 
   async create(data: {
@@ -200,10 +197,10 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
     return this.videosRepository.save(video);
   }
 
-  /** REVIEWER is the lowest project rank, so every accepted member can set review status. */
+  /** Every accepted member can set review status; an admin needs project_interact. */
   async setReviewStatus(id: string, status: VideoReviewStatus, userId: string, actorName: string) {
     const video = await this.findOne(id);
-    await this.projectsService.assertRole(video.projectId, userId, MemberRole.REVIEWER);
+    await this.projectsService.authorize(video.projectId, userId, ProjectAction.INTERACT);
     return this.applyReviewStatus(video, status, userId, actorName);
   }
 
@@ -243,14 +240,14 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
 
   async rename(id: string, title: string, userId: string) {
     const video = await this.findOne(id);
-    await this.assertEditorAccess(video, userId);
+    await this.projectsService.assertRole(video.projectId, userId, MemberRole.EDITOR);
     video.title = title;
     return this.videosRepository.save(video);
   }
 
-  async move(id: string, folderId: string | null, userId: string) {
+  async move(id: string, folderId: string | null, userId: string, actorName = '') {
     const video = await this.findOne(id);
-    await this.assertEditorAccess(video, userId);
+    const { viaAdmin } = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
     if (folderId) {
       const folder = await this.foldersRepository.findOne({ where: { id: folderId } });
       if (!folder || folder.projectId !== video.projectId) {
@@ -258,25 +255,35 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
       }
     }
     video.folderId = folderId;
-    return this.videosRepository.save(video);
+    const saved = await this.videosRepository.save(video);
+    await this.recordAdminAction(viaAdmin, ActivityType.ADMIN_VIDEO_MOVED, video, userId, actorName);
+    return saved;
   }
 
-  async softDelete(id: string, userId: string) {
+  async softDelete(id: string, userId: string, actorName = '') {
     const video = await this.findOne(id);
-    await this.assertEditorAccess(video, userId);
+    const { viaAdmin } = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
     video.deletedAt = new Date();
     await this.videosRepository.save(video);
+    await this.recordAdminAction(viaAdmin, ActivityType.ADMIN_VIDEO_TRASHED, video, userId, actorName);
     return { success: true };
   }
 
-  async restore(id: string, userId: string) {
+  async restore(id: string, userId: string, actorName = '') {
     const video = await this.findOne(id);
-    await this.assertEditorAccess(video, userId);
+    const { viaAdmin } = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
     if (!video.deletedAt) {
       throw new ForbiddenException('Video is not in trash');
     }
     video.deletedAt = null;
     await this.videosRepository.save(video);
+    await this.recordAdminAction(viaAdmin, ActivityType.ADMIN_VIDEO_RESTORED, video, userId, actorName);
     return video;
+  }
+
+  /** Members' own actions are not logged; admin actions inside someone else's project always are. */
+  private async recordAdminAction(viaAdmin: boolean, type: ActivityType, video: Video, userId: string, actorName: string) {
+    if (!viaAdmin) return;
+    await this.activityLogService.record(video.projectId, type, userId, actorName, { videoTitle: video.title }, video.id);
   }
 }

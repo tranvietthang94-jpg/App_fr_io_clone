@@ -183,18 +183,18 @@ export class VideosController {
   @Patch('videos/:id/move')
   @UseGuards(AuthGuard('jwt'))
   async move(@Param('id') id: string, @Body() body: MoveVideoDto, @Req() req: any) {
-    return this.videosService.move(id, body.folderId, req.user.userId);
+    return this.videosService.move(id, body.folderId, req.user.userId, req.user.username || req.user.email);
   }
 
   @Delete('videos/:id')
   @UseGuards(AuthGuard('jwt'))
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.videosService.softDelete(id, req.user.userId);
+    return this.videosService.softDelete(id, req.user.userId, req.user.username || req.user.email);
   }
 
   @Post('videos/:id/restore')
   @UseGuards(AuthGuard('jwt'))
   async restore(@Param('id') id: string, @Req() req: any) {
-    return this.videosService.restore(id, req.user.userId);
+    return this.videosService.restore(id, req.user.userId, req.user.username || req.user.email);
   }
 }

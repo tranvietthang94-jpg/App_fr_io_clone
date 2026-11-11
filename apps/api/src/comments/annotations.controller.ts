@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AnnotationsService } from './annotations.service';
 import { CommentsService } from './comments.service';
 import { VideosService } from '../videos/videos.service';
+import { ProjectAction } from '../projects/project-access';
 import { CreateAnnotationDto, UpdateAnnotationDto } from './dto/create-annotation.dto';
 
 @Controller()
@@ -21,7 +22,7 @@ export class AnnotationsController {
     @Request() req,
   ) {
     const comment = await this.commentsService.findOne(commentId);
-    await this.videosService.findOwned(comment.videoId, req.user.userId);
+    await this.videosService.findOwned(comment.videoId, req.user.userId, ProjectAction.INTERACT);
     return this.annotationsService.create({
       commentId,
       type: body.type,
@@ -35,14 +36,14 @@ export class AnnotationsController {
     return this.annotationsService.findByVideo(videoId);
   }
 
-  /** Confirms the annotation belongs to commentId and the caller has access to that comment's video. */
+  /** Confirms the annotation belongs to commentId and the caller may interact with that comment's video (update/delete only). */
   private async assertAccess(commentId: string, annotationId: string, userId: string) {
     const annotation = await this.annotationsService.findOne(annotationId);
     if (annotation.commentId !== commentId) {
       throw new BadRequestException('Annotation does not belong to this comment');
     }
     const comment = await this.commentsService.findOne(commentId);
-    await this.videosService.findOwned(comment.videoId, userId);
+    await this.videosService.findOwned(comment.videoId, userId, ProjectAction.INTERACT);
     return annotation;
   }
 

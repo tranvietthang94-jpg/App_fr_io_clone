@@ -33,6 +33,7 @@ export async function recalculateStorage(
   const now = opts.now ?? Date.now();
   const reserved = liveReservations(path.join(opts.uploadsRoot ?? path.join(process.cwd(), 'uploads'), 'chunks'), now);
 
+  // shortcut: reservations are read from disk before the transaction, so one charged in between is lost until the next recalc.
   return ds.transaction(async (m) => {
     // pg driver: UPDATE resolves to [rows, affectedCount].
     // Joins to users so an actor/owner that no longer exists cannot violate the FK.

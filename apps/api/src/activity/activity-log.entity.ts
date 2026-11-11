@@ -7,6 +7,11 @@ export enum ActivityType {
   MEMBER_ADDED = 'member_added',
   MEMBER_REMOVED = 'member_removed',
   SHARE_LINK_CREATED = 'share_link_created',
+  // Recorded only when the actor got access through an admin permission, not membership.
+  ADMIN_VIDEO_MOVED = 'admin_video_moved',
+  ADMIN_VIDEO_TRASHED = 'admin_video_trashed',
+  ADMIN_VIDEO_RESTORED = 'admin_video_restored',
+  ADMIN_FOLDER_DELETED = 'admin_folder_deleted',
 }
 
 @Entity('activity_logs')

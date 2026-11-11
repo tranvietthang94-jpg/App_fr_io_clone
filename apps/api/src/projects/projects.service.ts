@@ -11,6 +11,8 @@ import { ActivityType } from '../activity/activity-log.entity';
 import { Notification, NotificationType } from '../notifications/notification.entity';
 import { Video } from '../videos/video.entity';
 import { StorageService } from '../storage/storage.service';
+import { AdminPermission, effectivePermissions } from '../admin/admin-permissions';
+import { ProjectAction, canPerform } from './project-access';
 
 @Injectable()
 export class ProjectsService {
@@ -87,27 +89,68 @@ export class ProjectsService {
     return qb.getMany();
   }
 
-  async findOne(id: string, userId: string) {
-    const project = await this.projectsRepository.findOne({ where: { id } });
+  private async adminPermissions(userId: string): Promise<AdminPermission[]> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    return user ? effectivePermissions(user) : [];
+  }
+
+  /**
+   * The single access check. Member rights are tried first (no extra query); admin
+   * permissions are loaded only when membership is not enough.
+   * 404 when the caller cannot even READ the project, 403 when they can READ but not do `action`.
+   */
+  async authorize(
+    projectId: string,
+    userId: string,
+    action: ProjectAction,
+  ): Promise<{ project: Project; role: MemberRole | null; viaAdmin: boolean }> {
+    const project = await this.projectsRepository.findOne({ where: { id: projectId } });
     if (!project) {
       throw new NotFoundException('Project not found');
     }
     await this.ensureOwnerMembership(project);
-    const role = await this.getMemberRole(id, userId);
-    if (!role) {
+    const role = await this.getMemberRole(projectId, userId);
+    if (canPerform(role, [], action)) {
+      return { project, role, viaAdmin: false };
+    }
+    const perms = await this.adminPermissions(userId);
+    if (!canPerform(role, perms, ProjectAction.READ)) {
       throw new NotFoundException('Project not found');
     }
-    return project;
+    if (!canPerform(role, perms, action)) {
+      throw new ForbiddenException('Insufficient project role');
+    }
+    return { project, role, viaAdmin: true };
   }
 
-  /** Loads the project and throws 403 (not 404) if the caller is a member below minRole. */
+  async findOne(id: string, userId: string) {
+    return (await this.authorize(id, userId, ProjectAction.READ)).project;
+  }
+
+  /** Member-only: admin permissions never satisfy a role check (EDIT / MANAGE call sites). */
   async assertRole(id: string, userId: string, minRole: MemberRole): Promise<Project> {
-    const project = await this.findOne(id, userId);
-    const role = await this.getMemberRole(id, userId);
+    const { project, role } = await this.authorize(id, userId, ProjectAction.READ);
     if (!role || MEMBER_ROLE_RANK[role] < MEMBER_ROLE_RANK[minRole]) {
       throw new ForbiddenException('Insufficient project role');
     }
     return project;
+  }
+
+  /** Project plus what the caller may do in it, so the UI can hide controls the API would refuse. */
+  async getMyAccess(id: string, userId: string) {
+    const { project, role } = await this.authorize(id, userId, ProjectAction.READ);
+    const perms = await this.adminPermissions(userId);
+    return {
+      project,
+      myAccess: {
+        role,
+        canInteract: canPerform(role, perms, ProjectAction.INTERACT),
+        canContent: canPerform(role, perms, ProjectAction.CONTENT),
+        canEdit: canPerform(role, [], ProjectAction.EDIT),
+        canManage: canPerform(role, [], ProjectAction.MANAGE),
+        viaAdmin: !canPerform(role, [], ProjectAction.READ),
+      },
+    };
   }
 
   async create(data: { name: string; description?: string }, userId: string) {

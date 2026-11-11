@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ReactionsService } from './reactions.service';
 import { CommentsService } from './comments.service';
 import { VideosService } from '../videos/videos.service';
+import { ProjectAction } from '../projects/project-access';
 import { ToggleReactionDto } from './dto/toggle-reaction.dto';
 
 @Controller('comments/:commentId/reactions')
@@ -21,7 +22,7 @@ export class ReactionsController {
     @Request() req,
   ) {
     const comment = await this.commentsService.findOne(commentId);
-    await this.videosService.findOwned(comment.videoId, req.user.userId);
+    await this.videosService.findOwned(comment.videoId, req.user.userId, ProjectAction.INTERACT);
     return this.reactionsService.toggle(commentId, req.user.userId, body.emoji, req.user.username || req.user.email);
   }
 

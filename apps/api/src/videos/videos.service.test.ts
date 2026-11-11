@@ -2,6 +2,41 @@ import 'reflect-metadata';
 import { test, describe } from 'node:test';
 import * as assert from 'node:assert/strict';
 import { VideosService } from './videos.service';
+import { ActivityType } from '../activity/activity-log.entity';
+import { ProjectAction } from '../projects/project-access';
+
+describe('VideosService content actions and admin logging', () => {
+  function make(viaAdmin: boolean) {
+    const video: any = { id: 'v1', projectId: 'p1', title: 'Clip', deletedAt: null, folderId: null };
+    const repo: any = { findOne: async () => video, save: async (v: any) => v };
+    const authorized: ProjectAction[] = [];
+    const projects: any = {
+      authorize: async (_p: string, _u: string, a: ProjectAction) => { authorized.push(a); return { viaAdmin }; },
+    };
+    const logs: any[][] = [];
+    const activity: any = { record: async (...args: any[]) => { logs.push(args); } };
+    const svc = new VideosService(repo, null as any, projects, activity, null as any);
+    return { svc, logs, authorized };
+  }
+
+  test('admin softDelete records admin_video_trashed; member softDelete records nothing new', async () => {
+    const admin = make(true);
+    await admin.svc.softDelete('v1', 'adm', 'Ada Admin');
+    assert.deepEqual(admin.authorized, [ProjectAction.CONTENT]);
+    assert.equal(admin.logs.length, 1);
+    assert.deepEqual(admin.logs[0].slice(0, 5), ['p1', ActivityType.ADMIN_VIDEO_TRASHED, 'adm', 'Ada Admin', { videoTitle: 'Clip' }]);
+
+    const member = make(false);
+    await member.svc.softDelete('v1', 'mem', 'Mia');
+    assert.equal(member.logs.length, 0);
+  });
+
+  test('setReviewStatus requires INTERACT', async () => {
+    const t = make(false);
+    await t.svc.setReviewStatus('v1', 'approved' as any, 'u', 'U');
+    assert.deepEqual(t.authorized, [ProjectAction.INTERACT]);
+  });
+});
 
 const DAY = 24 * 60 * 60 * 1000;
 
