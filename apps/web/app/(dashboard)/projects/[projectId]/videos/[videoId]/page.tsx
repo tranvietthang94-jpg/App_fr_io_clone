@@ -408,7 +408,8 @@ export default function VideoReviewPage() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${video?.title || "video"}_review.pdf`;
+      // The API falls back to HTML when PDF rendering is unavailable — don't save that as .pdf.
+      a.download = `${video?.title || "video"}_review.${res.data.type === "application/pdf" ? "pdf" : "html"}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
