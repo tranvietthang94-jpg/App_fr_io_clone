@@ -8,6 +8,7 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "tsc --noEmit --pretty false",
+    "test": "node --no-experimental-strip-types --require ts-node/register/transpile-only --test-reporter=spec --test \"src/**/*.test.ts\"",
     "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts"
   },
   "dependencies": {

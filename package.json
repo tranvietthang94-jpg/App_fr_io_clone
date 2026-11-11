@@ -13,6 +13,7 @@
     "dev:api": "turbo run dev --filter=api",
     "build": "turbo run build",
     "lint": "turbo run lint",
+    "test": "turbo run test",
     "db:seed": "turbo run db:seed --filter=api",
     "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.yml down",
