@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ShareLinksModule } from './share-links/share-links.module';
 import { HealthModule } from './health/health.module';
 import { StorageModule } from './storage/storage.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { StorageModule } from './storage/storage.module';
     ShareLinksModule,
     HealthModule,
     StorageModule,
+    AdminModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

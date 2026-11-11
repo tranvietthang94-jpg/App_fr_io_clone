@@ -10,6 +10,8 @@ import { PasswordResetToken } from './password-reset-token.entity';
 import { MailerService } from '../mailer/mailer.service';
 import { CollaborationGateway } from '../gateway/collaboration.gateway';
 import type { GoogleProfile } from './google.strategy';
+import { effectiveQuota } from '../storage/storage.service';
+import { effectivePermissions, isSuperAdminId } from '../admin/admin-permissions';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -40,6 +42,10 @@ export class AuthService {
       name: user.name,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
+      storageUsed: Number(user.storageUsed),
+      storageQuota: effectiveQuota(user), // null = unlimited
+      adminPermissions: effectivePermissions(user),
+      isSuperAdmin: isSuperAdminId(user.id),
     };
   }
 

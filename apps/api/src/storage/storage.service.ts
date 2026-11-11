@@ -15,6 +15,17 @@ export class QuotaExceededException extends HttpException {
   }
 }
 
+export function defaultQuota(): number {
+  const n = Number(process.env.DEFAULT_STORAGE_QUOTA_BYTES);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_QUOTA_BYTES;
+}
+
+/** null = unlimited (super admin). */
+export function effectiveQuota(user: Pick<User, 'id' | 'storageQuota'>): number | null {
+  if (isSuperAdminId(user.id)) return null;
+  return user.storageQuota ?? defaultQuota();
+}
+
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
@@ -22,14 +33,11 @@ export class StorageService {
   constructor(private readonly dataSource: DataSource) {}
 
   defaultQuota(): number {
-    const n = Number(process.env.DEFAULT_STORAGE_QUOTA_BYTES);
-    return Number.isFinite(n) && n > 0 ? n : DEFAULT_QUOTA_BYTES;
+    return defaultQuota();
   }
 
-  /** null = unlimited (super admin). */
   effectiveQuota(user: Pick<User, 'id' | 'storageQuota'>): number | null {
-    if (isSuperAdminId(user.id)) return null;
-    return user.storageQuota ?? this.defaultQuota();
+    return effectiveQuota(user);
   }
 
   async charge(userId: string, bytes: number, manager?: EntityManager): Promise<void> {
