@@ -51,7 +51,22 @@ export class CollaborationGateway
     this.logger.log('Collaboration Gateway initialized');
   }
 
+  // The client emits join:video as soon as it sees 'connect', which can arrive
+  // while a guest handshake is still awaiting resolveForAccess (DB + bcrypt) —
+  // join:video awaits this so it never runs before userSockets is populated.
+  private authenticating = new Map<string, Promise<void>>();
+
   async handleConnection(client: Socket) {
+    const pending = this.authenticate(client);
+    this.authenticating.set(client.id, pending);
+    try {
+      await pending;
+    } finally {
+      this.authenticating.delete(client.id);
+    }
+  }
+
+  private async authenticate(client: Socket): Promise<void> {
     const { token, shareToken, guestName, sharePassword } = client.handshake.auth as {
       token?: string;
       shareToken?: string;
@@ -129,6 +144,7 @@ export class CollaborationGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { videoId: string },
   ) {
+    await this.authenticating.get(client.id);
     const userData = this.userSockets.get(client.id);
     if (!userData) return;
 
