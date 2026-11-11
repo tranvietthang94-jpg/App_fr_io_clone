@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { bigintNumber } from '../storage/bigint.transformer';
 
 @Entity('users')
 export class User {
@@ -22,6 +23,17 @@ export class User {
 
   @Column({ type: 'varchar', nullable: true, unique: true })
   googleId: string | null;
+
+  // null = default quota (StorageService.defaultQuota).
+  @Column({ type: 'bigint', nullable: true, transformer: bigintNumber })
+  storageQuota: number | null;
+
+  // Bytes of original files attributed to the user, including live upload reservations.
+  @Column({ type: 'bigint', default: 0, transformer: bigintNumber })
+  storageUsed: number;
+
+  @Column({ type: 'simple-array', default: '' })
+  adminPermissions: string[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

@@ -14,6 +14,7 @@ import { CollaborationModule } from './gateway/collaboration.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ShareLinksModule } from './share-links/share-links.module';
 import { HealthModule } from './health/health.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HealthModule } from './health/health.module';
     NotificationsModule,
     ShareLinksModule,
     HealthModule,
+    StorageModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

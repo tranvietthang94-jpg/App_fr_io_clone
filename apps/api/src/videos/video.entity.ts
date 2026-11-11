@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Project } from '../projects/project.entity';
+import { User } from '../auth/user.entity';
 
 export enum VideoReviewStatus {
   IN_REVIEW = 'in_review',
@@ -89,4 +90,12 @@ export class Video {
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'projectId' })
   project: Project;
+
+  // Who is charged for fileSize. Null for rows predating quotas until the recalc backfill runs.
+  @Column({ type: 'uuid', nullable: true })
+  uploadedById: string | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'uploadedById' })
+  uploadedBy: User | null;
 }
