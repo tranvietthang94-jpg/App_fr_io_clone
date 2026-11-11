@@ -37,10 +37,17 @@ test.describe.serial('Video upload, transcode, and player', () => {
   });
 
   test('3.1.3 upload fails cleanly on a network error, then succeeds after the interception is removed', async () => {
+    // uploadManager retries every chunk 8x with 2s..30s backoff (minutes of
+    // real time) before marking the upload failed — fast-forward the page's
+    // clock through the backoff instead of waiting it out.
+    await page.clock.install();
     await page.route('**/api/upload/chunk/**', (route) => route.abort('failed'));
     await page.setInputFiles('input[type=file]', path.join(__dirname, 'fixtures', 'test-clip.mp4'));
-    await page.waitForSelector('text=Lỗi', { timeout: 40000 });
-    await expect(page.locator('text=Lỗi').first()).toBeVisible();
+    await expect(async () => {
+      await page.clock.fastForward(30_000);
+      await expect(page.getByText('Mất kết nối — thử lại')).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 40000 });
+    await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
     await page.unroute('**/api/upload/chunk/**');
     await page.waitForTimeout(500);
   });
