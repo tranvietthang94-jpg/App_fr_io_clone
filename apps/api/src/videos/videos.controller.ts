@@ -8,6 +8,7 @@ import { VideosService } from './videos.service';
 import { ProjectsService } from '../projects/projects.service';
 import { UpdateReviewStatusDto } from './dto/update-review-status.dto';
 import { RenameVideoDto, MoveVideoDto } from './dto/update-video.dto';
+import { CopyVideoDto, PermanentDeleteDto } from './dto/content-ops.dto';
 import { resolveStreamFilePath, streamVideoFile } from './stream-file.util';
 import { getStreamTokenSecret, STREAM_TOKEN_EXPIRES_IN } from '../config/jwt.config';
 
@@ -183,7 +184,31 @@ export class VideosController {
   @Patch('videos/:id/move')
   @UseGuards(AuthGuard('jwt'))
   async move(@Param('id') id: string, @Body() body: MoveVideoDto, @Req() req: any) {
-    return this.videosService.move(id, body.folderId, req.user.userId, req.user.username || req.user.email);
+    return this.videosService.move(id, body.folderId, req.user.userId, req.user.username || req.user.email, body.targetProjectId);
+  }
+
+  @Post('videos/:id/copy')
+  @UseGuards(AuthGuard('jwt'))
+  async copy(@Param('id') id: string, @Body() body: CopyVideoDto, @Req() req: any) {
+    return this.videosService.copyVideo(id, body, req.user.userId, req.user.username || req.user.email);
+  }
+
+  @Post('videos/:id/duplicate')
+  @UseGuards(AuthGuard('jwt'))
+  async duplicate(@Param('id') id: string, @Req() req: any) {
+    return this.videosService.duplicateVideo(id, req.user.userId, req.user.username || req.user.email);
+  }
+
+  @Get('videos/:id/delete-preview')
+  @UseGuards(AuthGuard('jwt'))
+  async deletePreview(@Param('id') id: string, @Req() req: any) {
+    return this.videosService.getDeletePreview(id, req.user.userId);
+  }
+
+  @Delete('videos/:id/permanent')
+  @UseGuards(AuthGuard('jwt'))
+  async deletePermanently(@Param('id') id: string, @Body() body: PermanentDeleteDto, @Req() req: any) {
+    return this.videosService.deletePermanently(id, body.confirmName, req.user.userId, req.user.username || req.user.email);
   }
 
   @Delete('videos/:id')

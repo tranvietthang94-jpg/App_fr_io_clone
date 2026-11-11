@@ -12,6 +12,12 @@ export enum ActivityType {
   ADMIN_VIDEO_TRASHED = 'admin_video_trashed',
   ADMIN_VIDEO_RESTORED = 'admin_video_restored',
   ADMIN_FOLDER_DELETED = 'admin_folder_deleted',
+  // Copy / cross-project move / permanent delete: recorded for every actor, payload carries viaAdmin.
+  VIDEO_COPIED = 'video_copied',
+  VIDEO_MOVED_PROJECT = 'video_moved_project',
+  VIDEO_DELETED_PERMANENTLY = 'video_deleted_permanently',
+  FOLDER_COPIED = 'folder_copied',
+  FOLDER_DELETED_PERMANENTLY = 'folder_deleted_permanently',
 }
 
 @Entity('activity_logs')

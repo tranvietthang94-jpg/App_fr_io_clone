@@ -1,7 +1,19 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { Video, VideoReviewStatus } from './video.entity';
 import { Folder } from './folder.entity';
 import { ProjectsService } from '../projects/projects.service';
@@ -10,6 +22,7 @@ import { ActivityLogService } from '../activity/activity-log.service';
 import { ActivityType } from '../activity/activity-log.entity';
 import { StorageService } from '../storage/storage.service';
 import { ProjectAction } from '../projects/project-access';
+import { sanitizeFilename } from '../storage/sanitize-filename';
 
 const TRASH_RETENTION_DAYS = parseInt(process.env.TRASH_RETENTION_DAYS || '30', 10);
 const PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -245,8 +258,11 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
     return this.videosRepository.save(video);
   }
 
-  async move(id: string, folderId: string | null, userId: string, actorName = '') {
+  async move(id: string, folderId: string | null, userId: string, actorName = '', targetProjectId?: string) {
     const video = await this.findOne(id);
+    if (targetProjectId && targetProjectId !== video.projectId) {
+      return this.moveAcrossProjects(video, folderId, targetProjectId, userId, actorName);
+    }
     const { viaAdmin } = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
     if (folderId) {
       const folder = await this.foldersRepository.findOne({ where: { id: folderId } });
@@ -279,6 +295,153 @@ export class VideosService implements OnModuleInit, OnModuleDestroy {
     await this.videosRepository.save(video);
     await this.recordAdminAction(viaAdmin, ActivityType.ADMIN_VIDEO_RESTORED, video, userId, actorName);
     return video;
+  }
+
+  private async assertFolderIn(folderId: string, projectId: string) {
+    const folder = await this.foldersRepository.findOne({ where: { id: folderId } });
+    if (!folder || folder.projectId !== projectId) {
+      throw new BadRequestException('Thư mục đích không thuộc project đích');
+    }
+  }
+
+  /** Moves every version of the asset (trashed ones too) in one UPDATE; storage is unchanged. */
+  private async moveAcrossProjects(video: Video, folderId: string | null, targetProjectId: string, userId: string, actorName: string) {
+    const from = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
+    const to = await this.projectsService.authorize(targetProjectId, userId, ProjectAction.CONTENT);
+    if (folderId) await this.assertFolderIn(folderId, targetProjectId);
+
+    const sourceProjectId = video.projectId;
+    await this.videosRepository.update({ assetGroupId: video.assetGroupId }, { projectId: targetProjectId, folderId });
+    const payload = { videoTitle: video.title, fromProjectId: sourceProjectId, toProjectId: targetProjectId, viaAdmin: from.viaAdmin || to.viaAdmin };
+    for (const projectId of [sourceProjectId, targetProjectId]) {
+      await this.activityLogService.record(projectId, ActivityType.VIDEO_MOVED_PROJECT, userId, actorName, payload, video.id);
+    }
+    return { ...video, projectId: targetProjectId, folderId };
+  }
+
+  /**
+   * Copies the viewed version as a brand-new asset. The ORIGINAL uploader is charged (all-or-nothing,
+   * before any file is touched) and credited back if copying fails.
+   */
+  async copyVideo(id: string, dto: { targetProjectId: string; targetFolderId: string | null }, userId: string, actorName: string) {
+    const src = await this.findOne(id);
+    if (src.deletedAt) throw new NotFoundException('Video not found');
+    const from = await this.projectsService.authorize(src.projectId, userId, ProjectAction.CONTENT);
+    const to =
+      dto.targetProjectId === src.projectId
+        ? from
+        : await this.projectsService.authorize(dto.targetProjectId, userId, ProjectAction.CONTENT);
+    if (dto.targetFolderId) await this.assertFolderIn(dto.targetFolderId, dto.targetProjectId);
+    this.assertReady(src);
+
+    // A legacy row nobody backfilled has no uploader: charge the person copying it.
+    const chargedTo = src.uploadedById ?? userId;
+    const bytes = Number(src.fileSize);
+    await this.storage.chargeMany(new Map([[chargedTo, bytes]]));
+    let copy: Video;
+    try {
+      copy = await this.cloneVideo(src, { projectId: dto.targetProjectId, folderId: dto.targetFolderId, uploadedById: chargedTo });
+    } catch (err) {
+      await this.storage.credit(chargedTo, bytes);
+      throw err;
+    }
+    await this.activityLogService.record(
+      dto.targetProjectId,
+      ActivityType.VIDEO_COPIED,
+      userId,
+      actorName,
+      { videoTitle: copy.title, viaAdmin: from.viaAdmin || to.viaAdmin, sourceProjectId: src.projectId },
+      copy.id,
+    );
+    return copy;
+  }
+
+  async duplicateVideo(id: string, userId: string, actorName: string) {
+    const src = await this.findOne(id);
+    return this.copyVideo(id, { targetProjectId: src.projectId, targetFolderId: src.folderId }, userId, actorName);
+  }
+
+  /** A transcode still running (or failed) has no complete renditions to copy. */
+  assertReady(video: Video) {
+    if (video.status !== 'ready') throw new ConflictException('Video chưa xử lý xong, thử lại sau');
+  }
+
+  /**
+   * Physical copy + new row (new asset, version 1). On any failure the files created so far are
+   * removed; the caller owns the quota charge and must credit it back.
+   */
+  async cloneVideo(src: Video, dest: { projectId: string; folderId: string | null; uploadedById: string }): Promise<Video> {
+    const id = randomUUID();
+    const uploads = path.join(process.cwd(), 'uploads');
+    const created: string[] = [];
+    try {
+      const filePath = path.join(uploads, `${id}_${sanitizeFilename(src.originalFilename)}`);
+      created.push(filePath);
+      await fs.copyFile(src.filePath, filePath);
+      // Renditions and thumbnail are optional (a transcode may have produced neither).
+      for (const [from, to] of [
+        [path.join(uploads, 'transcoded', src.id), path.join(uploads, 'transcoded', id)],
+        [path.join(uploads, 'thumbnails', `${src.id}.jpg`), path.join(uploads, 'thumbnails', `${id}.jpg`)],
+      ]) {
+        created.push(to);
+        try {
+          await fs.cp(from, to, { recursive: true });
+        } catch (err: any) {
+          if (err?.code !== 'ENOENT') throw err;
+        }
+      }
+      return await this.videosRepository.save(
+        this.videosRepository.create({
+          id,
+          projectId: dest.projectId,
+          folderId: dest.folderId,
+          assetGroupId: randomUUID(),
+          versionNumber: 1,
+          title: src.title,
+          originalFilename: src.originalFilename,
+          filePath,
+          duration: src.duration,
+          width: src.width,
+          height: src.height,
+          fps: src.fps,
+          fileSize: src.fileSize,
+          status: src.status,
+          uploadedById: dest.uploadedById,
+        }),
+      );
+    } catch (err) {
+      this.logger.error(`Copy of video ${src.id} failed: ${err}`);
+      await Promise.all(created.map((p) => fs.rm(p, { recursive: true, force: true }).catch(() => undefined)));
+      throw new InternalServerErrorException('Không sao chép được file video');
+    }
+  }
+
+  /** Permanently destroys every version of the asset. confirmName is checked here, not only in the UI. */
+  async deletePermanently(id: string, confirmName: string, userId: string, actorName: string) {
+    const video = await this.findOne(id);
+    const { viaAdmin } = await this.projectsService.authorize(video.projectId, userId, ProjectAction.CONTENT);
+    if (confirmName.trim() !== video.title) throw new BadRequestException('Tên xác nhận không khớp');
+    const versions = await this.videosRepository.find({ where: { assetGroupId: video.assetGroupId } });
+    await this.storage.destroyVideos(versions);
+    await this.activityLogService.record(
+      video.projectId,
+      ActivityType.VIDEO_DELETED_PERMANENTLY,
+      userId,
+      actorName,
+      { videoTitle: video.title, versions: versions.length, viaAdmin },
+    );
+    return { success: true };
+  }
+
+  async getDeletePreview(id: string, userId: string) {
+    const video = await this.findOne(id);
+    await this.projectsService.authorize(video.projectId, userId, ProjectAction.READ);
+    const versions = await this.videosRepository.find({ where: { assetGroupId: video.assetGroupId } });
+    return {
+      name: video.title,
+      videoCount: versions.length,
+      totalBytes: versions.reduce((sum, v) => sum + Number(v.fileSize), 0),
+    };
   }
 
   /** Members' own actions are not logged; admin actions inside someone else's project always are. */

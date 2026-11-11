@@ -8,6 +8,7 @@ import { TranscodeQueue } from '../media/transcode.queue';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
 import { StorageService } from '../storage/storage.service';
+import { sanitizeFilename } from '../storage/sanitize-filename';
 import { newestMtimeMs, reservationTtlMs } from '../storage/upload-sessions';
 
 // parseInt(x) || fallback treats an explicit "0" the same as unset — an env
@@ -28,16 +29,6 @@ const ALLOWED_MIME_TYPES = [
   'video/x-matroska',
 ];
 const ALLOWED_EXTENSIONS = ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'mpeg', 'mpg'];
-
-/**
- * Client-supplied filenames reach filesystem paths, so they must never carry
- * directory segments or separators (path traversal → arbitrary file write).
- * Everything the server stores/uses for path building goes through this.
- */
-function sanitizeFilename(filename: string): string {
-  const base = path.basename(filename.replace(/\\/g, '/')).replace(/[/:*?"<>|\x00-\x1f]/g, '_').trim();
-  return base || 'video';
-}
 
 interface UploadMetadata {
   userId: string;
