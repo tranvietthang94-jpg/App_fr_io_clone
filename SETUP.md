@@ -63,6 +63,10 @@ Lệnh này sẽ khởi chạy:
 > Xuất PDF cần Chrome của puppeteer: đặt `PUPPETEER_CACHE_DIR=<repo>/.devenv/puppeteer` trong `apps/api/.env`
 > rồi chạy `cd apps/api && npx puppeteer browsers install chrome` (Docker prod dùng `PUPPETEER_EXECUTABLE_PATH`).
 
+> **Dung lượng (quota):** sau khi triển khai tính năng này, chạy một lần `cd apps/api && npm run storage:recalc`
+> để gán người upload cho video cũ và tính lại dung lượng đã dùng (chạy lại bất cứ lúc nào để sửa sai lệch).
+> Lấy user id của bạn (cho `SUPER_ADMIN_USER_ID`): `npm run storage:recalc -- --whois <email>`.
+
 ### 4. Chạy development servers
 
 ```bash

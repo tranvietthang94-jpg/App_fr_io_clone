@@ -8,6 +8,7 @@ import { TranscodeQueue } from '../media/transcode.queue';
 import { ProjectsService } from '../projects/projects.service';
 import { MemberRole } from '../projects/project-member.entity';
 import { StorageService } from '../storage/storage.service';
+import { newestMtimeMs, reservationTtlMs } from '../storage/upload-sessions';
 
 // parseInt(x) || fallback treats an explicit "0" the same as unset — an env
 // var set to 0 (e.g. to reject all uploads) would be silently overridden.
@@ -205,14 +206,12 @@ export class UploadService implements OnModuleInit, OnModuleDestroy {
    * the window is milliseconds — `storage:recalc` repairs drift if it ever happens.
    */
   async cleanupExpiredUploads(now = Date.now()): Promise<number> {
-    const ttl = parseEnvInt(process.env.UPLOAD_RESERVATION_TTL_MS, 24 * 60 * 60 * 1000);
+    const ttl = reservationTtlMs();
     let released = 0;
     for (const uploadId of fs.readdirSync(this.chunkDir)) {
       const dir = path.join(this.chunkDir, uploadId);
       try {
-        const mtimes = fs.readdirSync(dir).map((f) => fs.statSync(path.join(dir, f)).mtimeMs);
-        const newest = mtimes.length ? Math.max(...mtimes) : fs.statSync(dir).mtimeMs;
-        if (now - newest <= ttl) continue;
+        if (now - newestMtimeMs(dir) <= ttl) continue;
         let metadata: UploadMetadata | null = null;
         try { metadata = this.readUploadMetadata(uploadId).metadata; } catch { /* no/corrupt metadata: just remove the dir */ }
         await this.release(uploadId, metadata);

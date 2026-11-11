@@ -10,7 +10,8 @@
     "lint": "tsc --noEmit --pretty false",
     "test": "node --no-experimental-strip-types --require ts-node/register/transpile-only --test-reporter=spec --test \"src/**/!(*.int).test.ts\"",
     "test:int": "node --no-experimental-strip-types --require ts-node/register/transpile-only --test-reporter=spec --test --test-concurrency=1 \"src/**/*.int.test.ts\"",
-    "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts"
+    "db:seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "storage:recalc": "ts-node -r tsconfig-paths/register src/scripts/storage-recalc.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
