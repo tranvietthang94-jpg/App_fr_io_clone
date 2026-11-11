@@ -148,7 +148,9 @@ export default function GuestReviewPage() {
     loadComments();
     loadAnnotations();
 
-    socketService.connectAsGuest(token, identity?.name || "Khách");
+    // This effect only runs once loadVideo() succeeded, i.e. after the HTTP
+    // side accepted `password`, so the socket never connects with a bad one.
+    socketService.connectAsGuest(token, identity?.name || "Khách", password);
     socketService.joinVideo(video.id);
 
     const handleNewComment = () => loadComments();

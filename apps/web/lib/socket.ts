@@ -22,8 +22,8 @@ class SocketService {
   }
 
   /** Guest path for the public share-link review page — no account, no accessToken. */
-  connectAsGuest(shareToken: string, guestName: string) {
-    this.openSocket({ shareToken, guestName });
+  connectAsGuest(shareToken: string, guestName: string, sharePassword?: string) {
+    this.openSocket(sharePassword ? { shareToken, guestName, sharePassword } : { shareToken, guestName });
   }
 
   private openSocket(auth: Record<string, string>) {
@@ -48,16 +48,11 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('Socket connected:', this.socket?.id);
       // Rejoin the active video room — covers both the initial connect (when
       // joinVideo was called pre-connection) and reconnects after a drop.
       if (this.currentVideoId) {
         this.socket?.emit('join:video', { videoId: this.currentVideoId });
       }
-    });
-
-    this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
     });
 
     this.socket.on('connect_error', (error) => {

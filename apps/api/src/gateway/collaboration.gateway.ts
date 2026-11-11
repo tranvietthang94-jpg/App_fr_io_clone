@@ -52,10 +52,11 @@ export class CollaborationGateway
   }
 
   async handleConnection(client: Socket) {
-    const { token, shareToken, guestName } = client.handshake.auth as {
+    const { token, shareToken, guestName, sharePassword } = client.handshake.auth as {
       token?: string;
       shareToken?: string;
       guestName?: string;
+      sharePassword?: unknown;
     };
 
     if (token) {
@@ -83,7 +84,9 @@ export class CollaborationGateway
 
     if (shareToken) {
       try {
-        const link = await this.shareLinksService.resolveForAccess(shareToken);
+        const password =
+          typeof sharePassword === 'string' && sharePassword.length <= 200 ? sharePassword : undefined;
+        const link = await this.shareLinksService.resolveForAccess(shareToken, password);
         const userData: UserSocketData = {
           userId: `guest:${randomUUID()}`,
           username: (guestName || 'Guest').slice(0, 60),
