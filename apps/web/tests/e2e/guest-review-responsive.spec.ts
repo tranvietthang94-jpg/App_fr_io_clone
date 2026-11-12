@@ -81,6 +81,12 @@ test.describe.serial('Guest review page — responsive layout', () => {
     expect(panelBox!.x).toBeGreaterThanOrEqual(videoBox!.x + videoBox!.width - 5);
   });
 
+  test('guest page has no rail or project panel', async () => {
+    await expect(guestPage.locator('[data-rail]')).toHaveCount(0);
+    await expect(guestPage.getByRole('navigation', { name: 'Điều hướng chính' })).toHaveCount(0);
+    await expect(guestPage.getByRole('complementary', { name: 'Danh sách dự án' })).toHaveCount(0);
+  });
+
   test('an unauthenticated guest can still comment (identity prompt still works)', async () => {
     await guestPage.locator('[placeholder="Viết nhận xét..."]').fill('Guest responsive test comment');
     await guestPage.locator('button[type=submit]').last().click();

@@ -1,5 +1,6 @@
 import { test, expect, Page, APIRequestContext, Browser } from '@playwright/test';
 import {
+  API_URL,
   getSharedUser,
   seedSession,
   createProjectViaUi,
@@ -84,6 +85,20 @@ test.describe.serial('Video review page — responsive layout', () => {
     await page.keyboard.press('?');
     await expect(page.locator('text=Phím tắt').first()).toBeVisible();
     await page.keyboard.press('Escape');
+  });
+
+  test('timeline comment markers are primary red', async () => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const user = getSharedUser();
+    const res = await page.context().request.post(`${API_URL}/api/videos/${videoId}/comments`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+      data: { content: 'marker colour', timestamp: 0.5, frameNumber: 15 },
+    });
+    expect(res.ok()).toBeTruthy();
+    await page.goto(`/projects/${projectId}/videos/${videoId}`, { waitUntil: 'networkidle' });
+    const dot = page.locator('[data-timeline-marker] > div').first();
+    await expect(dot).toBeVisible();
+    await expect(dot).toHaveCSS('background-color', 'rgb(239, 68, 68)');
   });
 
   test.afterAll(async () => {

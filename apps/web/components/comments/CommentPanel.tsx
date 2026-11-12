@@ -238,12 +238,12 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                   <Avatar name={comment.user?.name || comment.guestName || 'User'} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm text-text-primary">
+                      <span className="min-w-0 truncate font-medium text-sm text-text-primary">
                         {comment.user?.name || comment.guestName || 'User'}
                       </span>
                       <button
                         onClick={() => onSeekToComment(comment.timestamp)}
-                        className="text-xs text-primary hover:text-emerald-300 font-mono"
+                        className="shrink-0 whitespace-nowrap rounded bg-primary-soft px-1.5 py-0.5 font-mono text-xs text-primary transition-colors hover:bg-primary/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         {formatTimecode(comment.timestamp, fps)}
                         {comment.endTimestamp != null && comment.endTimestamp > comment.timestamp

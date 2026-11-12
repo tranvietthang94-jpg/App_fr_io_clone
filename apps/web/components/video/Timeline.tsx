@@ -173,7 +173,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               return (
                 <div
                   key={`range-${c.id}`}
-                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-warning/40 pointer-events-none"
+                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-primary/40 pointer-events-none"
                   style={{ left: `${left}%`, width: `${Math.max(width, 0.4)}%` }}
                 />
               );
@@ -190,6 +190,7 @@ export const Timeline: React.FC<TimelineProps> = ({
             <button
               key={earliest.id}
               type="button"
+              data-timeline-marker
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 appearance-none bg-transparent border-0 p-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1 focus-visible:ring-offset-bg-secondary"
               style={{ left: `${cluster.position}%` }}
               onClick={(e) => {
@@ -200,11 +201,11 @@ export const Timeline: React.FC<TimelineProps> = ({
               title={cluster.comments.map((c) => `${c.user?.name || 'User'}: ${c.content}`).join('\n')}
             >
               {isCluster ? (
-                <div className="min-w-[18px] h-[18px] px-1 bg-warning rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform flex items-center justify-center text-[10px] font-semibold text-bg-primary">
+                <div className="min-w-[18px] h-[18px] px-1 bg-primary rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform flex items-center justify-center text-[10px] font-semibold text-white">
                   {cluster.comments.length}
                 </div>
               ) : (
-                <div className="w-3 h-3 bg-warning rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform" />
+                <div className="w-3 h-3 bg-primary rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform" />
               )}
             </button>
           );
