@@ -28,9 +28,9 @@ const VARIANT_ICON: Record<ToastVariant, React.ElementType> = {
 };
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
-  success: 'border-accent-green/40 text-accent-green',
-  error: 'border-accent-red/40 text-accent-red',
-  info: 'border-accent-blue/40 text-accent-blue',
+  success: 'border-success/40 text-success',
+  error: 'border-destructive-border text-destructive-text',
+  info: 'border-primary/40 text-primary',
 };
 
 const AUTO_DISMISS_MS = 4000;

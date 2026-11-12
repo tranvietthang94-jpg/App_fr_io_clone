@@ -41,7 +41,7 @@ export function UploadQueuePanel() {
           onClick={() => setCollapsed(false)}
           className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-bg-secondary shadow-lg text-sm",
-            hasError ? "text-accent-red" : "text-text-primary",
+            hasError ? "text-destructive-text" : "text-text-primary",
           )}
         >
           {hasError ? <AlertCircle className="w-4 h-4" /> : <Upload className="w-4 h-4 animate-pulse" />}
@@ -57,7 +57,7 @@ export function UploadQueuePanel() {
     <div className="fixed bottom-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-bg-secondary shadow-xl overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Upload className="w-4 h-4 text-accent-green" />
+          <Upload className="w-4 h-4 text-primary" />
           Tải lên ({tasks.length})
         </div>
         <button
@@ -74,8 +74,8 @@ export function UploadQueuePanel() {
           return (
             <div key={t.id} className="bg-bg-primary border border-border rounded-md p-2.5">
               <div className="flex items-center gap-2 text-sm mb-1">
-                {t.status === "done" && <CheckCircle2 className="w-4 h-4 text-accent-green flex-shrink-0" />}
-                {t.status === "error" && <AlertCircle className="w-4 h-4 text-accent-red flex-shrink-0" />}
+                {t.status === "done" && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />}
+                {t.status === "error" && <AlertCircle className="w-4 h-4 text-destructive-text flex-shrink-0" />}
                 <span className="truncate flex-1" title={t.name}>{t.name}</span>
                 {(t.status !== "error" || t.retryable === false) && (
                   <button onClick={() => dismiss(t.id)} aria-label="Ẩn" className="p-0.5 rounded hover:bg-bg-tertiary">
@@ -85,11 +85,11 @@ export function UploadQueuePanel() {
               </div>
               {t.status === "error" && (
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-accent-red">{t.errorMessage || "Lỗi"}</span>
+                  <span className="text-xs text-destructive-text">{t.errorMessage || "Lỗi"}</span>
                   {t.retryable !== false && (
                     <button
                       onClick={() => retry(t.id)}
-                      className="flex items-center gap-1 text-xs text-accent-green hover:underline"
+                      className="flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       <RotateCcw className="w-3 h-3" /> Thử lại
                     </button>
@@ -106,7 +106,7 @@ export function UploadQueuePanel() {
                     aria-valuemax={100}
                   >
                     <div
-                      className="h-full bg-accent-green transition-all duration-300"
+                      className="h-full bg-primary transition-all duration-300"
                       style={{ width: `${t.progress}%` }}
                     />
                   </div>

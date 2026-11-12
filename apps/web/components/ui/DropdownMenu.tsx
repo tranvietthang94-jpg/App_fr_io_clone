@@ -39,7 +39,7 @@ export const DropdownMenuItem = React.forwardRef<
     ref={ref}
     className={cn(
       'flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-text-primary outline-none transition-colors focus:bg-bg-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      variant === 'danger' && 'text-accent-red focus:bg-accent-red/10 focus:text-accent-red',
+      variant === 'danger' && 'text-destructive-text focus:bg-destructive-hoverbg focus:text-destructive-text',
       className
     )}
     {...props}

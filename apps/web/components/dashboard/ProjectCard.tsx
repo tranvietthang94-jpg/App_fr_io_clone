@@ -15,8 +15,8 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, onDe
     <Card hover onClick={onClick} className="group">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="w-12 h-12 rounded-lg bg-accent-blue/10 flex items-center justify-center">
-            <Folder className="w-6 h-6 text-accent-blue" />
+          <div className="w-12 h-12 rounded-lg bg-primary-soft flex items-center justify-center">
+            <Folder className="w-6 h-6 text-primary" />
           </div>
           {onDelete && (
             <button
@@ -25,9 +25,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, onDe
                 onDelete();
               }}
               aria-label="Xóa dự án"
-              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 p-2 hover:bg-bg-tertiary rounded-md transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-blue"
+              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 p-2 hover:bg-bg-tertiary rounded-md transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <Trash2 className="w-4 h-4 text-accent-red" />
+              <Trash2 className="w-4 h-4 text-destructive-text" />
             </button>
           )}
         </div>

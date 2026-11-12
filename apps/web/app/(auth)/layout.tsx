@@ -4,7 +4,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-screen bg-bg-primary">
+    <div className="flex min-h-screen bg-bg-primary selection:bg-[#10B981] [&_*:focus-visible]:outline-[#10B981]">
       <div
         className="relative hidden min-h-screen w-[55%] overflow-hidden lg:block"
         aria-hidden="true"

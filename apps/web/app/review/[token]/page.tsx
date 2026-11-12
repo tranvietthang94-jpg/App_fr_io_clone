@@ -348,7 +348,7 @@ export default function GuestReviewPage() {
       <div className="min-h-screen flex items-center justify-center bg-bg-primary text-text-primary">
         <form onSubmit={handlePasswordSubmit} className="w-full max-w-sm p-6 bg-bg-secondary border border-border rounded-lg space-y-4">
           <div className="flex items-center gap-2">
-            <Lock className="w-5 h-5 text-accent-blue" />
+            <Lock className="w-5 h-5 text-primary" />
             <h1 className="font-semibold">Liên kết yêu cầu mật khẩu</h1>
           </div>
           <Input

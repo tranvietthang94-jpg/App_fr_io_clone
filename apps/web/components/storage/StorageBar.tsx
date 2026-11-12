@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 /** Green below 80 %, amber below 100 %, red at or above. */
 function barColor(percent: number): string {
-  if (percent >= 100) return "bg-accent-red";
-  if (percent >= 80) return "bg-accent-yellow";
-  return "bg-accent-green";
+  if (percent >= 100) return "bg-destructive-solid";
+  if (percent >= 80) return "bg-warning";
+  return "bg-success";
 }
 
 export function StorageBar() {

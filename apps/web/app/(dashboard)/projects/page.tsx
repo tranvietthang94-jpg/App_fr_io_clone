@@ -164,7 +164,7 @@ export default function ProjectsPage() {
               <textarea
                 value={newProjectDesc}
                 onChange={(e) => setNewProjectDesc(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-secondary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent transition-all resize-none"
+                className="w-full px-3 py-2 bg-bg-secondary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
                 placeholder="Mô tả dự án"
                 rows={3}
               />

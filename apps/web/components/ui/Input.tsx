@@ -29,16 +29,16 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           className={cn(
-            'w-full h-11 px-3.5 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-green/50 focus:border-accent-green transition-all',
+            'w-full h-11 px-3.5 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all',
             icon && 'pl-10',
-            error && 'border-accent-red focus:ring-accent-red',
+            error && 'border-destructive-border focus:ring-destructive-text',
             className
           )}
           {...props}
         />
       </div>
       {error && (
-        <p className="mt-1 text-sm text-accent-red">{error}</p>
+        <p className="mt-1 text-sm text-destructive-text">{error}</p>
       )}
     </div>
   );

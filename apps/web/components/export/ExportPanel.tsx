@@ -53,8 +53,8 @@ export function ExportPanel({
         {/* XML Export */}
         <div className="bg-bg-tertiary/50 rounded-lg p-4">
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-accent-blue/10 flex items-center justify-center">
-              <FileCode className="w-5 h-5 text-accent-blue" />
+            <div className="w-10 h-10 rounded-lg bg-primary-soft flex items-center justify-center">
+              <FileCode className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h4 className="font-medium">Xuất XML</h4>
@@ -65,7 +65,7 @@ export function ExportPanel({
           </div>
           <Button
             variant="ghost"
-            className="w-full bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20"
+            className="w-full bg-primary-soft text-primary hover:bg-primary/20"
             onClick={onExportXml}
           >
             Tải xuống XML
@@ -87,7 +87,7 @@ export function ExportPanel({
           </div>
           <Button
             variant="ghost"
-            className="w-full bg-accent-red/10 text-accent-red hover:bg-accent-red/20"
+            className="w-full bg-destructive-hoverbg text-destructive-text hover:bg-destructive-border/40"
             onClick={onExportPdf}
           >
             Tải xuống PDF

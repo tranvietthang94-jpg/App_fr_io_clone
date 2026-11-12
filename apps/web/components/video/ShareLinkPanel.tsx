@@ -97,7 +97,7 @@ export function ShareLinkPanel({ videoId, onClose }: ShareLinkPanelProps) {
           ) : (
             links.map((link) => (
               <div key={link.id} className="flex items-center gap-2 p-2 bg-bg-primary rounded-md">
-                <Link2 className="w-4 h-4 text-accent-blue shrink-0" />
+                <Link2 className="w-4 h-4 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{PERMISSION_LABELS[link.permission]}</p>
                   {link.expiresAt && (
@@ -116,7 +116,7 @@ export function ShareLinkPanel({ videoId, onClose }: ShareLinkPanelProps) {
                 <button
                   onClick={() => handleRevoke(link.id)}
                   aria-label="Thu hồi liên kết"
-                  className="p-1.5 hover:bg-bg-tertiary rounded-md text-accent-red"
+                  className="p-1.5 hover:bg-bg-tertiary rounded-md text-destructive-text"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

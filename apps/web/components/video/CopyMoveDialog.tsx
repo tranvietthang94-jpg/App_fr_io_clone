@@ -111,8 +111,8 @@ export function CopyMoveDialog({ mode, sourceProjectId, onSubmit, onClose }: Cop
                 onClick={() => setTarget(p)}
                 aria-pressed={target?.id === p.id}
                 className={cn(
-                  "w-full text-left px-3 py-2 rounded-md text-sm border border-transparent hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-green",
-                  target?.id === p.id && "bg-accent-green/10 border-accent-green/40 text-accent-green",
+                  "w-full text-left px-3 py-2 rounded-md text-sm border border-transparent hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  target?.id === p.id && "bg-primary-soft border-primary/40 text-primary",
                 )}
               >
                 {p.name}

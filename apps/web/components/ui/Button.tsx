@@ -7,9 +7,9 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-accent-green text-white hover:bg-primary-hover focus-visible:ring-accent-green',
+        primary: 'bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary',
         secondary: 'bg-bg-tertiary text-text-primary hover:bg-bg-hover focus-visible:ring-bg-tertiary',
-        danger: 'bg-accent-red text-white hover:bg-red-500 focus-visible:ring-accent-red',
+        danger: 'bg-destructive-solid text-white hover:bg-destructive-solidhover focus-visible:ring-destructive-solid',
         ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary focus-visible:ring-bg-tertiary',
       },
       size: {
@@ -18,7 +18,7 @@ export const buttonVariants = cva(
         lg: 'px-6 py-3 text-base',
       },
       active: {
-        true: 'bg-accent-green/10 text-accent-green hover:bg-accent-green/20',
+        true: 'bg-primary-soft text-primary hover:bg-primary/20',
         false: '',
       },
     },

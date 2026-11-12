@@ -73,7 +73,7 @@ export default function DashboardLayout({
       >
         <div className="p-6 flex items-center justify-between">
           <Link href="/projects" className="flex items-center gap-2">
-            <span className="inline-flex h-2 w-2 rounded-full bg-accent-green" aria-hidden />
+            <span className="inline-flex h-2 w-2 rounded-full bg-brand" aria-hidden />
             <span className="text-xl font-bold tracking-tight">R.Frame</span>
           </Link>
           <button
@@ -91,7 +91,7 @@ export default function DashboardLayout({
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
               pathname === "/projects" || pathname.startsWith("/projects/")
-                ? "bg-accent-green/10 text-accent-green"
+                ? "bg-primary-soft text-primary"
                 : "hover:bg-bg-tertiary"
             )}
           >
@@ -103,7 +103,7 @@ export default function DashboardLayout({
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
               pathname.startsWith("/settings")
-                ? "bg-accent-green/10 text-accent-green"
+                ? "bg-primary-soft text-primary"
                 : "hover:bg-bg-tertiary"
             )}
           >
@@ -115,7 +115,7 @@ export default function DashboardLayout({
               href="/admin"
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-md transition-colors",
-                pathname.startsWith("/admin") ? "bg-accent-green/10 text-accent-green" : "hover:bg-bg-tertiary"
+                pathname.startsWith("/admin") ? "bg-primary-soft text-primary" : "hover:bg-bg-tertiary"
               )}
             >
               <Shield className="w-5 h-5" />
@@ -130,8 +130,8 @@ export default function DashboardLayout({
 
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 px-4 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-accent-green/20 flex items-center justify-center">
-              <User className="w-4 h-4 text-accent-green" />
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <User className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
@@ -161,7 +161,7 @@ export default function DashboardLayout({
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/projects" className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-accent-green" />
+            <FolderOpen className="w-5 h-5 text-primary" />
             <span className="font-bold">R.Frame</span>
           </Link>
         </div>

@@ -710,7 +710,7 @@ export default function VideoReviewPage() {
             ) : video.status === "failed" ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center px-6">
-                  <p className="text-accent-red font-medium mb-1">Xử lý video thất bại</p>
+                  <p className="text-destructive-text font-medium mb-1">Xử lý video thất bại</p>
                   <p className="text-text-secondary text-sm">Vui lòng thử tải lên lại.</p>
                 </div>
               </div>

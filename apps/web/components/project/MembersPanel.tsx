@@ -149,7 +149,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
                   <button
                     onClick={() => setRemoveTarget(member.id)}
                     aria-label="Xóa thành viên"
-                    className="p-1.5 hover:bg-bg-tertiary rounded-md text-accent-red focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                    className="p-1.5 hover:bg-bg-tertiary rounded-md text-destructive-text focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -161,7 +161,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
 
         {canManage && (
           <form onSubmit={handleInvite} className="border-t border-border pt-4 space-y-2">
-            {error && <p className="text-xs text-accent-red">{error}</p>}
+            {error && <p className="text-xs text-destructive-text">{error}</p>}
             <div className="flex flex-wrap gap-2">
               <div className="flex-1">
                 <Input

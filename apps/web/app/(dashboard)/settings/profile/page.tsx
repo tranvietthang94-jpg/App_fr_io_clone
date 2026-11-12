@@ -84,7 +84,7 @@ export default function ProfileSettingsPage() {
       <Card className="p-6">
         <h2 className="font-semibold mb-4">Đổi mật khẩu</h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
-          {passwordError && <p className="text-sm text-accent-red">{passwordError}</p>}
+          {passwordError && <p className="text-sm text-destructive-text">{passwordError}</p>}
           <Input
             label="Mật khẩu hiện tại"
             type="password"

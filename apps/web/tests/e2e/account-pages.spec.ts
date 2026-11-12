@@ -52,7 +52,7 @@ test.describe('Invite accept', () => {
     const shared = getSharedUser();
     await seedSession(page, shared, shared.token);
     await page.goto('/invite/not-a-real-invite-token', { waitUntil: 'networkidle' });
-    await expect(page.locator('.bg-accent-red\\/10')).toBeVisible();
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toBeVisible();
   });
 });
 

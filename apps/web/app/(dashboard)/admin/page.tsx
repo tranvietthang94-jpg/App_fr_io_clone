@@ -197,8 +197,8 @@ export default function AdminPage() {
                         }
                       }}
                       className={cn(
-                        "border-t border-border cursor-pointer hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-green",
-                        isSelected && "bg-accent-green/10",
+                        "border-t border-border cursor-pointer hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+                        isSelected && "bg-primary-soft",
                       )}
                     >
                       <td className="px-3 py-2.5">
@@ -214,7 +214,7 @@ export default function AdminPage() {
                         <p className="text-xs">{formatBytes(u.storageUsed)}</p>
                         <div className="h-1.5 mt-1 bg-bg-tertiary rounded-full overflow-hidden">
                           <div
-                            className={cn("h-full", percent >= 100 ? "bg-accent-red" : percent >= 80 ? "bg-accent-yellow" : "bg-accent-green")}
+                            className={cn("h-full", percent >= 100 ? "bg-destructive-solid" : percent >= 80 ? "bg-warning" : "bg-success")}
                             style={{ width: `${percent}%` }}
                           />
                         </div>
@@ -386,7 +386,7 @@ function UserDetail({
               <label key={key} className={cn("flex items-start gap-2 text-sm", permBlock ? "opacity-60" : "cursor-pointer")}>
                 <input
                   type="checkbox"
-                  className="mt-0.5 accent-accent-green"
+                  className="mt-0.5 accent-primary"
                   checked={checked}
                   disabled={!!permBlock || busy}
                   onChange={(e) => void togglePermission(key, e.target.checked)}
@@ -411,7 +411,7 @@ function UserDetail({
           <ul className="space-y-1">
             {projects.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                <Link href={`/projects/${p.id}`} className="truncate text-accent-green hover:underline">
+                <Link href={`/projects/${p.id}`} className="truncate text-primary hover:underline">
                   {p.name}
                 </Link>
                 <span className="text-xs text-text-secondary">{p.role}</span>

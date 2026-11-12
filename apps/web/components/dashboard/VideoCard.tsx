@@ -47,21 +47,21 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
       case 'processing':
       case 'uploading':
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-yellow/10 text-accent-yellow rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 text-warning rounded-full text-xs">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span>{progress === null ? 'Đang xử lý' : `Đang xử lý ${progress}%`}</span>
           </div>
         );
       case 'ready':
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-success/10 text-success rounded-full text-xs">
             <CheckCircle className="w-3 h-3" />
             <span>Sẵn sàng</span>
           </div>
         );
       case 'failed':
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-red/10 text-accent-red rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-destructive-hoverbg text-destructive-text rounded-full text-xs">
             <AlertCircle className="w-3 h-3" />
             <span>Lỗi</span>
           </div>
@@ -73,21 +73,21 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
     switch (video.reviewStatus) {
       case VideoReviewStatus.APPROVED:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-green/10 text-accent-green rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-success/10 text-success rounded-full text-xs">
             <CheckCircle className="w-3 h-3" />
             <span>Đã duyệt</span>
           </div>
         );
       case VideoReviewStatus.NEEDS_REVIEW:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-yellow/10 text-accent-yellow rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 text-warning rounded-full text-xs">
             <AlertCircle className="w-3 h-3" />
             <span>Cần xem lại</span>
           </div>
         );
       case VideoReviewStatus.REJECTED:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-accent-red/10 text-accent-red rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-destructive-hoverbg text-destructive-text rounded-full text-xs">
             <XCircle className="w-3 h-3" />
             <span>Từ chối</span>
           </div>
@@ -151,7 +151,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
                 <button
                   onClick={(e) => e.stopPropagation()}
                   aria-label="Tùy chọn video"
-                  className="p-1.5 bg-black/60 hover:bg-black/80 rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                  className="p-1.5 bg-black/60 hover:bg-black/80 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <MoreVertical className="w-4 h-4 text-white" />
                 </button>
@@ -253,7 +253,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
             className="w-full px-2 py-1 text-sm bg-bg-tertiary border border-primary rounded"
           />
         ) : (
-          <h3 className="font-semibold text-text-primary truncate group-hover:text-accent-blue transition-colors">
+          <h3 className="font-semibold text-text-primary truncate group-hover:text-primary transition-colors">
             {video.title}
           </h3>
         )}

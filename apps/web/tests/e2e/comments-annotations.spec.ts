@@ -63,7 +63,7 @@ test.describe.serial('Comments and annotations', () => {
   });
 
   test('5.2.3 a marker appears on the timeline for the new comment', async () => {
-    await expect(page.locator('[class*="accent-yellow"]').first()).toBeVisible();
+    await expect(page.locator('[class*="bg-warning"]').first()).toBeVisible();
   });
 
   test('5.3.1 delete comment removes it', async () => {

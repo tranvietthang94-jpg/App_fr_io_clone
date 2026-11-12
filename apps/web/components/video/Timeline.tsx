@@ -148,7 +148,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         aria-valuemax={duration}
         aria-valuenow={currentTime}
         aria-valuetext={formatTimecode(currentTime, fps)}
-        className="relative h-8 cursor-pointer touch-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue rounded"
+        className="relative h-8 cursor-pointer touch-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -159,7 +159,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-bg-tertiary rounded-full overflow-hidden">
           {/* Progress Fill */}
           <div
-            className={cn('h-full bg-accent-blue', !isDragging && 'transition-all duration-75')}
+            className={cn('h-full bg-primary', !isDragging && 'transition-all duration-75')}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -173,7 +173,7 @@ export const Timeline: React.FC<TimelineProps> = ({
               return (
                 <div
                   key={`range-${c.id}`}
-                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-accent-yellow/40 pointer-events-none"
+                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-warning/40 pointer-events-none"
                   style={{ left: `${left}%`, width: `${Math.max(width, 0.4)}%` }}
                 />
               );
@@ -200,11 +200,11 @@ export const Timeline: React.FC<TimelineProps> = ({
               title={cluster.comments.map((c) => `${c.user?.name || 'User'}: ${c.content}`).join('\n')}
             >
               {isCluster ? (
-                <div className="min-w-[18px] h-[18px] px-1 bg-accent-yellow rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform flex items-center justify-center text-[10px] font-semibold text-bg-primary">
+                <div className="min-w-[18px] h-[18px] px-1 bg-warning rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform flex items-center justify-center text-[10px] font-semibold text-bg-primary">
                   {cluster.comments.length}
                 </div>
               ) : (
-                <div className="w-3 h-3 bg-accent-yellow rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform" />
+                <div className="w-3 h-3 bg-warning rounded-full border-2 border-bg-secondary hover:scale-125 transition-transform" />
               )}
             </button>
           );
@@ -215,11 +215,11 @@ export const Timeline: React.FC<TimelineProps> = ({
           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 pointer-events-none"
           style={{ left: `${progressPercentage}%` }}
         >
-          <div className="w-4 h-4 bg-white rounded-full border-2 border-accent-blue shadow-lg" />
+          <div className="w-4 h-4 bg-white rounded-full border-2 border-primary shadow-lg" />
         </div>
 
         {/* Hover Effect */}
-        <div className="absolute inset-0 bg-accent-blue/0 group-hover:bg-accent-blue/5 rounded-full transition-colors" />
+        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 rounded-full transition-colors" />
       </div>
 
       {/* Time Display */}

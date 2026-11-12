@@ -52,7 +52,7 @@ function renderContent(content: string, members: MentionMember[]) {
     }
     const name = nameById.get(match[1]) || 'user';
     parts.push(
-      <span key={`mention-${key++}`} className="text-accent-green font-medium">
+      <span key={`mention-${key++}`} className="text-primary font-medium">
         @{name}
       </span>
     );
@@ -182,7 +182,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-accent-green" />
+          <MessageSquare className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-text-primary">Bình luận</h3>
           <span className="text-sm text-text-secondary">({comments.length})</span>
         </div>
@@ -218,7 +218,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 className={cn(
                   'group relative bg-bg-primary rounded-lg p-3 transition-all cursor-pointer',
                   comment.resolved && 'opacity-60',
-                  !comment.resolved && isCommentActive(comment.timestamp, currentTime, comment.endTimestamp) && 'ring-1 ring-accent-green/60 bg-accent-green/5'
+                  !comment.resolved && isCommentActive(comment.timestamp, currentTime, comment.endTimestamp) && 'ring-1 ring-primary/60 bg-primary/5'
                 )}
                 onClick={(e) => {
                   // Click anywhere on the card jumps the video to this
@@ -243,7 +243,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                       </span>
                       <button
                         onClick={() => onSeekToComment(comment.timestamp)}
-                        className="text-xs text-accent-green hover:text-emerald-300 font-mono"
+                        className="text-xs text-primary hover:text-emerald-300 font-mono"
                       >
                         {formatTimecode(comment.timestamp, fps)}
                         {comment.endTimestamp != null && comment.endTimestamp > comment.timestamp
@@ -257,8 +257,8 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                         className={cn(
                           'ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
                           comment.resolved
-                            ? 'bg-accent-green/10 text-accent-green'
-                            : 'bg-accent-red/10 text-accent-red'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-destructive-hoverbg text-destructive-text'
                         )}
                       >
                         {comment.resolved ? 'Đã duyệt' : 'Cần sửa'}
@@ -278,7 +278,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                         title={comment.resolved ? 'Mở lại' : 'Đánh dấu đã xử lý'}
                         className={cn(
                           'p-1 h-auto',
-                          comment.resolved ? 'text-accent-green' : 'text-text-secondary hover:text-accent-green'
+                          comment.resolved ? 'text-success' : 'text-text-secondary hover:text-success'
                         )}
                       >
                         {comment.resolved ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
@@ -333,7 +333,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                           <button
                             onClick={() => onDeleteComment(comment.id)}
                             aria-label="Xóa bình luận"
-                            className="p-1 h-auto text-text-secondary hover:text-accent-red"
+                            className="p-1 h-auto text-text-secondary hover:text-destructive-text"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -371,7 +371,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                         disabled={!onReactToComment}
                         className={cn(
                           'text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1',
-                          g.reactedByMe ? 'border-accent-green bg-accent-green/10' : 'border-border bg-bg-tertiary'
+                          g.reactedByMe ? 'border-primary bg-primary-soft' : 'border-border bg-bg-tertiary'
                         )}
                       >
                         <span>{g.emoji}</span>
@@ -432,7 +432,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
         {hasMore && (
           <button
             onClick={onLoadMore}
-            className="w-full py-2 text-sm text-accent-green hover:underline"
+            className="w-full py-2 text-sm text-primary hover:underline"
           >
             Tải thêm bình luận
           </button>
@@ -448,7 +448,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               const hasOut = rangeOut != null && rangeOut > inTime;
               return (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-                  <span className="inline-block h-3.5 w-3.5 rounded border border-accent-green bg-accent-green/30" aria-hidden />
+                  <span className="inline-block h-3.5 w-3.5 rounded border border-primary bg-primary/30" aria-hidden />
                   <span className="font-mono">
                     Ghim {formatTimecode(inTime, fps)}
                     {hasOut ? ` – ${formatTimecode(rangeOut, fps)}` : ''}

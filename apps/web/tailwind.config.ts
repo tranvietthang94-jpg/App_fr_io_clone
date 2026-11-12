@@ -20,12 +20,15 @@ const config: Config = {
           secondary: '#94A3B8',
           muted: '#64748B',
         },
-        accent: {
-          blue: '#10B981',
-          green: '#10B981',
-          red: '#EF4444',
-          yellow: '#F59E0B',
-          purple: '#a855f7',
+        success: '#22C55E',
+        warning: '#F59E0B',
+        brand: '#10B981',
+        destructive: {
+          text: '#F87171',
+          border: '#7F1D1D',
+          hoverbg: 'rgba(127, 29, 29, 0.25)',
+          solid: '#B91C1C',
+          solidhover: '#991B1B',
         },
         border: {
           DEFAULT: '#282D37',
@@ -33,9 +36,10 @@ const config: Config = {
           dark: '#13151B',
         },
         primary: {
-          DEFAULT: '#10B981',
-          hover: '#059669',
-          active: '#047857',
+          DEFAULT: '#EF4444',
+          hover: '#DC2626',
+          active: '#B91C1C',
+          soft: 'rgba(239, 68, 68, 0.14)',
         },
       },
       fontFamily: {

@@ -45,7 +45,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, alt, name, size, className 
   return (
     <div
       className={cn(
-        'rounded-full bg-accent-blue flex items-center justify-center text-white font-semibold',
+        'rounded-full bg-primary flex items-center justify-center text-white font-semibold',
         avatarSize({ size }),
         className
       )}

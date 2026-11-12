@@ -546,7 +546,7 @@ export default function ProjectDetailPage() {
                       </button>
                       <button
                         onClick={() => askPermanentDelete("video", video.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-accent-red/10 text-accent-red rounded-md text-sm hover:bg-accent-red/20"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-destructive-hoverbg text-destructive-text rounded-md text-sm hover:bg-destructive-border/40"
                       >
                         <Trash2 className="w-4 h-4" /> Xoá vĩnh viễn
                       </button>
@@ -623,7 +623,7 @@ export default function ProjectDetailPage() {
                   onClick={() => setFolderPath((prev) => [...prev, folder])}
                   className="group flex items-center gap-2 p-3 bg-bg-secondary border border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
                 >
-                  <FolderIcon className="w-5 h-5 text-accent-blue flex-shrink-0" />
+                  <FolderIcon className="w-5 h-5 text-primary flex-shrink-0" />
                   <span className="text-sm truncate flex-1">{folder.name}</span>
                   {canContent && (
                     <>
@@ -632,7 +632,7 @@ export default function ProjectDetailPage() {
                           <button
                             onClick={(e) => e.stopPropagation()}
                             aria-label="Tùy chọn thư mục"
-                            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-primary"
                           >
                             <MoreVertical className="w-3.5 h-3.5" />
                           </button>
@@ -652,7 +652,7 @@ export default function ProjectDetailPage() {
                           setDeleteTarget({ type: "folder", id: folder.id });
                         }}
                         aria-label="Xóa thư mục"
-                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1 hover:bg-bg-tertiary rounded focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>

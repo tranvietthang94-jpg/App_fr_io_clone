@@ -28,7 +28,7 @@ interface AnnotationCanvasProps {
 type Tool = "draw" | "highlight" | "text" | "rectangle" | null;
 type Point = { x: number; y: number };
 
-// Mirrors the `accent-red` design token (tailwind.config.ts) — Canvas 2D
+// Mirrors the `primary` design token (tailwind.config.ts) — Canvas 2D
 // drawing needs a literal color string, a Tailwind class doesn't apply here.
 const DEFAULT_ANNOTATION_COLOR = "#ef4444";
 
@@ -278,7 +278,7 @@ export function AnnotationCanvas({
           onClick={() => setCurrentTool(tool.id)}
           aria-pressed={currentTool === tool.id}
           aria-label={tool.label}
-          className={`p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue ${
+          className={`p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             currentTool === tool.id
               ? "bg-primary text-white"
               : portaled
@@ -303,7 +303,7 @@ export function AnnotationCanvas({
         onClick={eraseLast}
         disabled={savedAnnotations.length === 0 && pendingStrokes.length === 0}
         aria-label="Xóa nét gần nhất"
-        className={`p-2 rounded disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue ${
+        className={`p-2 rounded disabled:opacity-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
           portaled ? "text-text-secondary hover:bg-bg-hover" : "text-white/70 hover:bg-white/10"
         }`}
         title="Xóa nét gần nhất"

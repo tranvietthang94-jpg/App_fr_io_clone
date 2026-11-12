@@ -266,7 +266,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         // height). The old `relative w-full h-full` let the <video>'s intrinsic
         // height drive layout, so portrait (9:16) files overflowed the pane
         // and were clipped instead of letterboxing.
-        'absolute inset-0 bg-black rounded-lg overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue',
+        'absolute inset-0 bg-black rounded-lg overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         className
       )}
       onMouseEnter={() => setShowControls(true)}

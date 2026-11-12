@@ -17,17 +17,17 @@ const STATUS_META: Record<VideoReviewStatus, { label: string; icon: React.ReactN
   [VideoReviewStatus.APPROVED]: {
     label: 'Đã duyệt',
     icon: <CheckCircle className="w-3.5 h-3.5" />,
-    className: 'bg-accent-green/10 text-accent-green',
+    className: 'bg-success/10 text-success',
   },
   [VideoReviewStatus.NEEDS_REVIEW]: {
     label: 'Cần xem lại',
     icon: <AlertCircle className="w-3.5 h-3.5" />,
-    className: 'bg-accent-yellow/10 text-accent-yellow',
+    className: 'bg-warning/10 text-warning',
   },
   [VideoReviewStatus.REJECTED]: {
     label: 'Từ chối',
     icon: <XCircle className="w-3.5 h-3.5" />,
-    className: 'bg-accent-red/10 text-accent-red',
+    className: 'bg-destructive-hoverbg text-destructive-text',
   },
 };
 
@@ -53,7 +53,7 @@ export const ReviewStatusControl: React.FC<ReviewStatusControlProps> = ({ status
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-green ${meta.className}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-success ${meta.className}`}
         >
           {meta.icon}
           <span>{meta.label}</span>

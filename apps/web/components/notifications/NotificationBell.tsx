@@ -81,11 +81,11 @@ export function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Thông báo"
-          className="relative p-2 hover:bg-bg-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-accent-blue"
+          className="relative p-2 hover:bg-bg-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent-red text-white text-[10px] rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive-solid text-white text-[10px] rounded-full flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -103,7 +103,7 @@ export function NotificationBell() {
                 onSelect={() => handleClick(n)}
                 className={cn(
                   "flex-col items-start gap-0.5 whitespace-normal rounded-none border-b border-border px-3 py-3 text-sm last:border-b-0",
-                  !n.read && "bg-accent-blue/5"
+                  !n.read && "bg-primary/5"
                 )}
               >
                 <p>{describe(n)}</p>

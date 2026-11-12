@@ -35,7 +35,7 @@ export default function GoogleCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="text-center">
-        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <div className="w-10 h-10 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-text-secondary">
           {error ? "Đăng nhập thất bại, đang chuyển hướng..." : "Đang đăng nhập..."}
         </p>

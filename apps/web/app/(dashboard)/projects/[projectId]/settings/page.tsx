@@ -103,8 +103,8 @@ export default function ProjectSettingsPage() {
         <ActivityFeed projectId={projectId} />
       </Card>
 
-      <Card className="p-6 border-accent-red/30">
-        <h2 className="font-semibold mb-2 text-accent-red">Vùng nguy hiểm</h2>
+      <Card className="p-6 border-destructive-border">
+        <h2 className="font-semibold mb-2 text-destructive-text">Vùng nguy hiểm</h2>
         <p className="text-sm text-text-secondary mb-4">
           Xóa dự án sẽ xóa vĩnh viễn toàn bộ video, bình luận và dữ liệu liên quan.
         </p>

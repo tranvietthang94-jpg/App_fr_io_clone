@@ -10,9 +10,7 @@
   --bg-tertiary: #1A1D24;
   --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
-  --accent-blue: #10B981;
-  --accent-green: #10B981;
-  --accent-red: #EF4444;
+  --primary: #EF4444;
   --border-color: #282D37;
 }
 
@@ -53,12 +51,12 @@ body {
 
 /* Focus Visible */
 *:focus-visible {
-  outline: 2px solid var(--accent-blue);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 /* Selection */
 ::selection {
-  background-color: var(--accent-blue);
+  background-color: var(--primary);
   color: white;
 }

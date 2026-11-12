@@ -40,7 +40,7 @@ export function WorkspaceRail({ projectId }: { projectId: string }) {
       <div className="px-4 py-4">
         <Link href="/projects" className="flex items-center gap-2">
           <span className="text-lg font-bold tracking-tight">
-            R<span className="text-accent-green">.</span>Frame
+            R<span className="text-brand">.</span>Frame
           </span>
         </Link>
       </div>
@@ -59,7 +59,7 @@ export function WorkspaceRail({ projectId }: { projectId: string }) {
                 className={cn(
                   "block truncate rounded-md px-2 py-2 text-sm",
                   active
-                    ? "bg-accent-green/10 text-accent-green font-medium"
+                    ? "bg-primary-soft text-primary font-medium"
                     : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
                 )}
                 title={p.name}
@@ -80,8 +80,8 @@ export function WorkspaceRail({ projectId }: { projectId: string }) {
               href={f.href(projectId)}
               className={cn(
                 "block rounded-md px-2 py-1.5 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-text-primary",
-                f.tone === "green" && "text-accent-green",
-                f.tone === "red" && "text-accent-red"
+                f.tone === "green" && "text-success",
+                f.tone === "red" && "text-destructive-text"
               )}
             >
               {f.label}
@@ -92,7 +92,7 @@ export function WorkspaceRail({ projectId }: { projectId: string }) {
 
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-2 px-1">
-          <div className="w-7 h-7 rounded-full bg-accent-green/20 flex items-center justify-center text-xs font-semibold text-accent-green">
+          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
             {(user?.name || "?").slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -104,7 +104,7 @@ export function WorkspaceRail({ projectId }: { projectId: string }) {
             aria-label="Cài đặt"
             className={cn(
               "p-1.5 rounded-md hover:bg-bg-tertiary",
-              pathname.startsWith("/settings") && "text-accent-green"
+              pathname.startsWith("/settings") && "text-primary"
             )}
           >
             <Settings className="w-4 h-4" />

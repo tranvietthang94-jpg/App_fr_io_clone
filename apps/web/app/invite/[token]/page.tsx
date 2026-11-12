@@ -59,7 +59,7 @@ export default function InviteAcceptPage() {
         )}
 
         {status === "error" && isAuthenticated && (
-          <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+          <div role="alert" className="bg-destructive-hoverbg border border-destructive-border text-destructive-text px-4 py-3 rounded">
             {error}
           </div>
         )}
