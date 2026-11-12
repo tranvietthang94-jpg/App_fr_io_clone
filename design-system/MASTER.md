@@ -1,111 +1,158 @@
-# Design System Master File — FrameReview (App_fr.io_01)
+# Design System Master File — R.Frame (App_fr.io_01)
 
 > **LOGIC:** Khi làm 1 trang cụ thể, kiểm tra `design-system/pages/<page>.md` trước.
 > Nếu file đó tồn tại, quy tắc của nó **override** file Master này. Nếu không, dùng Master.
 >
-> File này là bản **đã tổng hợp/hiệu đính thủ công** từ output thô của skill
-> `ui-ux-pro-max` (xem `design-system/framereview/` để đọc nguyên văn các lần chạy gốc).
-> Lý do cần hiệu đính: generator dùng BM25 độc lập cho từng mục (pattern/style/color/typography),
-> nên 1 lần gọi có thể trộn nhầm hướng landing-page marketing cho 1 app nội bộ, hoặc thiếu token
-> ngữ nghĩa (card/muted/success/warning) mà UI thật sự cần. Mọi giá trị hex dưới đây đều lấy
-> nguyên từ output thật của tool (không tự bịa) — chỉ khác là được **chọn lọc và ghép từ nhiều
-> lần chạy** thay vì dùng máy móc 1 lần chạy duy nhất.
-
----
+> Trạng thái: **đã triển khai — hướng "filmic workspace" (2026-11-12)**, thay cho bản
+> 2026-07-14 (màu xanh lá/xanh dương `#2563EB` trong bản cũ chưa bao giờ được áp dụng; app
+> chạy với `#10B981`). Giá trị dưới đây khớp `apps/web/tailwind.config.ts` — khi sửa token,
+> sửa cả hai nơi. Nguồn tham chiếu thô của lần tạo ban đầu: `design-system/framereview/`.
+>
+> Spec thiết kế: `docs/superpowers/specs/2026-11-12-ui-filmic-workspace-design.md`
+> (mục "Calls made by the designer" là bản chốt cuối).
 
 **Project:** R.Frame (Frame.io clone — video review & collaboration)
-**Category:** Remote Work/Collaboration Tool (chức năng khớp nhất) + Dark Mode OLED (style bắt buộc theo quyết định giữ dark-only)
-**Theme:** Dark-only, không có light mode / theme toggle (quyết định đã chốt 2026-07-14)
-**Generated/curated:** 2026-07-14, từ 3 lần chạy `--design-system` + 3 lần tra `--domain color` của `.claude/skills/ui-ux-pro-max/scripts/search.py`
+**Theme:** Dark-only, không có light mode / theme toggle.
+**Fonts:** Inter (UI), JetBrains Mono (timecode, số liệu).
 
 ---
 
-## Color Palette
+## Màu — tokens (`tailwind.config.ts`)
 
-### Interactive / brand (nguồn: query "developer tool dark dashboard blue accent professional video review annotation timeline collaboration", `design-system/framereview/MASTER.md` lần chạy 16:28:37)
+### Primary = đỏ của nút đăng nhập
 
-| Role | Hex | CSS Variable | Ghi chú |
-|------|-----|--------------|---------|
-| Accent / Primary interactive | `#2563EB` | `--color-accent` | Giữ trong họ xanh dương gần với `accent.blue #4a9eff` hiện tại của app — tránh rebrand toàn bộ không cần thiết. Dùng cho nút primary, link, focus ring. |
-| Destructive | `#DC2626` | `--color-destructive` | Xóa/nguy hiểm — gần `accent.red #ef4444` hiện có. |
-| On Accent / On Destructive | `#FFFFFF` | `--color-on-accent` | |
+| Token | Hex | Dùng cho |
+|-------|-----|----------|
+| `primary` | `#EF4444` | nút chính, link, mục đang chọn, focus ring, marker timeline |
+| `primary.hover` | `#DC2626` | hover nút chính |
+| `primary.active` | `#B91C1C` | nhấn nút chính |
+| `primary.soft` | `rgba(239,68,68,.14)` | nền mục đang chọn, chip timecode |
 
-**Cân nhắc đã bỏ qua:** tool cũng trả về `Primary #EC4899` (hồng) + `Secondary #DB2777` cho hướng "video pink on dark". Không chọn vì đây là tông thiên về app tiêu dùng/mạng xã hội (Short Video Editor), không hợp với công cụ review B2B chuyên nghiệp — và để giữ liên tục thương hiệu xanh dương đã dùng. Nếu sau này muốn hướng bold/trẻ hơn, có thể xem lại `design-system/framereview/MASTER.md`.
+**Lý do:** nút "Đăng nhập" của màn hình đăng nhập (chủ sở hữu thấy là "đỏ cam") đã là `#EF4444`.
+Lấy đúng màu đó làm primary giữ các màn đăng nhập **giống từng điểm ảnh** và cho cả app một màu
+nhấn duy nhất. Đánh đổi: chữ trắng trên `#EF4444` chỉ đạt **3.76:1** (dưới AA 4.5:1 cho chữ
+nhỏ); `#DC2626` cho 4.83:1 nếu sau này muốn đạt AA.
 
-### Nền / bề mặt (nguồn: hội tụ độc lập từ 3 lần `--domain color` — Financial Dashboard, Smart Home/IoT Dashboard, RPA/Automation Dashboard, Developer Tool/IDE — cả 4 đều ra cùng 1 thang màu, độ tin cậy cao)
+### Semantic (theo **ý nghĩa**, không theo màu)
 
-| Role | Hex | CSS Variable | Ghi chú |
-|------|-----|--------------|---------|
-| Background (app shell) | `#0B0F1A` (~`#0F172A`) | `--bg-primary` | So với `#1a1a1a` hiện tại: xanh đen thay vì xám đen thuần, đúng "professional dashboard" hơn "generic dark UI". |
-| Surface / Card | `#1B2336` | `--bg-secondary` | Thay `#2a2a2a`. |
-| Surface elevated / hover | `#272F42` | `--bg-tertiary` | Thay `#3a3a3a`. |
-| Foreground / text primary | `#F8FAFC` | `--text-primary` | Gần trắng thay vì `#ffffff` thuần — giảm chói, đúng khuyến nghị Dark Mode OLED (tránh trắng/đen tuyệt đối). |
-| Text secondary | `#94A3B8` | `--text-secondary` | Thay `#a0a0a0`. |
-| Border | `#334155` (viền rõ) / `rgba(255,255,255,0.08)` (viền mờ, tách khối) | `--border-color` | Dùng `#334155` cho border có chức năng (input, card), `rgba(255,255,255,.08)` cho phân tách nhẹ (divider). |
+| Token | Hex | Dùng cho |
+|-------|-----|----------|
+| `success` | `#22C55E` | đã duyệt, đã xử lý, hoàn tất, thanh dung lượng bình thường |
+| `warning` | `#F59E0B` | cần xem lại, sắp hết dung lượng |
+| `brand` | `#10B981` | chấm "." trong R.Frame và link xanh của trang đăng nhập — không dùng cho hành động |
+| `destructive.text` | `#F87171` | chữ/icon xoá, lỗi |
+| `destructive.border` | `#7F1D1D` | viền nút/khung xoá |
+| `destructive.hoverbg` | `rgba(127,29,29,.25)` | hover nút xoá, nền banner lỗi |
+| `destructive.solid` / `.solidhover` | `#B91C1C` / `#991B1B` | **chỉ** nút xác nhận cuối của hộp thoại xoá, badge đếm |
 
-### Trạng thái / semantic (nguồn: RPA/Automation Dashboard — "running green + failed red + queued amber", khớp với 4 review-status hiện có của app: in-review/approved/needs-review/rejected)
+Quy tắc chuyển đổi từ màu cũ: xanh dùng cho hành động/đang chọn/focus/link → `primary`; xanh
+dùng cho đã duyệt/thành công → `success`; chấm wordmark → `brand`; đỏ xoá/lỗi → `destructive.*`.
+`accent.*` đã bị xoá khỏi config.
 
-| Role | Hex | Ghi chú |
-|------|-----|---------|
-| Success / Approved | `#22C55E` | Thay `accent.green #4ade80` — đậm hơn 1 chút, hợp nền tối hơn. |
-| Warning / Needs review | `#F59E0B` | Gần `accent.yellow #fbbf24` hiện có, giữ nguyên tinh thần. |
-| Destructive / Rejected | `#DC2626` | (trùng bảng trên) |
-| Info / In review | `#2563EB` | Dùng lại accent chính. |
+### Nền / chữ / viền
 
-**Giữ nguyên không đổi:** `accent.purple #a855f7` (dùng cho @mention/reaction trong CommentPanel) — không có tín hiệu nào từ skill gợi ý thay, không đổi để giảm rủi ro.
+| Token | Hex |
+|-------|-----|
+| `bg.primary` / `secondary` / `tertiary` / `hover` | `#0B0C10` / `#13151B` / `#1A1D24` / `#22262F` |
+| `text.primary` / `secondary` / `muted` | `#F8FAFC` / `#94A3B8` / `#8493A8` |
+| `border` / `border.light` | `#282D37` / `#3A404C` |
+
+`text.muted` được nâng từ `#64748B` lên `#8493A8` vì `#64748B` chỉ đạt 3.2–4.1:1 trên các nền tối.
+
+### Độ tương phản đã đo (WCAG, nền `bg.primary / secondary / tertiary / hover`)
+
+| Màu chữ | primary | secondary | tertiary | hover |
+|---------|---------|-----------|----------|-------|
+| `text.primary` | 18.68 | 17.44 | 16.12 | 14.48 |
+| `text.secondary` | 7.62 | 7.12 | 6.58 | 5.91 |
+| `text.muted` | 6.26 | 5.84 | 5.40 | 4.85 |
+| `primary` (chữ đỏ) | 5.19 | 4.85 | 4.48 | 4.03 |
+| `success` | 8.58 | 8.01 | 7.40 | 6.65 |
+| `warning` | 9.10 | 8.50 | 7.85 | 7.05 |
+| `destructive.text` | 7.07 | 6.60 | 6.10 | 5.48 |
+
+Ngoại lệ đã biết: chữ đỏ `primary` trên `bg.tertiary`/`bg.hover` (4.48 / 4.03) và chữ trắng trên
+nút primary (3.76) dưới 4.5:1 — dùng cho nhãn đậm/ngắn, không dùng `primary` cho đoạn chữ nhỏ.
 
 ---
 
-## Typography
+## Quy tắc "destructive theo hình thức"
 
-- **Font:** Inter (giữ nguyên — trùng khớp với font hiện tại của app, không cần đổi). Nguồn: mood "dark, cinematic, technical, precision, clean, premium, developer, professional, high-end utility" — best for "Developer tools, fintech/trading, AI dashboards, streaming platforms, high-end productivity apps" — khớp chính xác với Frame.io clone.
-- **Mono:** giữ JetBrains Mono hiện có (không nằm trong phạm vi gợi ý của tool, không có lý do đổi).
-- Weight range mở rộng: 300/400/500/600/700 (hiện tại chỉ có 400/500/600/700 — thêm 300 cho text phụ/mô tả nếu cần).
+Vì primary và màu xoá cùng tông đỏ, hành động nguy hiểm được phân biệt bằng **hình thức**, không
+chỉ bằng sắc độ:
+
+- `Button variant="destructive"`: nền trong suốt, chữ `destructive.text`, viền `destructive.border`,
+  **luôn kèm icon** (thùng rác/cảnh báo).
+- `Button variant="destructiveSolid"`: chỉ cho nút xác nhận cuối trong hộp thoại xoá.
+- Mọi hành động xoá giữ hộp thoại xác nhận hiện có (`AlertDialog`, `ConfirmPermanentDelete`).
+- Nút chính (`primary`) luôn đặc, `#EF4444`.
 
 ---
 
-## Spacing / Shadow / Radius
+## Hình dạng
 
-Giữ nguyên spacing scale + border-radius hiện tại của `tailwind.config.ts` (skill không đưa ra lý do đủ mạnh để đổi, và đổi spacing ảnh hưởng toàn app, rủi ro cao hơn lợi ích). Cập nhật box-shadow theo hướng "Improved shadows (softer than flat, clearer than neumorphism)" của style *Soft UI Evolution* — áp dụng khi làm Phase 2 (`ui/Card.tsx`, `ui/Dialog.tsx`).
+- **Bán kính** (scale của config): `DEFAULT` 6px cho nút, input, menu, tooltip, select; `md` 8px cho
+  card, dialog, toast, panel; `full` cho chip/avatar.
+- **Shadow:** menu/toast/tooltip/upload panel `0 8px 24px rgba(0,0,0,.45)`; dialog `0 16px 48px rgba(0,0,0,.55)`.
+- **Cỡ nút:** `sm` 32px, `md` 36px, `lg` 40px. **Input** mặc định 36px.
+- **Focus:** `focus-visible:ring-2 ring-primary` (+ `ring-offset-2 ring-offset-bg-primary`) ở mọi phần tử tương tác.
+- **Chip trạng thái duyệt:** `ui/StatusChip` (`approved` success, `needs_review` warning,
+  `in_review`/`neutral` chữ phụ, `rejected` destructive).
 
 ---
 
-## Style Guidelines
+## App shell (`app/(dashboard)/layout.tsx`)
 
-**Style chính:** Soft UI Evolution (khớp nhất với category "Remote Work/Collaboration Tool") — nhưng triển khai theo bảng màu **Dark Mode (OLED)** vì app dark-only.
+- **`IconRail`** (≥ `lg`): rộng 56px — Dự án, Thông báo (mở dropdown chuông hiện có), Quản trị (chỉ admin),
+  Cài đặt; dưới cùng: thanh dung lượng thu gọn (tooltip hiện số) và menu "Tài khoản" (Hồ sơ, Đăng xuất,
+  thanh dung lượng đầy đủ). Mỗi mục có `aria-label` + tooltip; mục đang chọn tô `primary`.
+- **`ContextPanel`**: rộng 240px, thu gọn được (nút hoặc phím `[`, bỏ qua khi đang gõ trong
+  input/textarea/contentEditable). Có ô tìm dự án, danh sách dự án (cuộn riêng), và khi đang trong
+  một dự án: thư mục cấp 1 (`?folder=<id>`) và "Bộ lọc video". Trạng thái lưu ở
+  `localStorage["rframe.panelCollapsed"]` (luôn bọc try/catch); mặc định mở, riêng trang review video mặc định thu gọn.
+- **Breakpoint duy nhất: `lg` (1024px).** Dưới `lg`: thanh tab dưới (cùng các mục + menu Tài khoản) và
+  nút "Mở menu" ở header mở `ContextPanel` dạng drawer (focus-trap, Esc/click nền để đóng).
+- Trang khách `/review/[token]` **không có** rail/panel.
+- Thư mục đang mở của trang dự án nằm trên URL (`?folder=<id>`); id không tồn tại/thuộc dự án khác quay về gốc.
 
-**Key Effects:** shadow mềm hơn flat/rõ hơn neumorphism, transition 200–300ms, focus-visible luôn hiển thị, mục tiêu WCAG AA/AAA.
+---
 
-**Pattern:** Tool trả về "Video-First Hero" / "Real-Time Operations Landing" — đây là pattern **trang marketing/landing page**, KHÔNG áp dụng cho các trang app nội bộ (dashboard, project, video review workspace) vì app không có landing page công khai. Bỏ qua mục Pattern cho mục đích redesign nội bộ; layout cụ thể từng trang định nghĩa riêng trong kế hoạch từng Phase (xem `design-system/pages/`).
+## Màn hình đăng nhập được "ghim"
+
+`app/(auth)/*` phải **giống từng điểm ảnh** khi token/component dùng chung đổi. Cơ chế:
+
+1. `apps/web/tests/e2e/auth-visual.spec.ts` chụp `/login`, `/register`, `/forgot-password`,
+   `/reset-password/<token>` ở 1440×900 và 375×812 (`toHaveScreenshot`, ảnh chuẩn ở
+   `tests/e2e/__screenshots__/`) và kiểm tra nút đăng nhập là `rgb(239, 68, 68)`.
+2. Các trang auth dùng **class tường minh** tái tạo style cũ (nút, link xanh `#10B981`, input h-11 +
+   ring xanh, placeholder `#64748B`, outline/selection ở `(auth)/layout.tsx`), nên đổi `Button`/`Input`/token
+   dùng chung không lan sang đó. Nút đăng ký/quên/đặt lại mật khẩu vẫn **xanh** như trước; chỉ nút đăng nhập đỏ.
+3. Ảnh chuẩn phụ thuộc máy/Chrome cục bộ; đổi cố ý thì chạy lại với `--update-snapshots` và xem diff bằng mắt.
 
 ---
 
 ## Anti-Patterns (không dùng)
 
-- Emoji làm icon — dùng SVG (đã dùng lucide-react, giữ nguyên)
-- Thiếu `cursor-pointer` trên phần tử click được
-- Hover đổi layout đột ngột (tránh scale transform gây shift)
-- Contrast thấp — tối thiểu 4.5:1 (7:1+ cho các nhãn nhỏ theo khuyến nghị Dark Mode OLED)
-- Đổi trạng thái tức thời không transition
-- Focus state vô hình
-- **Riêng cho dark-only:** không dùng nền đen tuyệt đối `#000000` (gây "OLED smear"/loá viền theo ghi chú của style Dark Mode OLED) — dùng `#0B0F1A` làm nền sâu nhất.
+- Emoji làm icon — dùng SVG (lucide-react).
+- Thiếu `cursor-pointer` trên phần tử click được; focus state vô hình.
+- Hover đổi layout đột ngột; đổi trạng thái tức thời không transition.
+- Contrast chữ nhỏ dưới 4.5:1 (xem bảng đo ở trên).
+- Nền đen tuyệt đối `#000000` cho bề mặt app.
+- Dùng `primary` cho nút xoá, hoặc nút xoá đặc ngoài bước xác nhận cuối.
+- Gắn selector test vào class màu (`accent-*`, `bg-warning`...): dùng `role`, `aria-label` hoặc `data-*`.
 
-## Pre-Delivery Checklist (bỏ các mục light-mode không áp dụng)
+## Checklist trước khi giao
 
-- [ ] Không dùng emoji làm icon
-- [ ] Icon nhất quán 1 bộ (lucide-react — đã dùng, giữ nguyên)
-- [ ] `cursor-pointer` trên mọi phần tử click được
-- [ ] Hover có transition mượt (150–300ms)
-- [ ] Contrast text tối thiểu 4.5:1 trên nền tối (áp dụng số dark, không áp dụng mục "light mode 4.5:1" gốc của tool)
-- [ ] Focus state hiển thị rõ khi dùng bàn phím
-- [ ] `prefers-reduced-motion` được tôn trọng
-- [ ] Responsive tại 375px, 768px, 1024px, 1440px
-- [ ] Không có nội dung bị che bởi navbar cố định
-- [ ] Không có horizontal scroll trên mobile
+- [ ] Không emoji làm icon; icon cùng một bộ (lucide-react)
+- [ ] Hover có transition 150–300ms; `prefers-reduced-motion` được tôn trọng
+- [ ] Focus hiển thị rõ bằng bàn phím (ring primary)
+- [ ] Chữ tối thiểu 4.5:1 trên nền tối (xem ngoại lệ đã biết)
+- [ ] Tên dài (80+ ký tự, có dấu) cắt bằng `truncate` + `title`, không tràn ở 375px
+- [ ] Responsive tại 375px, 1024px, 1440px; không có horizontal scroll
+- [ ] `auth-visual.spec.ts` xanh; `npm run lint` và toàn bộ Playwright xanh
 
 ---
 
 ## Nguồn tham chiếu thô (không chỉnh sửa)
 
-- `design-system/framereview/MASTER.md` — 2 lần chạy `--design-system --persist` gốc (16:28:37, 16:28:58)
-- `design-system/framereview/pages/video-review.md` — override tự sinh, mang tính landing-page, KHÔNG dùng trực tiếp cho Phase 3 (xem `design-system/pages/video-review.md` là bản đã viết lại cho đúng mục đích workspace nội bộ)
+- `design-system/framereview/` — output thô của skill `ui-ux-pro-max` lúc tạo hệ thống thiết kế ban đầu (đã lỗi thời so với bản này).

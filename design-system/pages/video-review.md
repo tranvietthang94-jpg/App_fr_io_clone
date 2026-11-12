@@ -1,9 +1,10 @@
 # Video Review Workspace — Page Override
 
 > Override cho `app/(dashboard)/projects/[projectId]/videos/[videoId]/page.tsx`.
-> Trạng thái: **đã triển khai (Phase 3, 2026-07-14)**. Bản guest tương đương
-> `app/review/[token]/page.tsx` là gần-bản-sao của trang này — **chưa** áp dụng
-> lại các thay đổi dưới đây (đó là Phase 4 trong kế hoạch, chưa thực hiện).
+> Trạng thái: **đã triển khai (Phase 3, 2026-07-14); cập nhật 2026-11-12** cho shell mới
+> (xem mục "Shell và trang khách" bên dưới). Bản guest `app/review/[token]/page.tsx` dùng
+> cùng layout (một breakpoint `lg`, header wrap, ẩn frame-step dưới `sm`, phím `?`) và đã có
+> spec riêng `guest-review-responsive.spec.ts`.
 >
 > Bản gốc do skill `ui-ux-pro-max` tự sinh (`design-system/framereview/pages/video-review.md`)
 > là pattern trang marketing (Hero/CTA/testimonial) — không áp dụng được cho workspace nội bộ.
@@ -34,6 +35,21 @@
 - `UserPresence.tsx`: online-count và typing-indicator giờ có `role="status" aria-live="polite"` — trước đây thuần hiển thị, không có gì cho screen reader.
 - Dialog phím tắt (trigger phím `?`, bỏ qua khi đang gõ trong input/textarea/contentEditable) liệt kê Space/Arrow/Shift+Arrow/Home/End — các shortcut này đã hoạt động từ trước nhưng không ai biết nếu không đọc code.
 - **Đã kiểm tra và sửa lại nhận định trong bản nháp ban đầu:** trang này (và `CommentPanel`/`AnnotationCanvas` của nó) **không dùng `AlertDialog` ở đâu cả** — xóa comment/annotation là xóa ngay không xác nhận. Không phải lỗi cần sửa trong phạm vi Phase 3 (hành vi có từ trước, không phải do redesign gây ra) — nêu lại ở đây để không ai tưởng đã "nâng cấp AlertDialog" cho trang này như dự kiến ban đầu.
+
+## Shell và trang khách (cập nhật 2026-11-12, hướng "filmic workspace")
+
+- **Shell:** `WorkspaceRail` đã bị xoá; trang review dùng `IconRail` + `ContextPanel` chung của
+  `app/(dashboard)/layout.tsx` (xem `design-system/MASTER.md`). Trên route video, `ContextPanel`
+  **mặc định thu gọn** (người dùng mở lại bằng nút ở rail hoặc phím `[`) để vùng player lớn nhất.
+  Bộ lọc "Tất cả video / Đã duyệt / Cần sửa" của rail cũ nay nằm trong `ContextPanel` khi đang trong dự án.
+- **Màu:** marker và dải thời gian của comment trên timeline là `primary` (`#EF4444`, hook
+  `data-timeline-marker`); timecode trong comment là chip JetBrains Mono nền `primary.soft`. Màu
+  chú thích canvas mặc định `#ef4444` (= primary).
+- **Header comment:** hai dòng — tên tác giả (cắt bằng `truncate`, đủ tên ở `title`) cạnh chip trạng thái;
+  dòng dưới wrap gồm chip timecode, `#n`, số frame. Không phần tử nào được chồng lên nhau ở panel 384px
+  và ở 375px (có assert trong `video-review-responsive.spec.ts`).
+- **Trang khách:** cùng layout và style, **không** có rail/panel (có assert). Panel bên phải chỉ có Bình luận.
+- **Giữ nguyên:** realtime, comment, annotation, ARIA live regions, dialog phím `?`, một breakpoint `lg`.
 
 ## Kiểm chứng
 
