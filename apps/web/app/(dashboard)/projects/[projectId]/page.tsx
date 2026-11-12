@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { projectsApi, videosApi, foldersApi } from "@/lib/api";
 import { validateVideoFile } from "@/lib/uploadManager";
@@ -18,6 +19,7 @@ import { ConfirmPermanentDelete } from "@/components/common/ConfirmPermanentDele
 import { CopyMoveDialog } from "@/components/video/CopyMoveDialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { refreshUsage } from "@/lib/refreshUsage";
+import { cn } from "@/lib/utils";
 import {
   Upload,
   FileVideo,
@@ -35,6 +37,12 @@ import {
   Copy,
 } from "lucide-react";
 import { VideoReviewStatus, type Project, type Video, type Folder } from "@r-frame/shared";
+
+const tabClass = (active: boolean) =>
+  cn(
+    "inline-flex items-center gap-1.5 rounded-t px-3 py-2 -mb-px text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+    active ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-primary"
+  );
 
 type DeleteTarget = { type: "folder" | "video"; id: string };
 type CopyMoveTarget = { mode: "copy" | "move"; kind: "video" | "folder"; id: string };
@@ -79,6 +87,11 @@ export default function ProjectDetailPage() {
   const [thumbTokens, setThumbTokens] = useState<Record<string, string>>({});
 
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
+  // The open folder lives in the URL (?folder=<id>) so reload, back/forward and the panel's links all agree;
+  // folderPath is only the resolved breadcrumb chain for that id.
+  const folderParam = searchParams.get("folder");
+  const resolving = !!folderParam && currentFolderId !== folderParam;
+  const warnedFolder = useRef<string | null>(null);
   const isSearching = search.trim().length > 0;
   // Until the project answers nothing mutating is offered; the API enforces all of this regardless.
   const access = project?.myAccess;
@@ -93,15 +106,76 @@ export default function ProjectDetailPage() {
     loadProject();
   }, [projectId]);
 
-  useEffect(() => {
-    loadFolders();
-  }, [projectId, currentFolderId]);
+  const hrefFor = (folderId: string | null) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (folderId) next.set("folder", folderId);
+    else next.delete("folder");
+    const qs = next.toString();
+    return qs ? `/projects/${projectId}?${qs}` : `/projects/${projectId}`;
+  };
+
+  // ponytail: the API has no "get folder with ancestors", so a deep link is resolved by walking the
+  // folder lists breadth-first, capped at MAX_FOLDER_LOOKUPS calls; a folder deeper than that behaves
+  // like an unknown id (back to the root). Upgrade: a GET /folders/:id that returns its ancestors.
+  const MAX_FOLDER_LOOKUPS = 40;
+  const resolveFolderChain = async (id: string): Promise<Folder[] | null> => {
+    const inPath = folderPath.findIndex((f) => f.id === id);
+    if (inPath >= 0) return folderPath.slice(0, inPath + 1);
+    const child = folders.find((f) => f.id === id);
+    if (child) return [...folderPath, child];
+    const queue: Folder[][] = [[]];
+    for (let calls = 0; queue.length && calls < MAX_FOLDER_LOOKUPS; calls++) {
+      const chain = queue.shift()!;
+      let kids: Folder[];
+      try {
+        kids = (await foldersApi.getByProject(projectId, chain.length ? chain[chain.length - 1].id : null)).data;
+      } catch {
+        return null;
+      }
+      const hit = kids.find((f) => f.id === id);
+      if (hit) return [...chain, hit];
+      for (const k of kids) queue.push([...chain, k]);
+    }
+    return null;
+  };
 
   useEffect(() => {
+    if (!folderParam) {
+      setFolderPath([]);
+      return;
+    }
+    if (currentFolderId === folderParam) return;
+    let cancelled = false;
+    (async () => {
+      const chain = await resolveFolderChain(folderParam);
+      if (cancelled) return;
+      if (chain) {
+        setFolderPath(chain);
+        return;
+      }
+      // Unknown or foreign id: back to the root, one toast at most per id.
+      if (warnedFolder.current !== folderParam) {
+        warnedFolder.current = folderParam;
+        toast({ variant: "error", title: "Không tìm thấy thư mục" });
+      }
+      router.replace(hrefFor(null));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, folderParam]);
+
+  useEffect(() => {
+    if (resolving) return;
+    loadFolders();
+  }, [projectId, currentFolderId, resolving]);
+
+  useEffect(() => {
+    if (resolving) return;
     setLoading(true);
     const timer = setTimeout(loadVideos, search ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [projectId, currentFolderId, search, reviewStatusFilter]);
+  }, [projectId, currentFolderId, search, reviewStatusFilter, resolving]);
 
   useEffect(() => {
     if (showTrash) loadTrash();
@@ -385,7 +459,7 @@ export default function ProjectDetailPage() {
       <div className="p-4 sm:p-8">
         <Skeleton className="h-8 w-64 mb-2" />
         <Skeleton className="h-4 w-96 mb-8" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-bg-secondary border border-border rounded-lg overflow-hidden p-4 space-y-3">
               <Skeleton className="aspect-video w-full rounded-md" />
@@ -415,54 +489,24 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {/* Header — flex-wrap so the 5-button action row drops to its own line
-          instead of overflowing on narrow screens (same fix as the video
-          review pages: a `justify-between` row with no wrap silently pushes
-          items past the viewport rather than causing document scroll). */}
-      <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
-        <div className="min-w-0">
-          <button
-            onClick={() => router.push("/projects")}
-            className="text-sm text-text-secondary hover:text-text-primary mb-2"
-          >
-            ← Quay lại
-          </button>
-          <h1 className="text-3xl font-bold truncate max-w-[70vw] sm:max-w-none" title={project?.name}>{project?.name}</h1>
-          {project?.description && (
-            <p className="text-text-secondary mt-1">{project.description}</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {access?.role && (
-            <Button
-              variant="secondary"
-              aria-label="Thành viên"
-              icon={<Users className="w-5 h-5" />}
-              onClick={() => setShowMembers(true)}
-            >
-              <span className="hidden sm:inline">Thành viên</span>
-            </Button>
-          )}
-          {access?.canManage && (
-            <Button
-              variant="secondary"
-              aria-label="Cài đặt dự án"
-              onClick={() => router.push(`/projects/${projectId}/settings`)}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            aria-label="Thùng rác"
-            active={showTrash}
-            icon={<Trash2 className="w-5 h-5" />}
-            onClick={() => setShowTrash((v) => !v)}
-          >
-            <span className="hidden sm:inline">Thùng rác</span>
-          </Button>
+      {/* Header: title + count + primary action, then tab-styled links over the existing controls. */}
+      <div className="mb-4">
+        <button
+          onClick={() => router.push("/projects")}
+          className="text-sm text-text-secondary hover:text-text-primary mb-2"
+        >
+          ← Quay lại
+        </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1 basis-64">
+            <h1 className="text-3xl font-bold truncate" title={project?.name}>{project?.name}</h1>
+            <p className="text-sm text-text-secondary mt-1">
+              {videos.length} video
+              {project?.description && <span className="text-text-muted"> · {project.description}</span>}
+            </p>
+          </div>
           {canEdit && (
-            <>
+            <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 aria-label="Tạo thư mục mới"
@@ -482,9 +526,36 @@ export default function ProjectDetailPage() {
                 <span className="hidden sm:inline">Tải video lên</span>
                 <span className="sm:hidden">Tải lên</span>
               </Button>
-            </>
+            </div>
           )}
         </div>
+        <nav aria-label="Mục dự án" className="mt-4 flex flex-wrap items-center gap-x-1 border-b border-border">
+          <button
+            className={tabClass(!showTrash)}
+            aria-current={!showTrash ? "page" : undefined}
+            onClick={() => setShowTrash(false)}
+          >
+            <FileVideo className="w-4 h-4" /> Video
+          </button>
+          <button
+            className={tabClass(showTrash)}
+            aria-label="Thùng rác"
+            aria-current={showTrash ? "page" : undefined}
+            onClick={() => setShowTrash(true)}
+          >
+            <Trash2 className="w-4 h-4" /> Thùng rác
+          </button>
+          {access?.canManage && (
+            <Link className={tabClass(false)} href={`/projects/${projectId}/settings`} aria-label="Cài đặt dự án">
+              <Settings className="w-4 h-4" /> Hoạt động &amp; Cài đặt
+            </Link>
+          )}
+          {access?.role && (
+            <button className={tabClass(false)} aria-label="Thành viên" onClick={() => setShowMembers(true)}>
+              <Users className="w-4 h-4" /> Thành viên
+            </button>
+          )}
+        </nav>
       </div>
 
       {showMembers && (
@@ -529,7 +600,7 @@ export default function ProjectDetailPage() {
               <p className="text-text-secondary">Video đã xóa sẽ xuất hiện ở đây</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {trashVideos.map((video) => (
                 <div key={video.id} className="bg-bg-secondary border border-border rounded-lg p-4 flex items-center justify-between">
                   <div className="min-w-0">
@@ -560,25 +631,26 @@ export default function ProjectDetailPage() {
       ) : (
         <>
           {/* Breadcrumb */}
-          <div className="flex flex-wrap items-center gap-1 text-sm mb-6 text-text-secondary">
+          <nav aria-label="Đường dẫn thư mục" className="flex flex-wrap items-center gap-1 text-sm mb-6 text-text-secondary">
             <button
-              onClick={() => setFolderPath([])}
+              onClick={() => router.push(hrefFor(null))}
               className={`flex items-center gap-1 hover:text-text-primary ${folderPath.length === 0 ? "text-text-primary font-medium" : ""}`}
             >
               <Home className="w-4 h-4" /> Gốc
             </button>
             {folderPath.map((f, i) => (
-              <span key={f.id} className="flex items-center gap-1">
-                <ChevronRight className="w-4 h-4" />
+              <span key={f.id} className="flex min-w-0 items-center gap-1">
+                <ChevronRight className="w-4 h-4 shrink-0" />
                 <button
-                  onClick={() => setFolderPath((prev) => prev.slice(0, i + 1))}
-                  className={`hover:text-text-primary ${i === folderPath.length - 1 ? "text-text-primary font-medium" : ""}`}
+                  onClick={() => router.push(hrefFor(f.id))}
+                  title={f.name}
+                  className={`max-w-[60vw] truncate hover:text-text-primary sm:max-w-xs ${i === folderPath.length - 1 ? "text-text-primary font-medium" : ""}`}
                 >
                   {f.name}
                 </button>
               </span>
             ))}
-          </div>
+          </nav>
 
           {/* Search & filter */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -616,15 +688,15 @@ export default function ProjectDetailPage() {
 
           {/* Folders (hidden while searching — search spans the whole project, not just this folder) */}
           {!isSearching && folders.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
               {folders.map((folder) => (
                 <div
                   key={folder.id}
-                  onClick={() => setFolderPath((prev) => [...prev, folder])}
+                  onClick={() => router.push(hrefFor(folder.id))}
                   className="group flex items-center gap-2 p-3 bg-bg-secondary border border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
                 >
                   <FolderIcon className="w-5 h-5 text-primary flex-shrink-0" />
-                  <span className="text-sm truncate flex-1">{folder.name}</span>
+                  <span className="text-sm truncate flex-1" title={folder.name}>{folder.name}</span>
                   {canContent && (
                     <>
                       <DropdownMenu modal={false}>
@@ -677,7 +749,7 @@ export default function ProjectDetailPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {videos.map((video) => (
                 <VideoCard
                   key={video.id}

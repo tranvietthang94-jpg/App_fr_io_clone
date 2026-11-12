@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { VideoReviewStatus, type Folder, type Project } from "@r-frame/shared";
 
 const FILTERS: { label: string; query: string; tone?: "success" | "destructive" }[] = [
-  { label: "Tất cả clips", query: "" },
+  { label: "Tất cả video", query: "" },
   { label: "Đã duyệt", query: `?reviewStatus=${VideoReviewStatus.APPROVED}`, tone: "success" },
   { label: "Cần sửa", query: `?reviewStatus=${VideoReviewStatus.NEEDS_REVIEW}`, tone: "destructive" },
 ];

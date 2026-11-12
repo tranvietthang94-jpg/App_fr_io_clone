@@ -12,7 +12,8 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/DropdownMenu';
 import { Film, Trash2, CheckCircle, AlertCircle, XCircle, Loader2, MoreVertical, Edit2, UploadCloud, FolderInput, Share2, Copy, ArrowRightLeft } from 'lucide-react';
-import { formatFileSize, formatRelativeTime } from '@/lib/utils';
+import { formatTimestamp } from '@/lib/utils';
+import { formatBytes } from '@/lib/formatBytes';
 import { VideoReviewStatus, type Video, type Folder } from '@r-frame/shared';
 
 interface VideoCardProps {
@@ -48,21 +49,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
       case 'processing':
       case 'uploading':
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 text-warning rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-black/70 text-warning rounded-full text-xs">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span>{progress === null ? 'Đang xử lý' : `Đang xử lý ${progress}%`}</span>
           </div>
         );
-      case 'ready':
-        return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-success/10 text-success rounded-full text-xs">
-            <CheckCircle className="w-3 h-3" />
-            <span>Sẵn sàng</span>
-          </div>
-        );
       case 'failed':
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-destructive-hoverbg text-destructive-text rounded-full text-xs">
+          <div className="flex items-center gap-1 px-2 py-1 bg-black/70 text-destructive-text rounded-full text-xs">
             <AlertCircle className="w-3 h-3" />
             <span>Lỗi</span>
           </div>
@@ -74,21 +68,21 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
     switch (video.reviewStatus) {
       case VideoReviewStatus.APPROVED:
         return (
-          <StatusChip status="approved">
+          <StatusChip status="approved" className="bg-black/70">
             <CheckCircle className="w-3 h-3" />
             <span>Đã duyệt</span>
           </StatusChip>
         );
       case VideoReviewStatus.NEEDS_REVIEW:
         return (
-          <StatusChip status="needs_review">
+          <StatusChip status="needs_review" className="bg-black/70">
             <AlertCircle className="w-3 h-3" />
             <span>Cần xem lại</span>
           </StatusChip>
         );
       case VideoReviewStatus.REJECTED:
         return (
-          <StatusChip status="rejected">
+          <StatusChip status="rejected" className="bg-black/70">
             <XCircle className="w-3 h-3" />
             <span>Từ chối</span>
           </StatusChip>
@@ -136,13 +130,16 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
         ) : (
           <Film className="w-12 h-12 text-text-muted" />
         )}
-        <div className="absolute top-2 left-2 flex items-center gap-1">
+        <div className="absolute top-2 left-2 right-12 flex flex-wrap items-center gap-1">
+          <span className="px-2 py-1 bg-black/60 text-white rounded-full text-xs">v{video.versionNumber}</span>
           {getStatusBadge()}
           {getReviewStatusBadge()}
-          {video.versionNumber > 1 && (
-            <span className="px-2 py-1 bg-black/60 text-white rounded-full text-xs">v{video.versionNumber}</span>
-          )}
         </div>
+        {video.status === 'ready' && video.duration > 0 && (
+          <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs font-mono">
+            {formatTimestamp(video.duration)}
+          </span>
+        )}
 
         {(onRename || onDelete || onMove || onUploadVersion || onShare || onDuplicate || onCopy || onMoveToProject || onDeletePermanently) && (
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
@@ -254,15 +251,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
             className="w-full px-2 py-1 text-sm bg-bg-tertiary border border-primary rounded"
           />
         ) : (
-          <h3 className="font-semibold text-text-primary truncate group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-text-primary truncate group-hover:text-primary transition-colors" title={video.title}>
             {video.title}
           </h3>
         )}
-        <div className="flex items-center gap-3 mt-1 text-sm text-text-muted">
-          <span>{formatFileSize(video.fileSize)}</span>
-          <span>•</span>
-          <span>{formatRelativeTime(video.createdAt)}</span>
-        </div>
+        <p className="mt-1 truncate text-sm text-text-muted">
+          {new Date(video.createdAt).toLocaleDateString('vi-VN')} · {formatBytes(video.fileSize)}
+        </p>
       </div>
     </Card>
   );

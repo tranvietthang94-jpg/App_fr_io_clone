@@ -31,7 +31,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, onDe
             </button>
           )}
         </div>
-        <h3 className="text-lg font-semibold text-text-primary mb-1 truncate">
+        <h3 className="text-lg font-semibold text-text-primary mb-1 truncate" title={project.name}>
           {project.name}
         </h3>
         {project.description && (
