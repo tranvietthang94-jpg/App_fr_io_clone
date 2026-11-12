@@ -237,10 +237,26 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 <div className="flex items-start gap-2 mb-2">
                   <Avatar name={comment.user?.name || comment.guestName || 'User'} size="sm" />
                   <div className="flex-1 min-w-0">
+                    {/* Line 1: author + status. Line 2 wraps (timecode chip, #n, frame) so nothing overlaps at 384px or 375px. */}
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 truncate font-medium text-sm text-text-primary">
+                      <span
+                        className="min-w-0 flex-1 truncate font-medium text-sm text-text-primary"
+                        title={comment.user?.name || comment.guestName || 'User'}
+                      >
                         {comment.user?.name || comment.guestName || 'User'}
                       </span>
+                      <span
+                        className={cn(
+                          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                          comment.resolved
+                            ? 'bg-success/10 text-success'
+                            : 'bg-destructive-hoverbg text-destructive-text'
+                        )}
+                      >
+                        {comment.resolved ? 'Đã duyệt' : 'Cần sửa'}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <button
                         onClick={() => onSeekToComment(comment.timestamp)}
                         className="shrink-0 whitespace-nowrap rounded bg-primary-soft px-1.5 py-0.5 font-mono text-xs text-primary transition-colors hover:bg-primary/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -253,20 +269,8 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                       {comment.sequenceNumber != null && (
                         <span className="text-xs text-text-muted">#{comment.sequenceNumber}</span>
                       )}
-                      <span
-                        className={cn(
-                          'ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
-                          comment.resolved
-                            ? 'bg-success/10 text-success'
-                            : 'bg-destructive-hoverbg text-destructive-text'
-                        )}
-                      >
-                        {comment.resolved ? 'Đã duyệt' : 'Cần sửa'}
-                      </span>
+                      <span className="text-xs text-text-muted">Frame {comment.frameNumber}</span>
                     </div>
-                    <p className="text-xs text-text-muted mt-0.5">
-                      Frame {comment.frameNumber}
-                    </p>
                   </div>
 
                   {/* Actions */}

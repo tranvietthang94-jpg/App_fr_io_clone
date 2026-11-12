@@ -101,6 +101,48 @@ test.describe.serial('Video review page — responsive layout', () => {
     await expect(dot).toHaveCSS('background-color', 'rgb(239, 68, 68)');
   });
 
+  test('a range comment header keeps the author and never overlaps its chips or buttons', async () => {
+    const user = getSharedUser();
+    const res = await page.context().request.post(`${API_URL}/api/videos/${videoId}/comments`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+      data: { content: 'overlap check range', timestamp: 1, frameNumber: 30, endTimestamp: 1.5 },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    for (const [w, h] of [[1280, 800], [375, 812]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(`/projects/${projectId}/videos/${videoId}`, { waitUntil: 'networkidle' });
+      const card = page
+        .locator('[title="Bấm để nhảy đến vị trí này trong video"]')
+        .filter({ hasText: 'overlap check range' });
+      await card.scrollIntoViewIfNeeded();
+      const parts = {
+        author: card.getByText(user.name, { exact: true }),
+        timecode: card.getByRole('button', { name: /–/ }),
+        status: card.getByText('Cần sửa'),
+        resolve: card.getByRole('button', { name: 'Đánh dấu đã xử lý' }),
+      };
+      await expect(parts.author, `${w}px: author name is shown`).toBeVisible();
+      await expect(parts.author).toHaveAttribute('title', user.name);
+      const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {};
+      for (const [key, loc] of Object.entries(parts)) {
+        const box = await loc.boundingBox();
+        expect(box, `${w}px: ${key} has a box`).toBeTruthy();
+        boxes[key] = box!;
+      }
+      expect(boxes.author.width, `${w}px: author name not squeezed to nothing`).toBeGreaterThan(30);
+      const keys = Object.keys(boxes);
+      for (let i = 0; i < keys.length; i++) {
+        for (let j = i + 1; j < keys.length; j++) {
+          const a = boxes[keys[i]];
+          const b = boxes[keys[j]];
+          const intersects = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+          expect(intersects, `${w}px: ${keys[i]} overlaps ${keys[j]}`).toBe(false);
+        }
+      }
+    }
+  });
+
   test.afterAll(async () => {
     await page?.context()?.close();
   });
