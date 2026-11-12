@@ -65,7 +65,7 @@ export default function ResetPasswordPage() {
               </div>
             )}
             <Input
-              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+              className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="newPassword"
               type="password"
               label="Mật khẩu mới"
@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
               placeholder="••••••••"
             />
             <Input
-              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+              className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="confirmPassword"
               type="password"
               label="Xác nhận mật khẩu mới"

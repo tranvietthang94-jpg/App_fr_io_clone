@@ -18,7 +18,7 @@ const config: Config = {
         text: {
           primary: '#F8FAFC',
           secondary: '#94A3B8',
-          muted: '#64748B',
+          muted: '#8493A8',
         },
         success: '#22C55E',
         warning: '#F59E0B',

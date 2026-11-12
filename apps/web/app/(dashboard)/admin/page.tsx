@@ -156,7 +156,7 @@ export default function AdminPage() {
             }}
           />
 
-          <div className="mt-4 rounded-lg border border-border overflow-hidden">
+          <div className="mt-4 rounded-md border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-bg-secondary text-left text-text-secondary">
                 <tr>
@@ -244,7 +244,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section aria-label="Chi tiết người dùng" className="min-w-0 rounded-lg border border-border bg-bg-secondary p-4 self-start">
+        <section aria-label="Chi tiết người dùng" className="min-w-0 rounded-md border border-border bg-bg-secondary p-4 self-start">
           {selected ? (
             <UserDetail key={selected.id} user={selected} myId={me.id} myPerms={perms} isSuper={!!me.isSuperAdmin} onChange={replaceRow} />
           ) : (

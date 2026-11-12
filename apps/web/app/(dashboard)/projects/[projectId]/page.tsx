@@ -673,7 +673,7 @@ export default function ProjectDetailPage() {
                 const qs = next.toString();
                 router.replace(qs ? `/projects/${projectId}?${qs}` : `/projects/${projectId}`);
               }}
-              className="text-sm bg-bg-tertiary border border-border rounded-md px-2 py-2"
+              className="text-sm bg-bg-tertiary border border-border rounded px-2 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <option value="">Mọi trạng thái duyệt</option>
               <option value={VideoReviewStatus.IN_REVIEW}>Đang xem xét</option>

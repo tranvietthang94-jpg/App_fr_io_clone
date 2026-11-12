@@ -36,7 +36,7 @@ export default function InviteAcceptPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-6 text-center bg-bg-secondary p-8 rounded-lg border border-border">
+      <div className="w-full max-w-md space-y-6 text-center bg-bg-secondary p-8 rounded-md border border-border">
         <h1 className="text-2xl font-bold">Lời mời tham gia dự án</h1>
 
         {status === "loading" && <p className="text-text-secondary">Đang xử lý...</p>}

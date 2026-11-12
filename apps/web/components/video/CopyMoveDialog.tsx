@@ -128,12 +128,12 @@ export function CopyMoveDialog({ mode, sourceProjectId, onSubmit, onClose }: Cop
             <legend className="text-sm font-medium mb-1">Thư mục đích</legend>
             <div className="max-h-32 overflow-y-auto space-y-1">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="target-folder" checked={folderId === null} onChange={() => setFolderId(null)} />
+                <input type="radio" className="accent-primary" name="target-folder" checked={folderId === null} onChange={() => setFolderId(null)} />
                 (Thư mục gốc)
               </label>
               {folders.map((f) => (
                 <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="target-folder" checked={folderId === f.id} onChange={() => setFolderId(f.id)} />
+                  <input type="radio" className="accent-primary" name="target-folder" checked={folderId === f.id} onChange={() => setFolderId(f.id)} />
                   {f.name}
                 </label>
               ))}

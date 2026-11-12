@@ -40,7 +40,7 @@ export function UploadQueuePanel() {
         <button
           onClick={() => setCollapsed(false)}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-bg-secondary shadow-lg text-sm",
+            "flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-bg-secondary shadow-[0_8px_24px_rgba(0,0,0,0.45)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             hasError ? "text-destructive-text" : "text-text-primary",
           )}
         >
@@ -54,7 +54,7 @@ export function UploadQueuePanel() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-bg-secondary shadow-xl overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-bg-secondary shadow-[0_8px_24px_rgba(0,0,0,0.45)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Upload className="w-4 h-4 text-primary" />
@@ -63,7 +63,7 @@ export function UploadQueuePanel() {
         <button
           onClick={() => setCollapsed(true)}
           aria-label="Thu gọn"
-          className="p-1 rounded hover:bg-bg-tertiary"
+          className="p-1 rounded hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ChevronDown className="w-4 h-4" />
         </button>
@@ -78,7 +78,7 @@ export function UploadQueuePanel() {
                 {t.status === "error" && <AlertCircle className="w-4 h-4 text-destructive-text flex-shrink-0" />}
                 <span className="truncate flex-1" title={t.name}>{t.name}</span>
                 {(t.status !== "error" || t.retryable === false) && (
-                  <button onClick={() => dismiss(t.id)} aria-label="Ẩn" className="p-0.5 rounded hover:bg-bg-tertiary">
+                  <button onClick={() => dismiss(t.id)} aria-label="Ẩn" className="p-0.5 rounded hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                     <X className="w-3.5 h-3.5 text-text-secondary" />
                   </button>
                 )}
@@ -89,7 +89,7 @@ export function UploadQueuePanel() {
                   {t.retryable !== false && (
                     <button
                       onClick={() => retry(t.id)}
-                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      className="flex items-center gap-1 rounded text-xs text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <RotateCcw className="w-3 h-3" /> Thử lại
                     </button>

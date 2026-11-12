@@ -73,7 +73,7 @@ export default function ProjectSettingsPage() {
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <button
         onClick={() => router.push(`/projects/${projectId}`)}
-        className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+        className="flex items-center gap-1 rounded text-sm text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <ArrowLeft className="w-4 h-4" /> Quay lại dự án
       </button>

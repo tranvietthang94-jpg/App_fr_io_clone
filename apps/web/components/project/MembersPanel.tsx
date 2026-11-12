@@ -134,7 +134,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
                   <select
                     value={member.role}
                     onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                    className="text-xs bg-bg-tertiary border border-border rounded-md px-2 py-1"
+                    className="text-xs bg-bg-tertiary border border-border rounded px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {INVITABLE_ROLES.map((r) => (
                       <option key={r} value={r}>
@@ -149,7 +149,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
                   <button
                     onClick={() => setRemoveTarget(member.id)}
                     aria-label="Xóa thành viên"
-                    className="p-1.5 hover:bg-bg-tertiary rounded-md text-destructive-text focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="p-1.5 hover:bg-bg-tertiary rounded-md text-destructive-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -174,7 +174,7 @@ export function MembersPanel({ projectId, onClose }: MembersPanelProps) {
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as MemberRole)}
-                className="text-sm bg-bg-tertiary border border-border rounded-md px-2"
+                className="text-sm bg-bg-tertiary border border-border rounded px-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {INVITABLE_ROLES.map((r) => (
                   <option key={r} value={r}>

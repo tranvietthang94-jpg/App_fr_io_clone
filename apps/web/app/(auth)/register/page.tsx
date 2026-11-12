@@ -70,7 +70,7 @@ export default function RegisterPage() {
         )}
 
         <Input
-          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+          className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="name"
           type="text"
           label="Họ tên"
@@ -81,7 +81,7 @@ export default function RegisterPage() {
         />
 
         <Input
-          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+          className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="email"
           type="email"
           label="Email"
@@ -92,7 +92,7 @@ export default function RegisterPage() {
         />
 
         <Input
-          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+          className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="password"
           type="password"
           label="Mật khẩu"
@@ -103,7 +103,7 @@ export default function RegisterPage() {
         />
 
         <Input
-          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+          className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="confirmPassword"
           type="password"
           label="Xác nhận mật khẩu"

@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
+              className="h-11 rounded-md border-border placeholder-[#64748B] focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="email"
               type="email"
               label="Email"
