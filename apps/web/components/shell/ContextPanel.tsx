@@ -148,8 +148,8 @@ export function ContextPanel({ projectId, activeFolderId, onCollapse, onNavigate
 
         {projectId && (
           <>
-            <p className={SECTION_TITLE}>Bộ lọc clip</p>
-            <nav aria-label="Bộ lọc clip" className="space-y-0.5">
+            <p className={SECTION_TITLE}>Bộ lọc video</p>
+            <nav aria-label="Bộ lọc video" className="space-y-0.5">
               {FILTERS.map((f) => (
                 <Link
                   key={f.label}
