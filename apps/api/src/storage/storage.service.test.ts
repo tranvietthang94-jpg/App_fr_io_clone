@@ -92,6 +92,13 @@ describe('formatBytes', () => {
     assert.equal(formatBytes(524288000), '500 MB');
     assert.equal(formatBytes(GiB), '1 GB');
   });
+
+  test('shows KB below 1 MiB so small files do not read as 0 MB', () => {
+    assert.equal(formatBytes(29727), '29 KB');
+    assert.equal(formatBytes(1536), '1.5 KB');
+    assert.equal(formatBytes(0), '0 KB');
+    assert.equal(formatBytes(1024 ** 2), '1 MB');
+  });
 });
 
 describe('StorageService.destroyVideos', () => {
