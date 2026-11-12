@@ -3,19 +3,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed',
+  'inline-flex items-center justify-center font-medium rounded transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed',
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary',
-        secondary: 'bg-bg-tertiary text-text-primary hover:bg-bg-hover focus-visible:ring-bg-tertiary',
-        danger: 'bg-destructive-solid text-white hover:bg-destructive-solidhover focus-visible:ring-destructive-solid',
-        ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary focus-visible:ring-bg-tertiary',
+        primary: 'bg-primary text-white hover:bg-primary-hover active:bg-primary-active',
+        secondary: 'bg-bg-tertiary text-text-primary border border-border hover:bg-bg-hover',
+        ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
+        // Outlined by form, not shade: pair with an icon (primary and destructive share a hue family).
+        destructive: 'bg-transparent text-destructive-text border border-destructive-border hover:bg-destructive-hoverbg',
+        // Only the final confirm button of a destructive dialog.
+        destructiveSolid: 'bg-destructive-solid text-white hover:bg-destructive-solidhover',
       },
       size: {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2 text-sm',
-        lg: 'px-6 py-3 text-base',
+        sm: 'h-8 px-3 text-sm',
+        md: 'h-9 px-4 text-sm',
+        lg: 'h-10 px-6 text-base',
       },
       active: {
         true: 'bg-primary-soft text-primary hover:bg-primary/20',

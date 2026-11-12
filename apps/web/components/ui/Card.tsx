@@ -2,10 +2,10 @@ import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const cardVariants = cva('bg-bg-secondary border border-border rounded-lg overflow-hidden', {
+const cardVariants = cva('bg-bg-secondary border border-border rounded-md overflow-hidden', {
   variants: {
     hover: {
-      true: 'hover:border-primary hover:shadow-lg transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+      true: 'hover:border-primary hover:shadow-lg transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary',
       false: '',
     },
   },

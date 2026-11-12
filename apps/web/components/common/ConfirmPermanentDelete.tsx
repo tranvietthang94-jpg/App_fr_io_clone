@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { formatBytes } from "@/lib/formatBytes";
 
 interface ConfirmPermanentDeleteProps {
@@ -57,11 +58,11 @@ export function ConfirmPermanentDelete({ name, kind, preview, onConfirm, onClose
             Hủy
           </Button>
           {step === 1 ? (
-            <Button variant="danger" onClick={() => setStep(2)}>
+            <Button variant="destructive" icon={<AlertTriangle className="h-4 w-4" />} onClick={() => setStep(2)}>
               Tiếp tục
             </Button>
           ) : (
-            <Button variant="danger" disabled={value.trim() !== name} loading={busy} onClick={confirm}>
+            <Button variant="destructiveSolid" icon={<Trash2 className="h-4 w-4" />} disabled={value.trim() !== name} loading={busy} onClick={confirm}>
               Xoá vĩnh viễn
             </Button>
           )}

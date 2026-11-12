@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
             />
-            <Button type="submit" size="lg" className="w-full px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
+            <Button type="submit" size="lg" className="w-full h-auto rounded-md px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] active:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
               {loading ? "Đang gửi..." : "Gửi liên kết đặt lại"}
             </Button>
           </form>

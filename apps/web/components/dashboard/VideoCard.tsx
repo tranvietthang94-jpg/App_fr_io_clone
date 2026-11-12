@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { StatusChip } from '@/components/ui/StatusChip';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -73,24 +74,24 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, folders = [], progr
     switch (video.reviewStatus) {
       case VideoReviewStatus.APPROVED:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-success/10 text-success rounded-full text-xs">
+          <StatusChip status="approved">
             <CheckCircle className="w-3 h-3" />
             <span>Đã duyệt</span>
-          </div>
+          </StatusChip>
         );
       case VideoReviewStatus.NEEDS_REVIEW:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-warning/10 text-warning rounded-full text-xs">
+          <StatusChip status="needs_review">
             <AlertCircle className="w-3 h-3" />
             <span>Cần xem lại</span>
-          </div>
+          </StatusChip>
         );
       case VideoReviewStatus.REJECTED:
         return (
-          <div className="flex items-center gap-1 px-2 py-1 bg-destructive-hoverbg text-destructive-text rounded-full text-xs">
+          <StatusChip status="rejected">
             <XCircle className="w-3 h-3" />
             <span>Từ chối</span>
-          </div>
+          </StatusChip>
         );
       default:
         return null;

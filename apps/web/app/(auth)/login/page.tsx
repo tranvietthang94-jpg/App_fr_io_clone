@@ -106,7 +106,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <Button type="submit" variant="danger" size="lg" className="w-full px-6 py-3 text-base bg-[#EF4444] text-white hover:bg-red-500 focus-visible:ring-[#EF4444]" loading={loading}>
+        <Button type="submit" size="lg" className="w-full h-auto rounded-md px-6 py-3 text-base bg-[#EF4444] text-white hover:bg-red-500 active:bg-red-500 focus-visible:ring-[#EF4444]" loading={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
 

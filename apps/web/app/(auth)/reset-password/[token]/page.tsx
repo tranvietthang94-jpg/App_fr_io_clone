@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
             />
-            <Button type="submit" size="lg" className="w-full px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
+            <Button type="submit" size="lg" className="w-full h-auto rounded-md px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] active:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
               {loading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
             </Button>
           </form>

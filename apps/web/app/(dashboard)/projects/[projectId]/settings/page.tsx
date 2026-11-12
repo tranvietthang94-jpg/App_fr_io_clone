@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { AlertDialog } from "@/components/ui/AlertDialog";
 import { MembersPanel } from "@/components/project/MembersPanel";
 import { ActivityFeed } from "@/components/project/ActivityFeed";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Trash2, Users } from "lucide-react";
 import type { Project } from "@r-frame/shared";
 
 export default function ProjectSettingsPage() {
@@ -108,7 +108,7 @@ export default function ProjectSettingsPage() {
         <p className="text-sm text-text-secondary mb-4">
           Xóa dự án sẽ xóa vĩnh viễn toàn bộ video, bình luận và dữ liệu liên quan.
         </p>
-        <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+        <Button variant="destructive" icon={<Trash2 className="h-4 w-4" />} onClick={() => setConfirmDelete(true)}>
           Xóa dự án
         </Button>
       </Card>

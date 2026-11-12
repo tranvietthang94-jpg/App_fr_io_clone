@@ -18,7 +18,7 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-bg-secondary p-6 shadow-lg animate-slide-in focus:outline-none',
+        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-bg-secondary p-6 shadow-[0_16px_48px_rgba(0,0,0,0.55)] animate-slide-in focus:outline-none',
         className
       )}
       {...props}
@@ -26,7 +26,7 @@ export const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close
         aria-label="Đóng"
-        className="absolute right-4 top-4 rounded-md p-1 text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+        className="absolute right-4 top-4 rounded-md p-1 text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <X className="h-4 w-4" />
       </DialogPrimitive.Close>

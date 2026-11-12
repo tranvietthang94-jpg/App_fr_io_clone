@@ -66,7 +66,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               open={t.open}
               onOpenChange={(open) => !open && dismiss(t.id)}
               className={cn(
-                'flex items-start gap-3 rounded-lg border bg-bg-secondary p-3 shadow-lg',
+                'flex items-start gap-3 rounded-md border bg-bg-secondary p-3 shadow-[0_8px_24px_rgba(0,0,0,0.45)]',
                 'data-[state=open]:animate-slide-in data-[state=closed]:animate-fade-out',
                 'data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)]',
                 'data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:transition-transform',

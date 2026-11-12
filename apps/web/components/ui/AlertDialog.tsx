@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
+import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
 
@@ -57,7 +58,7 @@ export function AlertDialog({
           }}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2',
-            'rounded-lg border border-border bg-bg-secondary p-6 shadow-lg animate-slide-in focus:outline-none'
+            'rounded-md border border-border bg-bg-secondary p-6 shadow-[0_16px_48px_rgba(0,0,0,0.55)] animate-slide-in focus:outline-none'
           )}
         >
           <div className="mb-4 flex flex-col gap-1">
@@ -78,7 +79,8 @@ export function AlertDialog({
             </AlertDialogPrimitive.Cancel>
             <AlertDialogPrimitive.Action asChild>
               <Button
-                variant={variant === 'danger' ? 'danger' : 'primary'}
+                variant={variant === 'danger' ? 'destructiveSolid' : 'primary'}
+                icon={variant === 'danger' ? <Trash2 className="h-4 w-4" /> : undefined}
                 onClick={(e) => {
                   // Radix's Action closes the dialog on click by default — for an
                   // async onConfirm (delete calls etc.) we want the caller's
