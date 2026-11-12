@@ -130,6 +130,7 @@ test.describe('app shell', () => {
     await expect(drawer).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(drawer).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Mở menu' })).toBeFocused(); // focus goes back to the opener
 
     await page.getByRole('button', { name: 'Mở menu' }).click();
     await expect(drawer).toBeVisible();

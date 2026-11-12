@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -22,6 +22,8 @@ export function MobileNav({ active, projectId, activeFolderId, children }: Mobil
   const pathname = usePathname();
   const isAdmin = useIsAdmin();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // The drawer is opened by a plain button (not a Radix Trigger), so Radix has nothing to return focus to on close.
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -31,6 +33,7 @@ export function MobileNav({ active, projectId, activeFolderId, children }: Mobil
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
         <button
+          ref={menuButtonRef}
           onClick={() => setDrawerOpen(true)}
           aria-label="Mở menu"
           className="rounded-md p-2 hover:bg-bg-tertiary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -66,6 +69,10 @@ export function MobileNav({ active, projectId, activeFolderId, children }: Mobil
           <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/60 animate-fade-in lg:hidden" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              menuButtonRef.current?.focus();
+            }}
             className="fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] bg-bg-secondary shadow-[0_16px_48px_rgba(0,0,0,0.55)] focus:outline-none lg:hidden"
           >
             <DialogPrimitive.Title className="sr-only">Danh sách dự án</DialogPrimitive.Title>
