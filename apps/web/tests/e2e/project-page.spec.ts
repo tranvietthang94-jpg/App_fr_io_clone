@@ -85,8 +85,10 @@ test.describe('project page', () => {
     for (const bad of ['00000000-0000-4000-8000-000000000000', foreignFolder]) {
       await page.goto(`/projects/${projectId}?folder=${bad}`, { waitUntil: 'networkidle' });
       await expect(page).toHaveURL(new RegExp(`/projects/${projectId}$`));
+      // the visible toast is ol > li[data-state=open] (li[role=status] is Radix's hidden announcer)
+      await expect(page.locator('li[data-state="open"]')).toHaveCount(1);
       await page.waitForTimeout(800);
-      expect(await page.locator('li[role="status"]').count()).toBeLessThanOrEqual(1);
+      expect(await page.locator('li[data-state="open"]').count()).toBeLessThanOrEqual(1);
     }
   });
 
