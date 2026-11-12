@@ -73,7 +73,8 @@ test.describe('Authentication', () => {
     await seedSession(page, shared, shared.token);
     await page.goto('/projects', { waitUntil: 'networkidle' });
 
-    await page.locator('button:has-text("Đăng xuất"), [aria-label="Đăng xuất"]').first().click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
+    await page.getByRole('menuitem', { name: 'Đăng xuất' }).click();
     await page.waitForURL('**/login', { timeout: 8000 });
 
     const stored = await page.evaluate(() => localStorage.getItem('auth-storage'));

@@ -34,7 +34,9 @@ test.describe.serial('Storage quota', () => {
     await page.goto('/projects', { waitUntil: 'networkidle' });
 
     await expect(usageBar(page)).toBeVisible();
-    await expect(page.getByText(/Đã dùng .* \/ 15 GB/)).toBeVisible();
+    // the rail shows only the bar; the numbers sit in its tooltip
+    await usageBar(page).hover();
+    await expect(page.getByText(/Đã dùng .* \/ 15 GB/).first()).toBeVisible();
     const before = Number(await usageBar(page).getAttribute('aria-valuenow'));
 
     const name = `E2E Quota ${Date.now()}`;

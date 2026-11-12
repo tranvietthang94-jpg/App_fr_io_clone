@@ -12,7 +12,6 @@ import { CommentPanel } from "@/components/comments/CommentPanel";
 import { ExportPanel } from "@/components/export/ExportPanel";
 import { UserPresence } from "@/components/presence/UserPresence";
 import { ReviewStatusControl } from "@/components/video/ReviewStatusControl";
-import { WorkspaceRail } from "@/components/workspace/WorkspaceRail";
 import { ShareLinkPanel } from "@/components/video/ShareLinkPanel";
 import { Button } from "@/components/ui/Button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
@@ -536,7 +535,6 @@ export default function VideoReviewPage() {
 
   return (
     <div className="h-full flex min-h-0">
-      <WorkspaceRail projectId={projectId} />
       <div className="flex-1 min-w-0 flex flex-col">
       {/* Header — wraps onto a second line rather than pushing buttons off
           the right edge; the left title block was pinned to its content

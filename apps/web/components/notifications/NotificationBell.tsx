@@ -32,7 +32,13 @@ function describe(n: Notification): string {
   }
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  side = "bottom",
+  className,
+}: {
+  side?: "top" | "right" | "bottom" | "left";
+  className?: string;
+}) {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -81,7 +87,7 @@ export function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Thông báo"
-          className="relative p-2 hover:bg-bg-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          className={cn("relative p-2 hover:bg-bg-tertiary rounded-md focus:outline-none focus:ring-2 focus:ring-primary", className)}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -91,7 +97,7 @@ export function NotificationBell() {
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
+      <DropdownMenuContent side={side} align="end" className="w-80 max-w-[calc(100vw-1rem)] p-0">
         <div className="max-h-96 overflow-y-auto">
           <div className="p-3 border-b border-border font-semibold text-sm">Thông báo</div>
           {notifications.length === 0 ? (
