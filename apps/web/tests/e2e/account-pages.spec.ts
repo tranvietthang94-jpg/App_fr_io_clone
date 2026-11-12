@@ -17,7 +17,7 @@ test.describe('Forgot / reset password', () => {
     await page.fill('#newPassword', 'Password123!');
     await page.fill('#confirmPassword', 'Different123!');
     await page.click('button[type=submit]');
-    await expect(page.locator('.bg-accent-red\\/10')).toContainText('không khớp');
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toContainText('không khớp');
   });
 
   test('reset-password with an invalid/expired token surfaces the backend error', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Forgot / reset password', () => {
     await page.fill('#newPassword', 'Password123!');
     await page.fill('#confirmPassword', 'Password123!');
     await page.click('button[type=submit]');
-    await expect(page.locator('.bg-accent-red\\/10')).toBeVisible();
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toBeVisible();
   });
 });
 

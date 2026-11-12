@@ -12,6 +12,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   timeout: 60_000,
+  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',

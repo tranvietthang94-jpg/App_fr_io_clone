@@ -27,7 +27,7 @@ test.describe('Authentication', () => {
     await page.fill('#confirmPassword', 'Password123!');
     await page.click('button[type=submit]');
 
-    await expect(page.locator('.bg-accent-red\\/10')).toBeVisible();
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toBeVisible();
     await expect(page).toHaveURL(/\/register$/);
   });
 
@@ -40,7 +40,7 @@ test.describe('Authentication', () => {
     await page.fill('#confirmPassword', 'Different123!');
     await page.click('button[type=submit]');
 
-    await expect(page.locator('.bg-accent-red\\/10')).toContainText('không khớp');
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toContainText('không khớp');
   });
 
   test('backend rejects a short password even bypassing the frontend check', async ({ request }) => {
@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
     await page.fill('#password', 'totally-wrong');
     await page.click('button[type=submit]');
 
-    await expect(page.locator('.bg-accent-red\\/10')).toBeVisible();
+    await expect(page.locator('div[role=alert]:not(#__next-route-announcer__)')).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
   });
 

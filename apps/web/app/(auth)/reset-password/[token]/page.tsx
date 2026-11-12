@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
     <>
       <div>
         <h1 className="text-3xl font-bold text-text-primary">
-          R<span className="text-accent-green">.</span>Frame
+          R<span className="text-[#10B981]">.</span>Frame
         </h1>
         <p className="mt-2 text-sm text-text-secondary">Đặt lại mật khẩu</p>
       </div>
@@ -60,11 +60,12 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+              <div role="alert" className="bg-[#EF4444]/10 border border-[#EF4444] text-[#EF4444] px-4 py-3 rounded">
                 {error}
               </div>
             )}
             <Input
+              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="newPassword"
               type="password"
               label="Mật khẩu mới"
@@ -74,6 +75,7 @@ export default function ResetPasswordPage() {
               placeholder="••••••••"
             />
             <Input
+              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="confirmPassword"
               type="password"
               label="Xác nhận mật khẩu mới"
@@ -82,13 +84,13 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
             />
-            <Button type="submit" size="lg" className="w-full" loading={loading}>
+            <Button type="submit" size="lg" className="w-full px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
               {loading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
             </Button>
           </form>
         )}
         <p className="text-center text-sm text-text-secondary">
-          <Link href="/login" className="text-accent-green font-medium hover:underline">
+          <Link href="/login" className="text-[#10B981] font-medium hover:underline">
             Quay lại đăng nhập
           </Link>
         </p>

@@ -17,7 +17,7 @@ export default function AuthLayout({
         <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-black/45 to-bg-primary" />
         <div className="absolute bottom-8 left-8 z-10">
           <p className="text-2xl font-bold tracking-tight text-white">
-            R<span className="text-accent-green">.</span>Frame
+            R<span className="text-[#10B981]">.</span>Frame
           </p>
         </div>
       </div>

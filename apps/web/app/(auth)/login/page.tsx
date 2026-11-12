@@ -61,19 +61,20 @@ export default function LoginPage() {
 
       <div>
         <h1 className="text-3xl font-bold text-text-primary">
-          R<span className="text-accent-green">.</span>Frame
+          R<span className="text-[#10B981]">.</span>Frame
         </h1>
         <p className="mt-2 text-sm text-text-secondary">Đăng nhập để tiếp tục</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+          <div role="alert" className="bg-[#EF4444]/10 border border-[#EF4444] text-[#EF4444] px-4 py-3 rounded">
             {error}
           </div>
         )}
 
         <Input
+          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="email"
           type="email"
           label="Email"
@@ -89,11 +90,12 @@ export default function LoginPage() {
             <label htmlFor="password" className="block text-sm font-medium text-text-primary">
               Mật khẩu
             </label>
-            <Link href="/forgot-password" className="text-xs text-accent-green hover:underline">
+            <Link href="/forgot-password" className="text-xs text-[#10B981] hover:underline">
               Quên mật khẩu?
             </Link>
           </div>
           <Input
+            className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
             id="password"
             type="password"
             required
@@ -104,7 +106,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <Button type="submit" variant="danger" size="lg" className="w-full" loading={loading}>
+        <Button type="submit" variant="danger" size="lg" className="w-full px-6 py-3 text-base bg-[#EF4444] text-white hover:bg-red-500 focus-visible:ring-[#EF4444]" loading={loading}>
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
 
@@ -118,7 +120,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-text-secondary">
           Chưa có tài khoản?{" "}
-          <Link href="/register" className="text-accent-green font-medium hover:underline">
+          <Link href="/register" className="text-[#10B981] font-medium hover:underline">
             Đăng ký
           </Link>
         </p>

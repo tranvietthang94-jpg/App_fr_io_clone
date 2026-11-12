@@ -57,19 +57,20 @@ export default function RegisterPage() {
     <>
       <div>
         <h1 className="text-3xl font-bold text-text-primary">
-          R<span className="text-accent-green">.</span>Frame
+          R<span className="text-[#10B981]">.</span>Frame
         </h1>
         <p className="mt-2 text-sm text-text-secondary">Tạo tài khoản mới</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-accent-red/10 border border-accent-red text-accent-red px-4 py-3 rounded">
+          <div role="alert" className="bg-[#EF4444]/10 border border-[#EF4444] text-[#EF4444] px-4 py-3 rounded">
             {error}
           </div>
         )}
 
         <Input
+          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="name"
           type="text"
           label="Họ tên"
@@ -80,6 +81,7 @@ export default function RegisterPage() {
         />
 
         <Input
+          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="email"
           type="email"
           label="Email"
@@ -90,6 +92,7 @@ export default function RegisterPage() {
         />
 
         <Input
+          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="password"
           type="password"
           label="Mật khẩu"
@@ -100,6 +103,7 @@ export default function RegisterPage() {
         />
 
         <Input
+          className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
           id="confirmPassword"
           type="password"
           label="Xác nhận mật khẩu"
@@ -109,7 +113,7 @@ export default function RegisterPage() {
           placeholder="••••••••"
         />
 
-        <Button type="submit" size="lg" className="w-full" loading={loading}>
+        <Button type="submit" size="lg" className="w-full px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
           {loading ? "Đang đăng ký..." : "Đăng ký"}
         </Button>
 
@@ -123,7 +127,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-text-secondary">
           Đã có tài khoản?{" "}
-          <Link href="/login" className="text-accent-green font-medium hover:underline">
+          <Link href="/login" className="text-[#10B981] font-medium hover:underline">
             Đăng nhập
           </Link>
         </p>

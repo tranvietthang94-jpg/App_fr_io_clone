@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
     <>
       <div>
         <h1 className="text-3xl font-bold text-text-primary">
-          R<span className="text-accent-green">.</span>Frame
+          R<span className="text-[#10B981]">.</span>Frame
         </h1>
         <p className="mt-2 text-sm text-text-secondary">Quên mật khẩu</p>
       </div>
@@ -41,6 +41,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
+              className="h-11 rounded-md border-border focus:ring-[#10B981]/50 focus:border-[#10B981]"
               id="email"
               type="email"
               label="Email"
@@ -49,13 +50,13 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
             />
-            <Button type="submit" size="lg" className="w-full" loading={loading}>
+            <Button type="submit" size="lg" className="w-full px-6 py-3 text-base bg-[#10B981] text-white hover:bg-[#059669] focus-visible:ring-[#10B981]" loading={loading}>
               {loading ? "Đang gửi..." : "Gửi liên kết đặt lại"}
             </Button>
           </form>
         )}
         <p className="text-center text-sm text-text-secondary">
-          <Link href="/login" className="text-accent-green font-medium hover:underline">
+          <Link href="/login" className="text-[#10B981] font-medium hover:underline">
             Quay lại đăng nhập
           </Link>
         </p>
